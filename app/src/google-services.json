@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "181225739486",
+    "project_id": "startup-pulse-uni",
+    "storage_bucket": "startup-pulse-uni.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:181225739486:android:2765d7287972c2c3781e4f",
+        "android_client_info": {
+          "package_name": "com.example.startuppulse"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "181225739486-as6pqmpbettl7ohomhvh3kvt4ols7prp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.startuppulse",
+            "certificate_hash": "60959d2806987d987b68e4148031e68041bbb578"
+          }
+        },
+        {
+          "client_id": "181225739486-cni7eqidjea03eb6ctl66ktt2bglakg5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA6jbqA58SEQQhrAguh5eojsRHNVwBPuNU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "181225739486-cni7eqidjea03eb6ctl66ktt2bglakg5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

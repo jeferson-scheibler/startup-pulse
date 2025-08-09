@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/dialog_scrim_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_margin="12dp"
+        app:cardCornerRadius="28dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/background_inspiring"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <!-- Título -->
+            <TextView
+                android:id="@+id/text_dialog_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:drawablePadding="8dp"
+                android:text="Adicionar Ponto-Chave"
+                android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
+                android:textColor="@color/white"
+                app:drawableStartCompat="@drawable/ic_lightbulb"
+                app:drawableTint="@color/primary_color" />
+
+            <!-- Campo de texto -->
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                app:boxStrokeColor="@color/primary_color"
+                app:counterEnabled="true"
+                app:counterMaxLength="280">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/edit_text_postit"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="top"
+                    android:hint="Descreva um ponto importante da sua ideia..."
+                    android:inputType="textMultiLine|textCapSentences"
+                    android:minLines="4"
+                    android:textColor="@color/white"
+                    tools:text="Ex: Nossa proposta de valor é oferecer um café de alta qualidade com rastreabilidade total via QR code na embalagem." />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:scrollbars="none">
+
+                <RadioGroup
+                    android:id="@+id/radio_group_colors"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingVertical="8dp">
+
+                    <RadioButton android:id="@+id/radio_yellow" android:background="@drawable/color_selector_yellow" android:layout_marginEnd="12dp" android:button="@android:color/transparent" android:layout_height="25dp" android:layout_width="25dp"/>
+                    <RadioButton android:id="@+id/radio_orange" android:background="@drawable/color_selector_orange" android:layout_marginEnd="12dp" android:button="@android:color/transparent" android:layout_height="25dp" android:layout_width="25dp"/>
+                    <RadioButton android:id="@+id/radio_pink" android:background="@drawable/color_selector_pink" android:layout_marginEnd="12dp" android:button="@android:color/transparent" android:layout_height="25dp" android:layout_width="25dp"/>
+                    <RadioButton android:id="@+id/radio_blue" android:background="@drawable/color_selector_blue" android:layout_marginEnd="12dp" android:button="@android:color/transparent" android:layout_height="25dp" android:layout_width="25dp"/>
+                    <RadioButton android:id="@+id/radio_green" android:background="@drawable/color_selector_green" android:layout_marginEnd="12dp" android:button="@android:color/transparent" android:layout_height="25dp" android:layout_width="25dp"/>
+                    <RadioButton android:id="@+id/radio_white" android:background="@drawable/color_selector_white" android:button="@android:color/transparent" android:layout_height="25dp" android:layout_width="25dp"/>
+                </RadioGroup>
+            </HorizontalScrollView>
+
+            <!-- Botões -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:orientation="horizontal">
+
+                <!-- Botão Cancelar ancorado à esquerda -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_cancelar_postit"
+                    style="@style/App.Button.Outlined.LessRounded"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Cancelar"/>
+
+                <Space
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+                <!-- Botão Salvar ancorado à direita -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_salvar_postit"
+                    style="@style/App.Button.LessRounded"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Salvar"
+                    android:textColor="@color/secondary_color"
+                    app:icon="@drawable/ic_add"
+                    app:iconTint="@color/secondary_color"/>
+
+            </LinearLayout>
+        </LinearLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+</FrameLayout>

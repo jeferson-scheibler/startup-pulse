@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "181225739486",
+    "project_id": "startup-pulse-uni",
+    "storage_bucket": "startup-pulse-uni.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:181225739486:android:2765d7287972c2c3781e4f",
+        "android_client_info": {
+          "package_name": "com.example.startuppulse"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA6jbqA58SEQQhrAguh5eojsRHNVwBPuNU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

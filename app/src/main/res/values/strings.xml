@@ -1,0 +1,33 @@
+<resources>
+    <string name="app_name">Startup Pulse</string>
+    <string name="perfil">Perfil</string>
+    <string name="mentores">Mentores</string>
+    <string name="ideias">Ideias</string>
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="adicionar_nova_ideia">Adicionar nova ideia</string>
+    <string name="login_logo_description">Logo do Startup Pulse</string>
+    <string name="login_label_email">Email</string>
+    <string name="login_hint_email">Insira seu email...</string>
+    <string name="login_label_password">Senha</string>
+    <string name="login_hint_password">Insira sua senha...</string>
+    <string name="login_button_enter">Entrar</string>
+    <string name="login_button_create_account">Não tenho uma conta</string>
+    <string name="login_button_google">Entrar com Google</string>
+    <string name="login_icon_google_description">Ícone do Google</string>
+    <string name="default_web_client_id" translatable="false">SEU_ID_GERADO_AQUI.apps.googleusercontent.com</string>
+    <string name="nova_ideia_label_titulo">Título da sua Ideia</string>
+    <string name="nova_ideia_hint_titulo">Um nome curto e impactante</string>
+    <string name="nova_ideia_label_descricao">Descreva sua Ideia</string>
+    <string name="nova_ideia_hint_descricao">Detalhe como sua ideia funciona...</string>
+    <string name="nova_ideia_botao_publicar">Publicar Ideia</string>
+    <string name="menu_ideias">Ideias</string>
+    <string name="menu_perfil">Perfil</string>
+    <string name="menu_mentores">Mentores</string>
+    <string name="fab_content_desc">Adicionar nova ideia</string>
+    <string name="fab_content_desc2">Adicionar novo mentor</string>
+    <string name="ideias_empty_title">O Universo Aguarda</string>
+    <string name="ideias_empty_subtitle">Nenhuma faísca foi lançada ainda. Seja o primeiro a compartilhar sua grande ideia com o mundo!</string>
+    <string name="canvas_inicio_titulo">Vamos Começar a Jornada</string>
+    <string name="nova_ideia_hint_inspirador_titulo">Qual o nome da sua faísca?</string>
+    <string name="canvas_inicio_hint_descricao">Descreva a ideia em uma frase</string>
+</resources>
