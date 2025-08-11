@@ -10,36 +10,64 @@
     android:layout_marginVertical="6dp"
     android:clickable="true"
     android:focusable="true"
+    android:minHeight="72dp"
     app:cardCornerRadius="16dp"
-    app:cardElevation="0dp">
+    app:cardElevation="0dp"
+    app:cardUseCompatPadding="true"
+    app:rippleColor="?attr/colorPrimary"
+    app:strokeColor="?attr/colorOutline"
+    app:strokeWidth="1dp">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="16dp">
+        android:padding="14dp">
 
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/imageViewMentor"
             android:layout_width="56dp"
             android:layout_height="56dp"
             android:scaleType="centerCrop"
+            android:contentDescription="@string/mentor_avatar_content_desc"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
             tools:src="@drawable/ic_person" />
 
-        <TextView
-            android:id="@+id/textViewNome"
+        <!-- Linha: Nome + Badge -->
+        <LinearLayout
+            android:id="@+id/row_nome_badge"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
-            android:textAppearance="?attr/textAppearanceTitleMedium"
-            android:textColor="?attr/colorOnSurface"
-            android:textStyle="bold"
-            app:layout_constraintEnd_toStartOf="@id/imageViewArrow"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            app:layout_constraintTop_toTopOf="@id/imageViewMentor"
             app:layout_constraintStart_toEndOf="@id/imageViewMentor"
-            app:layout_constraintTop_toTopOf="parent"
-            tools:text="Nome Completo do Mentor" />
+            app:layout_constraintEnd_toStartOf="@id/imageViewArrow">
+
+            <TextView
+                android:id="@+id/textViewNome"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorOnSurface"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:ellipsize="end"
+                tools:text="Nome Completo do Mentor" />
+
+            <ImageView
+                android:id="@+id/iconVerificado"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_marginStart="8dp"
+                android:contentDescription="@string/mentor_verificado_content_desc"
+                android:src="@drawable/ic_verified"
+                android:visibility="gone"
+                app:tint="@color/green_success"
+                tools:visibility="visible"/>
+        </LinearLayout>
 
         <com.google.android.material.chip.Chip
             android:id="@+id/chipProfissao"
@@ -47,35 +75,55 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             app:chipIcon="@drawable/ic_work"
-            app:layout_constraintStart_toStartOf="@id/textViewNome"
-            app:layout_constraintTop_toBottomOf="@id/textViewNome"
-            tools:text="Especialista em Marketing Digital" />
+            app:chipIconTint="?attr/colorOnSurfaceVariant"
+            app:iconStartPadding="6dp"
+            app:textStartPadding="4dp"
+            app:layout_constraintStart_toStartOf="@id/row_nome_badge"
+            app:layout_constraintTop_toBottomOf="@id/row_nome_badge"
+            tools:text="Marketing Digital" />
+
         <TextView
             android:id="@+id/textViewCidade"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:drawablePadding="4dp"
+            android:layout_marginTop="6dp"
+            android:drawablePadding="6dp"
             android:gravity="center_vertical"
             android:textAppearance="?attr/textAppearanceBodyMedium"
             android:textColor="?attr/colorOnSurfaceVariant"
+            android:maxLines="1"
+            android:ellipsize="end"
             app:drawableStartCompat="@drawable/ic_location_pin"
             app:drawableTint="?attr/colorOnSurfaceVariant"
-            app:layout_constraintStart_toStartOf="@id/chipProfissao"
             app:layout_constraintTop_toBottomOf="@id/chipProfissao"
+            app:layout_constraintStart_toStartOf="@id/chipProfissao"
+            app:layout_constraintEnd_toStartOf="@id/imageViewArrow"
             tools:text="São Paulo, SP" />
+
+        <!-- Áreas de atuação (chips dinâmicos) -->
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chipGroupAreas"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            app:singleLine="true"
+            app:layout_constraintTop_toBottomOf="@id/textViewCidade"
+            app:layout_constraintStart_toStartOf="@id/textViewCidade"
+            app:layout_constraintEnd_toStartOf="@id/imageViewArrow"
+            app:layout_constraintBottom_toBottomOf="@+id/imageViewMentor"
+            tools:ignore="SpeakableTextPresent"/>
 
         <ImageView
             android:id="@+id/imageViewArrow"
             android:layout_width="24dp"
             android:layout_height="24dp"
-            android:alpha="0.7"
-            android:contentDescription="Ver detalhes do mentor"
+            android:alpha="0.8"
+            android:contentDescription="@string/ver_detalhes_mentor_content_desc"
             android:src="@drawable/ic_chevron_right"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
+            app:tint="?attr/colorOnSurfaceVariant"
             app:layout_constraintTop_toTopOf="parent"
-            app:tint="?attr/colorOnSurfaceVariant" />
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

@@ -13,6 +13,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.startuppulse.common.Result;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
@@ -29,22 +30,24 @@ public class LoginActivity extends AppCompatActivity {
     private EditText emailEditText, passwordEditText;
     private Button loginButton;
     private TextView signUpTextView;
-    private LinearLayout googleButtonLayout; // Layout clicável para o Google
+    private LinearLayout googleButtonLayout;
     private FirebaseAuth mAuth;
     private FirestoreHelper dbHelper;
 
-    // --- NOVO: Variáveis para o Login com Google ---
     private GoogleSignInClient mGoogleSignInClient;
     private ActivityResultLauncher<Intent> googleSignInLauncher;
     private static final String TAG = "LoginActivity";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        setTheme(R.style.Theme_StartupPulse);
         super.onCreate(savedInstanceState);
+        Log.d(TAG, "onCreate: Iniciando LoginActivity");
         setContentView(R.layout.activity_login);
 
         mAuth = FirebaseAuth.getInstance();
         dbHelper = new FirestoreHelper();
+
         emailEditText = findViewById(R.id.emailEditText);
         passwordEditText = findViewById(R.id.passwordEditText);
         loginButton = findViewById(R.id.loginButton);
@@ -53,103 +56,164 @@ public class LoginActivity extends AppCompatActivity {
 
         configureGoogleSignIn();
 
-        loginButton.setOnClickListener(v -> loginUser());
-        signUpTextView.setOnClickListener(v -> startActivity(new Intent(LoginActivity.this, SignUpActivity.class)));
-        googleButtonLayout.setOnClickListener(v -> signInWithGoogle());
+        loginButton.setOnClickListener(v -> {
+            Log.d(TAG, "Botão de login (email/senha) clicado");
+            loginUser();
+        });
+
+        signUpTextView.setOnClickListener(v -> {
+            Log.d(TAG, "Clique em Criar Conta");
+            startActivity(new Intent(LoginActivity.this, SignUpActivity.class));
+        });
+
+        googleButtonLayout.setOnClickListener(v -> {
+            Log.d(TAG, "Botão Google clicado → chamando signInWithGoogle()");
+            signInWithGoogle();
+        });
     }
 
     private void loginUser() {
         String email = emailEditText.getText().toString().trim();
         String password = passwordEditText.getText().toString().trim();
+        Log.d(TAG, "Tentando login com email=" + email);
 
         if (email.isEmpty() || password.isEmpty()) {
+            Log.w(TAG, "Campos vazios no login");
             Toast.makeText(this, "Por favor, preencha todos os campos.", Toast.LENGTH_SHORT).show();
             return;
         }
 
         mAuth.signInWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this, task -> {
-                    if (task.isSuccessful()) {
-                        Toast.makeText(LoginActivity.this, "Login bem-sucedido.", Toast.LENGTH_SHORT).show();
-                        startActivity(new Intent(LoginActivity.this, MainActivity.class));
-                        finish();
-                    } else {
+                    Log.d(TAG, "signInWithEmailAndPassword: sucesso=" + task.isSuccessful());
+                    if (!task.isSuccessful()) {
+                        Log.w(TAG, "Falha na autenticação email/senha", task.getException());
                         Toast.makeText(LoginActivity.this, "Falha na autenticação.", Toast.LENGTH_SHORT).show();
+                        return;
                     }
+
+                    FirebaseUser user = mAuth.getCurrentUser();
+                    Log.d(TAG, "Usuário logado: " + (user != null ? user.getUid() : "null"));
+                    if (user == null) {
+                        Toast.makeText(this, "Erro: usuário nulo após login.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    String fotoUrl = (user.getPhotoUrl() != null) ? user.getPhotoUrl().toString() : null;
+                    dbHelper.salvarUsuario(
+                            user.getUid(),
+                            user.getDisplayName(),
+                            user.getEmail(),
+                            fotoUrl,
+                            null,
+                            r -> {
+                                Log.d(TAG, "Resultado salvarUsuario: " + r.isOk());
+                                if (!r.isOk()) {
+                                    Log.w(TAG, "salvarUsuario (email/senha) falhou: ", r.error);
+                                }
+                                Toast.makeText(LoginActivity.this, "Login bem-sucedido.", Toast.LENGTH_SHORT).show();
+                                startActivity(new Intent(LoginActivity.this, MainActivity.class));
+                                finish();
+                            }
+                    );
                 });
     }
 
     private void configureGoogleSignIn() {
-        // Configura as opções de login do Google. requestIdToken é crucial para o Firebase.
-        // O ID do token é pego do seu arquivo google-services.json
+        String clientId = getString(R.string.default_web_client_id);
+        Log.d(TAG, "Config GoogleSignIn: default_web_client_id=" + clientId);
+
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestIdToken(getString(R.string.default_web_client_id))
+                .requestIdToken(clientId)
                 .requestEmail()
                 .build();
 
         mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
 
-        // Prepara o launcher que vai receber o resultado da tela de login do Google
         googleSignInLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
-                    if (result.getResultCode() == RESULT_OK) {
-                        Intent data = result.getData();
-                        Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
-                        try {
-                            // Google Sign In foi bem-sucedido, agora autentique com o Firebase
-                            GoogleSignInAccount account = task.getResult(ApiException.class);
-                            Log.d(TAG, "firebaseAuthWithGoogle:" + account.getId());
-                            firebaseAuthWithGoogle(account);
-                        } catch (ApiException e) {
-                            // Falha no Google Sign In
-                            Log.w(TAG, "Google sign in failed", e);
-                            Toast.makeText(this, "Falha no login com Google.", Toast.LENGTH_SHORT).show();
-                        }
+                    Log.d(TAG, "Resultado do Google Sign-In: resultCode=" + result.getResultCode());
+                    if (result.getResultCode() != RESULT_OK) {
+                        Log.w(TAG, "Google Sign-In cancelado ou falhou");
+                        return;
                     }
-                });
+                    Intent data = result.getData();
+                    if (data == null) {
+                        Log.w(TAG, "Intent de retorno nula");
+                        return;
+                    }
+                    Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
+                    try {
+                        GoogleSignInAccount account = task.getResult(ApiException.class);
+                        Log.d(TAG, "Conta Google obtida: " + (account != null ? account.getEmail() : "null"));
+                        if (account != null) {
+                            Log.d(TAG, "IdToken=" + account.getIdToken());
+                            firebaseAuthWithGoogle(account);
+                        }
+                    } catch (ApiException e) {
+                        Log.e(TAG, "Google sign in failed", e);
+                        Toast.makeText(this, "Falha no login com Google.", Toast.LENGTH_SHORT).show();
+                    }
+                }
+        );
     }
 
     private void signInWithGoogle() {
-        Intent signInIntent = mGoogleSignInClient.getSignInIntent();
-        googleSignInLauncher.launch(signInIntent);
+        Log.d(TAG, "Iniciando intent do Google Sign-In");
+        // força limpar sessão anterior para abrir o seletor de contas limpinho
+        mGoogleSignInClient.signOut().addOnCompleteListener(t -> {
+            Intent signInIntent = mGoogleSignInClient.getSignInIntent();
+            googleSignInLauncher.launch(signInIntent);
+        });
     }
+
+
     private void firebaseAuthWithGoogle(GoogleSignInAccount acct) {
+        Log.d(TAG, "firebaseAuthWithGoogle: iniciando autenticação com Firebase");
         AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
         mAuth.signInWithCredential(credential)
                 .addOnCompleteListener(this, task -> {
-                    if (task.isSuccessful()) {
-                        FirebaseUser user = mAuth.getCurrentUser();
-
-                        FirestoreHelper firestoreHelper = new FirestoreHelper();
-
-                        String fotoUrl = (user.getPhotoUrl() != null) ? user.getPhotoUrl().toString() : "";
-
-                        firestoreHelper.salvarUsuario(
-                                user.getUid(),
-                                user.getDisplayName(),
-                                user.getEmail(),
-                                fotoUrl,
-                                ""
-                        );
-
-                        Toast.makeText(this, "Login com Google bem-sucedido.", Toast.LENGTH_SHORT).show();
-                        startActivity(new Intent(LoginActivity.this, MainActivity.class));
-                        finish();
-
-                    } else {
-                        // Se o login falhar
+                    Log.d(TAG, "signInWithCredential: sucesso=" + task.isSuccessful());
+                    if (!task.isSuccessful()) {
+                        Log.w(TAG, "Falha na autenticação com Firebase (Google)", task.getException());
                         Toast.makeText(this, "Falha na autenticação com Firebase.", Toast.LENGTH_SHORT).show();
+                        return;
                     }
+
+                    FirebaseUser user = mAuth.getCurrentUser();
+                    Log.d(TAG, "Usuário Google logado: " + (user != null ? user.getUid() : "null"));
+                    if (user == null) {
+                        Toast.makeText(this, "Erro: usuário nulo após login (Google).", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    String fotoUrl = (user.getPhotoUrl() != null) ? user.getPhotoUrl().toString() : null;
+                    dbHelper.salvarUsuario(
+                            user.getUid(),
+                            user.getDisplayName(),
+                            user.getEmail(),
+                            fotoUrl,
+                            null,
+                            r -> {
+                                Log.d(TAG, "Resultado salvarUsuario (Google): " + r.isOk());
+                                if (!r.isOk()) {
+                                    Log.w(TAG, "salvarUsuario (google) falhou: ", r.error);
+                                }
+                                Toast.makeText(this, "Login com Google bem-sucedido.", Toast.LENGTH_SHORT).show();
+                                startActivity(new Intent(LoginActivity.this, MainActivity.class));
+                                finish();
+                            }
+                    );
                 });
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-        // Checa se o usuário já está logado e atualiza a UI
         FirebaseUser currentUser = mAuth.getCurrentUser();
-        if(currentUser != null){
+        Log.d(TAG, "onStart: usuário atual=" + (currentUser != null ? currentUser.getUid() : "null"));
+        if (currentUser != null) {
             startActivity(new Intent(LoginActivity.this, MainActivity.class));
             finish();
         }

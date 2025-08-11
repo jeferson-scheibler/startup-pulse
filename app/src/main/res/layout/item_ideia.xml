@@ -10,47 +10,63 @@
     android:layout_marginVertical="8dp"
     android:clickable="true"
     android:focusable="true"
+    android:minHeight="64dp"
     app:cardCornerRadius="16dp"
-    app:cardElevation="0dp">
+    app:cardElevation="0dp"
+    app:cardUseCompatPadding="true"
+    app:rippleColor="?attr/colorOnSecondary"
+    app:strokeColor="?attr/colorOutline"
+    app:strokeWidth="1dp">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:paddingVertical="12dp">
 
+        <!-- Destaque lateral quando o usuário é mentor desta ideia -->
         <View
             android:id="@+id/mentor_highlight_view"
             android:layout_width="6dp"
             android:layout_height="0dp"
             android:background="?attr/colorPrimary"
             android:visibility="gone"
+            app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
             tools:visibility="visible" />
 
+        <!-- Bloco de conteúdo -->
         <LinearLayout
+            android:id="@+id/content_container"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp"
+            android:paddingHorizontal="16dp"
+            app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/mentor_highlight_view"
-            app:layout_constraintTop_toTopOf="parent">
+            app:layout_constraintEnd_toEndOf="parent">
 
+            <!-- Título da ideia -->
             <TextView
                 android:id="@+id/textViewTituloIdeia"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:textAppearance="?attr/textAppearanceTitleMedium"
-                android:textColor="?attr/colorOnSurface"
+                android:textColor="@color/colorOnSurface"
                 android:textStyle="bold"
-                tools:text="Nome da Ideia Incrível" />
+                android:maxLines="2"
+                android:ellipsize="end"
+                tools:text="Nome da Ideia Incrível que Pode Ser Um Pouco Longo"
+                tools:ignore="Suspicious0dp" />
 
+            <!-- Linha: autor + status -->
             <LinearLayout
+                android:id="@+id/row_author_status"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="6dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
@@ -59,15 +75,25 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textAppearance="?attr/textAppearanceBodyMedium"
-                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textColor="@color/colorOnSurface"
+                    android:maxLines="1"
+                    android:ellipsize="end"
                     tools:text="Por: Nome do Empreendedor" />
 
+                <!-- Espaçador flexível quando o título quebra linha -->
+                <View
+                    android:layout_width="8dp"
+                    android:layout_height="0dp" />
+
+                <!-- Ícone de status (Avaliada / Em análise) -->
                 <ImageView
                     android:id="@+id/icon_status_avaliacao"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
                     android:layout_marginStart="8dp"
+                    android:contentDescription="@string/status_avaliacao_content_desc"
                     android:visibility="gone"
+                    app:tint="?attr/colorPrimary"
                     tools:src="@drawable/ic_hourglass"
                     tools:visibility="visible" />
             </LinearLayout>

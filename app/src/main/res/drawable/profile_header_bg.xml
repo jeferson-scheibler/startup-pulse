@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- fundo: gradiente do azul ao cinza (modo claro/escuro vai tonalizar bem) -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:angle="270"
+                android:startColor="#223B6BFF"
+            android:centerColor="#33282C34"
+            android:endColor="#FF282C34" />
+        </shape>
+    </item>
+
+    <!-- scrim suave no rodapé do header para transição pro conteúdo -->
+    <item android:gravity="bottom">
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="90"
+                android:startColor="#66000000"
+                android:endColor="@android:color/transparent"/>
+            <size android:height="80dp"/>
+        </shape>
+    </item>
+</layer-list>

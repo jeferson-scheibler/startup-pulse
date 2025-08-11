@@ -8,44 +8,33 @@
     android:padding="24dp"
     tools:context=".AmbienteCheckFragment">
 
-    <!-- Título que muda dinamicamente -->
+    <!-- Título dinâmico -->
     <TextView
         android:id="@+id/text_view_title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:textAlignment="center"
         android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         tools:text="Vamos calibrar o seu ambiente" />
 
-    <!-- Animação Lottie que muda dinamicamente -->
+    <!-- Animação Lottie (decorativa) -->
     <com.airbnb.lottie.LottieAnimationView
         android:id="@+id/lottie_animation"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        app:layout_constraintBottom_toTopOf="@id/guideline_center"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
+        android:importantForAccessibility="no"
         app:layout_constraintTop_toBottomOf="@id/text_view_title"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/guideline_center"
         app:lottie_autoPlay="true"
         app:lottie_loop="true"
         tools:lottie_rawRes="@raw/anim_ambiente_scanning" />
 
-    <TextView
-        android:id="@+id/text_overall_recommendation"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:layout_marginHorizontal="16dp"
-        android:textAlignment="center"
-        android:textAppearance="?attr/textAppearanceTitleMedium"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/lottie_animation"
-        tools:text="O seu ambiente está perfeito para o fluxo de ideias!" />
-
+    <!-- Diretriz para ancoragem vertical -->
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline_center"
         android:layout_width="wrap_content"
@@ -53,7 +42,23 @@
         android:orientation="horizontal"
         app:layout_constraintGuide_percent="0.6" />
 
-    <!-- Barra de Progresso Circular (só visível durante a calibração) -->
+    <!-- Recomendações gerais (resultado) -->
+    <TextView
+        android:id="@+id/text_overall_recommendation"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="8dp"
+        android:textAlignment="center"
+        android:textAppearance="?attr/textAppearanceTitleMedium"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/lottie_animation"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:text="O seu ambiente está perfeito para o fluxo de ideias!"
+        tools:visibility="visible" />
+
+    <!-- Barra de progresso circular (visível só em CALIBRATING) -->
     <ProgressBar
         android:id="@+id/progress_bar_calibration"
         style="?android:attr/progressBarStyleHorizontal"
@@ -63,13 +68,13 @@
         android:progress="0"
         android:progressDrawable="@drawable/progress_bar_circular"
         android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="@id/lottie_animation"
-        app:layout_constraintEnd_toEndOf="@id/lottie_animation"
-        app:layout_constraintStart_toStartOf="@id/lottie_animation"
         app:layout_constraintTop_toTopOf="@id/lottie_animation"
+        app:layout_constraintBottom_toBottomOf="@id/lottie_animation"
+        app:layout_constraintStart_toStartOf="@id/lottie_animation"
+        app:layout_constraintEnd_toEndOf="@id/lottie_animation"
         tools:visibility="visible" />
 
-    <!-- Card de Indicadores (só visível nos resultados) -->
+    <!-- Card de indicadores (RESULTS) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/card_indicadores"
         style="@style/Widget.Material3.CardView.Filled"
@@ -79,9 +84,9 @@
         android:visibility="gone"
         app:cardBackgroundColor="#4DFFFFFF"
         app:cardCornerRadius="24dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/text_overall_recommendation"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         tools:visibility="visible">
 
         <LinearLayout
@@ -89,18 +94,22 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:padding="16dp">
+
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:gravity="center"
                 android:orientation="vertical">
+
                 <ImageView
                     android:id="@+id/icon_luz"
                     android:layout_width="40dp"
                     android:layout_height="40dp"
+                    android:contentDescription="@string/cd_indicador_luz"
                     android:src="@drawable/ic_lightbulb"
                     app:tint="@color/white_translucent" />
+
                 <TextView
                     android:id="@+id/status_luz"
                     android:layout_width="wrap_content"
@@ -110,23 +119,28 @@
                     android:textColor="@color/white_translucent"
                     tools:text="Ideal" />
             </LinearLayout>
+
             <View
                 android:layout_width="1dp"
                 android:layout_height="match_parent"
                 android:layout_marginHorizontal="8dp"
                 android:background="#4DFFFFFF" />
+
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:gravity="center"
                 android:orientation="vertical">
+
                 <ImageView
                     android:id="@+id/icon_som"
                     android:layout_width="40dp"
                     android:layout_height="40dp"
+                    android:contentDescription="@string/cd_indicador_som"
                     android:src="@drawable/ic_sound"
                     app:tint="@color/white_translucent" />
+
                 <TextView
                     android:id="@+id/status_som"
                     android:layout_width="wrap_content"
@@ -139,17 +153,32 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
+    <!-- Nota curta de privacidade (opcional, mas recomendada) -->
+    <TextView
+        android:id="@+id/text_privacy_note"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Usamos o microfone apenas para medir o nível de ruído; nada é gravado ou enviado."
+        android:textAlignment="center"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:alpha="0.8"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/card_indicadores"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:visibility="visible" />
 
-
+    <!-- Ação para pular -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_pular_check"
         style="@style/Widget.Material3.Button.TextButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
-        android:text="Pular Calibração"
+        android:text="Pular calibração"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

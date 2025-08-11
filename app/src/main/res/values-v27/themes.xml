@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.StartupPulse" parent="Theme.StartupPulse" tools:ignore="ResourceCycle">
+        <!-- Ícones escuros na *navigation bar* (requer API 27+) -->
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+</resources>

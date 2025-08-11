@@ -14,7 +14,7 @@
         android:layout_width="120dp"
         android:layout_height="120dp"
         android:contentDescription="Logo do Startup Pulse"
-        android:src="@drawable/logo"
+        android:src="@drawable/logo_startup_pulse"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

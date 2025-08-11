@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.StartupPulse.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/colorOnSecondary</item> <!-- #282C34 -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/logo_startup_pulse</item>
+        <item name="postSplashScreenTheme">@style/Theme.StartupPulse</item>
+    </style>
+</resources>

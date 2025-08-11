@@ -2,10 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Permissões necessárias -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <application
         android:allowBackup="true"
@@ -17,21 +18,42 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.StartupPulse"
         tools:targetApi="31">
+
+        <!-- Splash = LAUNCHER -->
         <activity
-            android:name=".LoginActivity"
-            android:exported="true">
+            android:name=".SplashActivity"
+            android:exported="true"
+            android:theme="@style/Theme.StartupPulse.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <activity android:name=".MainActivity" android:exported="false" />
-        <activity android:name=".SignUpActivity" android:exported="false" />
-        <activity android:name=".CanvasIdeiaActivity" android:label="Nova Ideia"/>
-        <activity android:name=".CanvasMentorActivity" android:label="Novo Mentor"/>
-        <activity android:name=".AvaliacaoActivity" android:label="Novo Mentor"/>
+        <!-- Demais telas -->
+        <activity
+            android:name=".LoginActivity"
+            android:label="@string/app_name" />
+
+        <activity
+            android:name=".MainActivity"
+            android:label="@string/app_name" />
+
+        <activity
+            android:name=".SignUpActivity"
+            android:label="@string/app_name" />
+
+        <activity
+            android:name=".CanvasIdeiaActivity"
+            android:label="@string/adicionar_nova_ideia" />
+
+        <activity
+            android:name=".CanvasMentorActivity"
+            android:label="@string/mentores" />
+
+        <activity
+            android:name=".AvaliacaoActivity"
+            android:label="@string/avaliacao_titulo" />
     </application>
 
 </manifest>

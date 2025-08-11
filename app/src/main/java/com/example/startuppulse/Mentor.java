@@ -14,6 +14,16 @@ public class Mentor implements Serializable {
     private double latitude;
     private double longitude;
 
+    private boolean verificado;                 // badge
+    private java.util.List<String> areas;       // áreas de atuação
+
+    public boolean isVerificado() { return verificado; }
+    public void setVerificado(boolean v) { this.verificado = v; }
+
+    public java.util.List<String> getAreas() { return areas; }
+    public void setAreas(java.util.List<String> a) { this.areas = a; }
+
+
     public Mentor() {}
 
     // --- Getters e Setters ---

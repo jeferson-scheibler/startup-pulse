@@ -5,17 +5,19 @@ import android.location.Geocoder;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.startuppulse.common.Result;
+import com.example.startuppulse.databinding.ActivityCanvasMentorBinding;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
@@ -26,62 +28,83 @@ import java.util.concurrent.Executors;
  */
 public class CanvasMentorActivity extends AppCompatActivity {
 
-    private EditText editTextNome, editTextProfissao, editTextCidade, editTextEstado;
-    private Button buttonSalvar, buttonCancelar;
-
+    private ActivityCanvasMentorBinding binding;
     private FirestoreHelper firestoreHelper;
+
+    // Lista simples de áreas para seleção (pode mover para strings.xml depois)
+    private static final List<String> AREAS_PREDEFINIDAS = Arrays.asList(
+            "Marketing", "Vendas", "Finanças", "Estratégia", "Produto",
+            "Tecnologia", "Operações", "Jurídico", "RH", "UX/UI"
+    );
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_canvas_mentor);
+        binding = ActivityCanvasMentorBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
-        // 1. Inicializar componentes
         firestoreHelper = new FirestoreHelper();
 
-        // 2. Mapear as Views do layout
-        editTextNome = findViewById(R.id.edit_text_nome);
-        editTextProfissao = findViewById(R.id.edit_text_profissao);
-        editTextCidade = findViewById(R.id.edit_text_cidade);
-        editTextEstado = findViewById(R.id.edit_text_estado);
-        buttonSalvar = findViewById(R.id.button_salvar);
-        buttonCancelar = findViewById(R.id.button_cancelar);
-
-        // 3. Preenche os dados iniciais
+        // Preenche dados iniciais
         preencherDadosIniciais();
 
-        // 4. Configura os listeners dos botões
-        buttonSalvar.setOnClickListener(v -> validarEProcessarMentor());
-        buttonCancelar.setOnClickListener(v -> finish());
+        // Monta chips de áreas
+        montarChipsAreas();
+
+        // Listeners
+        binding.buttonSalvar.setOnClickListener(v -> validarEProcessarMentor());
+        binding.buttonCancelar.setOnClickListener(v -> finish());
     }
 
     private void preencherDadosIniciais() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user != null && user.getDisplayName() != null) {
-            editTextNome.setText(user.getDisplayName());
-            editTextNome.setEnabled(false); // O nome não pode ser alterado
+            binding.editTextNome.setText(user.getDisplayName());
+            binding.editTextNome.setEnabled(false); // nome fixo (vem da conta)
         }
+        // Se futuramente editar mentor, pré-carregue aqui (intent / Firestore)
+    }
 
-        // No futuro, se você implementar a edição, pode carregar os dados do mentor aqui
-        // Mentor mentor = (Mentor) getIntent().getSerializableExtra("mentor");
-        // if (mentor != null) { ... }
+    private void montarChipsAreas() {
+        binding.chipGroupAreasSelect.removeAllViews();
+        for (String area : AREAS_PREDEFINIDAS) {
+            com.google.android.material.chip.Chip chip =
+                    new com.google.android.material.chip.Chip(this, null, com.google.android.material.R.attr.chipStyle);
+            chip.setText(area);
+            chip.setCheckable(true);
+            chip.setChecked(false);
+            chip.setChipIconResource(R.drawable.ic_tag);
+            chip.setChipIconTintResource(androidx.appcompat.R.color.material_grey_600);
+            chip.setIconStartPadding(6f);
+            chip.setTextStartPadding(4f);
+            binding.chipGroupAreasSelect.addView(chip);
+        }
+    }
+
+    private List<String> coletarAreasSelecionadas() {
+        List<String> selecionadas = new ArrayList<>();
+        for (int i = 0; i < binding.chipGroupAreasSelect.getChildCount(); i++) {
+            if (binding.chipGroupAreasSelect.getChildAt(i) instanceof com.google.android.material.chip.Chip) {
+                com.google.android.material.chip.Chip c = (com.google.android.material.chip.Chip) binding.chipGroupAreasSelect.getChildAt(i);
+                if (c.isChecked()) selecionadas.add(String.valueOf(c.getText()));
+            }
+        }
+        return selecionadas;
     }
 
     private void validarEProcessarMentor() {
-        String nome = editTextNome.getText().toString().trim();
-        String profissao = editTextProfissao.getText().toString().trim();
-        String cidade = editTextCidade.getText().toString().trim();
-        String estado = editTextEstado.getText().toString().trim();
+        String nome = binding.editTextNome.getText().toString().trim();
+        String profissao = binding.editTextProfissao.getText().toString().trim();
+        String cidade = binding.editTextCidade.getText().toString().trim();
+        String estado = binding.editTextEstado.getText().toString().trim();
 
         if (nome.isEmpty() || profissao.isEmpty() || cidade.isEmpty() || estado.isEmpty()) {
             Toast.makeText(this, "Por favor, preencha todos os campos.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        buttonSalvar.setEnabled(false);
-        buttonSalvar.setText("A verificar...");
+        bloquearSalvar(true, "A verificar...");
 
-        // A geocodificação é uma operação de rede e deve ser feita numa thread de fundo
         ExecutorService executor = Executors.newSingleThreadExecutor();
         Handler handler = new Handler(Looper.getMainLooper());
 
@@ -94,35 +117,39 @@ public class CanvasMentorActivity extends AppCompatActivity {
                     double latitude = address.getLatitude();
                     double longitude = address.getLongitude();
 
-                    // Sucesso! Volta para a thread principal para salvar no Firestore
                     handler.post(() -> salvarMentor(nome, profissao, cidade, estado, latitude, longitude));
                 } else {
                     handler.post(() -> {
                         Toast.makeText(this, "Localização não encontrada. Verifique a cidade e o estado.", Toast.LENGTH_LONG).show();
-                        buttonSalvar.setEnabled(true);
-                        buttonSalvar.setText("Salvar Cadastro");
+                        bloquearSalvar(false, "Salvar Cadastro");
                     });
                 }
             } catch (IOException e) {
                 handler.post(() -> {
                     Toast.makeText(this, "Erro de rede. Tente novamente.", Toast.LENGTH_LONG).show();
-                    buttonSalvar.setEnabled(true);
-                    buttonSalvar.setText("Salvar Cadastro");
+                    bloquearSalvar(false, "Salvar Cadastro");
                 });
+            } finally {
+                executor.shutdown();
             }
         });
+    }
+
+    private void bloquearSalvar(boolean bloqueado, String texto) {
+        binding.buttonSalvar.setEnabled(!bloqueado);
+        binding.buttonSalvar.setText(texto);
     }
 
     private void salvarMentor(String nome, String profissao, String cidade, String estado, double latitude, double longitude) {
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser == null) {
             Toast.makeText(this, "Erro: Utilizador não autenticado.", Toast.LENGTH_SHORT).show();
-            buttonSalvar.setEnabled(true);
-            buttonSalvar.setText("Salvar Cadastro");
+            bloquearSalvar(false, "Salvar Cadastro");
             return;
         }
 
         Mentor mentor = new Mentor();
+        mentor.setId(currentUser.getUid()); // boa prática: manter id consistente
         mentor.setNome(nome);
         mentor.setProfissao(profissao);
         mentor.setCidade(cidade);
@@ -132,22 +159,19 @@ public class CanvasMentorActivity extends AppCompatActivity {
         if (currentUser.getPhotoUrl() != null) {
             mentor.setImagem(currentUser.getPhotoUrl().toString());
         }
+        mentor.setVerificado(false); // badge controlado por admin/moderação
+        mentor.setAreas(coletarAreasSelecionadas());
 
-        // Usa o ID do utilizador como o ID do documento do mentor
         String mentorId = currentUser.getUid();
 
-        firestoreHelper.addMentorWithId(mentorId, mentor, new FirestoreHelper.AddMentorListener() {
-            @Override
-            public void onSuccess(String documentId) {
-                Toast.makeText(CanvasMentorActivity.this, "Perfil de mentor salvo com sucesso!", Toast.LENGTH_LONG).show();
+        // NOVO: usa Callback<Result<String>>
+        firestoreHelper.addMentorWithId(mentorId, mentor, r -> {
+            if (r.isOk()) {
+                Toast.makeText(this, "Perfil de mentor salvo com sucesso!", Toast.LENGTH_LONG).show();
                 finish();
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-                Toast.makeText(CanvasMentorActivity.this, "Erro ao salvar o perfil: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                buttonSalvar.setEnabled(true);
-                buttonSalvar.setText("Salvar Cadastro");
+            } else {
+                Toast.makeText(this, "Erro ao salvar o perfil: " + r.error.getMessage(), Toast.LENGTH_LONG).show();
+                bloquearSalvar(false, "Salvar Cadastro");
             }
         });
     }

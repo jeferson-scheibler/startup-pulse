@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="avaliacao_titulo">Tela de avaliação\n</string>
+    <string name="limpar">Limpar</string>
+    <string name="filtrar_por_area">Filtro por área</string>
+</resources>

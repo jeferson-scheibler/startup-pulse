@@ -2,6 +2,8 @@ package com.example.startuppulse;
 
 import android.content.Context;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -13,34 +15,43 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
-/**
- * Fragmento para a primeira página do Canvas, onde o usuário define o nome e a descrição da ideia.
- */
 public class CanvasInicioFragment extends Fragment {
 
-    private Ideia ideia;
-    private EditText editTextNomeIdeia, editTextDescricaoIdeia;
-    private InicioStateListener listener;
-    private boolean isReadOnly = false;
+    // Args
+    private static final String ARG_IDEIA     = "ideia";
+    private static final String ARG_ETAPA     = "etapa";       // recebido só por consistência
+    private static final String ARG_READ_ONLY = "isReadOnly";
 
-    /**
-     * Interface para notificar a Activity sobre mudanças nos campos.
-     */
+    // UI
+    private EditText editTextNomeIdeia;
+    private EditText editTextDescricaoIdeia;
+
+    // Estado
+    private Ideia ideia;
+    private boolean isReadOnly = false;
+    private boolean suppressWatcher = false;
+
+    // Debounce
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private static final long DEBOUNCE_MS = 300L;
+    private final Runnable notifyRunnable = new Runnable() {
+        @Override public void run() { notifyIfChanged(); }
+    };
+
+    // Callback p/ Activity
     public interface InicioStateListener {
         void onFieldsChanged(Ideia ideiaAtualizada);
     }
+    private InicioStateListener listener;
 
-    /**
-     * Método fábrica atualizado para aceitar o objeto CanvasEtapa, mantendo a consistência.
-     */
     public static CanvasInicioFragment newInstance(Ideia ideia, CanvasEtapa etapa, boolean isReadOnly) {
-        CanvasInicioFragment fragment = new CanvasInicioFragment();
-        Bundle args = new Bundle();
-        args.putSerializable("ideia", ideia);
-        args.putSerializable("etapa", etapa);
-        args.putBoolean("isReadOnly", isReadOnly);
-        fragment.setArguments(args);
-        return fragment;
+        CanvasInicioFragment f = new CanvasInicioFragment();
+        Bundle b = new Bundle();
+        b.putSerializable(ARG_IDEIA, ideia);
+        b.putSerializable(ARG_ETAPA, etapa);
+        b.putBoolean(ARG_READ_ONLY, isReadOnly);
+        f.setArguments(b);
+        return f;
     }
 
     @Override
@@ -49,22 +60,26 @@ public class CanvasInicioFragment extends Fragment {
         if (context instanceof InicioStateListener) {
             listener = (InicioStateListener) context;
         } else {
-            throw new RuntimeException(context.toString() + " must implement InicioStateListener");
+            throw new RuntimeException(context + " must implement InicioStateListener");
         }
     }
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (getArguments() != null) {
-            ideia = (Ideia) getArguments().getSerializable("ideia");
-            isReadOnly = getArguments().getBoolean("isReadOnly");
+        Bundle args = getArguments();
+        if (args != null) {
+            ideia = (Ideia) args.getSerializable(ARG_IDEIA);
+            isReadOnly = args.getBoolean(ARG_READ_ONLY, false);
         }
+        if (ideia == null) ideia = new Ideia(); // segurança
     }
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_canvas_inicio, container, false);
     }
 
@@ -75,39 +90,76 @@ public class CanvasInicioFragment extends Fragment {
         editTextNomeIdeia = view.findViewById(R.id.editTextTituloIdeia);
         editTextDescricaoIdeia = view.findViewById(R.id.editTextDescricaoIdeia);
 
-        if (ideia != null) {
-            editTextNomeIdeia.setText(ideia.getNome());
-            editTextDescricaoIdeia.setText(ideia.getDescricao());
-        }
-        if (isReadOnly) {
-            editTextNomeIdeia.setEnabled(false);
-            editTextDescricaoIdeia.setEnabled(false);
-        } else {
-            addTextChangeListeners();
-        }
-        addTextChangeListeners();
+        // Preenche UI sem disparar watcher
+        suppressWatcher = true;
+        editTextNomeIdeia.setText(ideia.getNome());
+        editTextDescricaoIdeia.setText(ideia.getDescricao());
+        suppressWatcher = false;
+
+        // Read-only
+        editTextNomeIdeia.setEnabled(!isReadOnly);
+        editTextDescricaoIdeia.setEnabled(!isReadOnly);
+
+        // Watchers (apenas se editável)
+        if (!isReadOnly) addTextChangeListeners();
     }
 
     private void addTextChangeListeners() {
-        TextWatcher textWatcher = new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                if (ideia != null && listener != null) {
-                    ideia.setNome(editTextNomeIdeia.getText().toString());
-                    ideia.setDescricao(editTextDescricaoIdeia.getText().toString());
-                    listener.onFieldsChanged(ideia);
-                }
+        TextWatcher watcher = new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if (suppressWatcher) return;
+                // Debounce: reagenda notificação
+                handler.removeCallbacks(notifyRunnable);
+                handler.postDelayed(notifyRunnable, DEBOUNCE_MS);
             }
-
-            @Override
-            public void afterTextChanged(Editable s) {}
+            @Override public void afterTextChanged(Editable s) {}
         };
+        editTextNomeIdeia.addTextChangedListener(watcher);
+        editTextDescricaoIdeia.addTextChangedListener(watcher);
+    }
 
-        editTextNomeIdeia.addTextChangedListener(textWatcher);
-        editTextDescricaoIdeia.addTextChangedListener(textWatcher);
+    /** Compara e notifica a Activity somente quando houve mudança real. */
+    private void notifyIfChanged() {
+        if (listener == null || ideia == null) return;
+
+        String novoNome = safe(editTextNomeIdeia.getText());
+        String novaDesc = safe(editTextDescricaoIdeia.getText());
+
+        boolean mudou = notEquals(novoNome, ideia.getNome()) || notEquals(novaDesc, ideia.getDescricao());
+        if (mudou) {
+            ideia.setNome(novoNome);
+            ideia.setDescricao(novaDesc);
+            listener.onFieldsChanged(ideia);
+        }
+    }
+
+    private String safe(CharSequence cs) { return cs == null ? "" : cs.toString(); }
+    private boolean notEquals(String a, String b) { return a == null ? b != null : !a.equals(b); }
+
+    /** Permite à Activity atualizar a ideia (ex.: ao receber do Firestore) sem loop. */
+    public void bindIdeia(@NonNull Ideia atualizada) {
+        this.ideia = atualizada;
+        if (getView() == null) return;
+
+        suppressWatcher = true;
+        editTextNomeIdeia.setText(ideia.getNome());
+        editTextDescricaoIdeia.setText(ideia.getDescricao());
+        suppressWatcher = false;
+    }
+
+    /** Caso precise alternar o modo leitura em runtime. */
+    public void setReadOnly(boolean ro) {
+        isReadOnly = ro;
+        if (getView() == null) return;
+        editTextNomeIdeia.setEnabled(!isReadOnly);
+        editTextDescricaoIdeia.setEnabled(!isReadOnly);
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        handler.removeCallbacks(notifyRunnable);
     }
 
     @Override

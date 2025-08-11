@@ -1,12 +1,29 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
-    <color name="primary_color">#f68712</color>
-    <color name="secondary_color">#27313a</color>
-    <color name="background_color">#F5F5F5</color>
-    <color name="delete_red">#D32F2F</color>
-    <color name="transparent">#00000000</color>
-    <color name="green_success">#4CAF50</color>
-    <color name="white_translucent">#B3FFFFFF</color>
+    <!-- Brand -->
+    <color name="colorPrimary">#0052FF</color>
+    <color name="colorOnPrimary">#FFFFFF</color>
+
+    <color name="colorSecondary">#FFC700</color>
+    <color name="colorOnSecondary">#282C34</color>
+
+    <!-- Surfaces -->
+    <color name="colorSurface">#F9F9F9</color>
+    <color name="colorOnSurface">#282C34</color>
+    <color name="colorSurfaceVariant">#EEF2FF</color>
+    <color name="colorDivider">#14000000</color>
+
+    <!-- Estados -->
+    <color name="colorSuccess">#16A34A</color>
+    <color name="colorWarning">#F59E0B</color>
+    <color name="colorError">#EF4444</color>
+
+    <!-- Ripples discretos -->
+    <color name="rippleNeutral">#140052FF</color>
+    <color name="ripplePrimary">#200052FF</color>
+
+    <color name="strokeSoft">#1A000000</color>
+    <color name="green_success">#16A34A</color>
+    <color name="googleStroke">#1A000000</color>
+    <color name="colorHint">#66000000</color>
+    <color name="delete_red">#FF4D4F</color>
 </resources>

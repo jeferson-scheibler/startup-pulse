@@ -1,16 +1,15 @@
 package com.example.startuppulse;
 
-import android.content.Context;
 import android.util.Log;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.example.startuppulse.common.Result;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FieldValue;
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.SetOptions;
@@ -22,413 +21,523 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Classe centralizada para todas as interações com o Cloud Firestore.
+ * Camada de acesso ao Cloud Firestore
+ * Baseada em Callback<Result<T>> — sem UI aqui.
+ *
+ * Convenções:
+ * - Sucesso: callback.onComplete(Result.ok(valor))
+ * - Erro:    callback.onComplete(Result.err(exception))
+ * - "Não encontrado": Result.ok(null) (UI decide empty-state)
  */
 public class FirestoreHelper {
 
     private static final String TAG = "FirestoreHelper";
     private static final String USUARIOS_COLLECTION = "usuarios";
-    private static final String IDEIAS_COLLECTION = "ideias";
+    private static final String IDEIAS_COLLECTION   = "ideias";
     private static final String MENTORES_COLLECTION = "mentores";
+
+    public interface Callback<T> { void onComplete(Result<T> r); }
+
     private final FirebaseFirestore db;
-
-    //<editor-fold desc="Listeners e Callbacks (Interfaces)">
-
-    // Listener para buscar um único usuário
-    public interface UsuarioListener {
-        void onUsuarioCarregado(DocumentSnapshot snapshot);
-        void onError(Exception e);
-    }
-
-    // Listener para listas de ideias (Rascunhos, Publicadas, etc.)
-    public interface IdeiasListener {
-        void onIdeiasCarregadas(List<Ideia> ideias);
-        void onError(Exception e);
-    }
-
-    // Listener para buscar uma única ideia (one-time fetch)
-    public interface IdeiaUnicaListener {
-        void onIdeiaCarregada(Ideia ideia);
-        void onError(Exception e);
-    }
-
-    // Callback para operações simples de sucesso/falha (ex: delete, update)
-    public interface FirestoreCallback {
-        void onSuccess();
-        void onFailure(Exception e);
-    }
-
-    // Callback para quando uma nova ideia é adicionada, retornando seu ID
-    public interface AddIdeiaListener {
-        void onSuccess(String ideiaId);
-        void onFailure(Exception e);
-    }
-    // Listener para listas de mentores
-    public interface MentorListener {
-        void onMentorEncontrado(Mentor mentor);
-        void onNenhumMentorEncontrado();
-        void onError(Exception e);
-    }
-    public interface MentoresListener {
-        void onMentoresCarregados(List<Mentor> mentores);
-        void onError(Exception e);
-    }
-    public interface AddMentorListener {
-        void onSuccess(String documentId);
-        void onFailure(Exception e);
-    }
-    //</editor-fold>
 
     public FirestoreHelper() {
         db = FirebaseFirestore.getInstance();
     }
 
-    //<editor-fold desc="Métodos de Usuário">
-    public void salvarUsuario(String userId, String nome, String email, String fotoUrl, String bio) {
-        Map<String, Object> usuario = new HashMap<>();
-        usuario.put("nome", nome);
-        usuario.put("email", email);
-        usuario.put("foto_perfil", fotoUrl);
-        usuario.put("bio", bio);
-        usuario.put("isPremium", false);
+    // =========================================================
+    // ======================= USUÁRIOS ========================
+    // =========================================================
 
-        db.collection(USUARIOS_COLLECTION).document(userId)
-                .set(usuario, SetOptions.merge())
-                .addOnSuccessListener(aVoid -> Log.d(TAG, "Usuário salvo/atualizado com sucesso com ID: " + userId))
-                .addOnFailureListener(e -> Log.w(TAG, "Erro ao salvar usuário", e));
+    public void salvarUsuario(
+            @NonNull String userId,
+            @Nullable String nome,
+            @Nullable String email,
+            @Nullable String fotoUrl,
+            @Nullable String bio,
+            @NonNull Callback<String> callback
+    ) {
+        try {
+            if (userId.isEmpty()) {
+                callback.onComplete(Result.err(new IllegalArgumentException("ID do usuário não pode ser vazio.")));
+                return;
+            }
+
+            Map<String, Object> usuario = new HashMap<>();
+            if (nome != null)    usuario.put("nome", nome);
+            if (email != null)   usuario.put("email", email);
+            if (fotoUrl != null) usuario.put("foto_perfil", fotoUrl);
+            if (bio != null)     usuario.put("bio", bio);
+            // Se não vier, mantém/define como false
+            if (!usuario.containsKey("isPremium")) usuario.put("isPremium", false);
+
+            db.collection(USUARIOS_COLLECTION).document(userId)
+                    .set(usuario, SetOptions.merge())
+                    .addOnSuccessListener(aVoid -> callback.onComplete(Result.ok(userId)))
+                    .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+        } catch (Exception ex) {
+            callback.onComplete(Result.err(ex));
+        }
     }
 
-    public void buscarUsuario(String usuarioId, @NonNull final UsuarioListener listener) {
-        if (usuarioId == null || usuarioId.isEmpty()) {
-            listener.onError(new IllegalArgumentException("ID do usuário não pode ser nulo."));
+    public void buscarUsuario(
+            @NonNull String usuarioId,
+            @NonNull Callback<DocumentSnapshot> callback
+    ) {
+        if (usuarioId.isEmpty()) {
+            callback.onComplete(Result.err(new IllegalArgumentException("ID do usuário não pode ser vazio.")));
             return;
         }
         db.collection(USUARIOS_COLLECTION).document(usuarioId).get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    if (documentSnapshot.exists()) {
-                        listener.onUsuarioCarregado(documentSnapshot);
-                    } else {
-                        listener.onUsuarioCarregado(null);
-                    }
-                })
+                .addOnSuccessListener(snap -> callback.onComplete(Result.ok(snap.exists() ? snap : null)))
                 .addOnFailureListener(e -> {
                     Log.w(TAG, "Erro ao buscar usuário", e);
-                    listener.onError(e);
+                    callback.onComplete(Result.err(e));
                 });
     }
-    public void updatePremiumStatus(String userId, boolean isPremium) {
-        if (userId == null || userId.isEmpty()) return;
 
+    public void updatePremiumStatus(
+            @NonNull String userId,
+            boolean isPremium,
+            @NonNull Callback<Void> callback
+    ) {
+        if (userId.isEmpty()) {
+            callback.onComplete(Result.err(new IllegalArgumentException("ID do usuário não pode ser vazio.")));
+            return;
+        }
         db.collection(USUARIOS_COLLECTION).document(userId)
                 .update("isPremium", isPremium)
-                .addOnSuccessListener(aVoid -> Log.d(TAG, "Status Premium atualizado para: " + isPremium))
-                .addOnFailureListener(e -> Log.w(TAG, "Erro ao atualizar status Premium", e));
+                .addOnSuccessListener(aVoid -> callback.onComplete(Result.ok(null)))
+                .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
     }
-    //</editor-fold>
 
-    //<editor-fold desc="Métodos de Ideia">
+    // =========================================================
+    // ======================== IDEIAS =========================
+    // =========================================================
+
     public String getNewIdeiaId() {
         return db.collection(IDEIAS_COLLECTION).document().getId();
     }
 
-    /**
-     * Adiciona uma nova ideia usando um ID pré-gerado.
-     * Este metodo foi atualizado para usar .set() com um ID específico.
-     */
-    public void addIdeia(Ideia ideia, final AddIdeiaListener listener) {
-        // Usa o ID que já foi gerado e definido no objeto Ideia
-        db.collection(IDEIAS_COLLECTION).document(ideia.getId())
-                .set(ideia)
-                .addOnSuccessListener(aVoid -> listener.onSuccess(ideia.getId()))
-                .addOnFailureListener(listener::onFailure);
+    /** Adiciona uma ideia usando o ID já presente em ideia.getId(). */
+    public void addIdeia(
+            @NonNull Ideia ideia,
+            @NonNull Callback<String> callback
+    ) {
+        try {
+            String id = ideia.getId();
+            if (id == null || id.isEmpty()) {
+                callback.onComplete(Result.err(new IllegalArgumentException("Ideia sem ID. Use getNewIdeiaId().")));
+                return;
+            }
+            db.collection(IDEIAS_COLLECTION).document(id)
+                    .set(ideia)
+                    .addOnSuccessListener(aVoid -> callback.onComplete(Result.ok(id)))
+                    .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+        } catch (Exception ex) {
+            callback.onComplete(Result.err(ex));
+        }
     }
 
     /**
-     * NOVO E ESSENCIAL: Anexa um listener em tempo real a uma ideia.
-     * Necessário para a validação dos post-its na CanvasIdeiaActivity.
+     * Escuta alterações em uma ideia em tempo real.
+     * Result.ok(ideia) a cada update; Result.ok(null) se documento não existir/for removido.
      */
-    public ListenerRegistration listenToIdeia(String ideiaId, final IdeiaUnicaListener listener) {
+    public ListenerRegistration listenToIdeia(
+            @NonNull String ideiaId,
+            @NonNull Callback<Ideia> callback
+    ) {
         final DocumentReference docRef = db.collection(IDEIAS_COLLECTION).document(ideiaId);
         return docRef.addSnapshotListener((snapshot, e) -> {
-            if (e != null) { listener.onError(e); return; }
+            if (e != null) { callback.onComplete(Result.err(e)); return; }
             if (snapshot != null && snapshot.exists()) {
                 Ideia ideia = snapshot.toObject(Ideia.class);
                 if (ideia != null) {
                     ideia.setId(snapshot.getId());
-                    listener.onIdeiaCarregada(ideia);
+                    callback.onComplete(Result.ok(ideia));
+                } else {
+                    callback.onComplete(Result.err(new IllegalStateException("Falha ao converter Ideia.")));
                 }
             } else {
-                listener.onError(new Exception("A ideia não foi encontrada."));
+                callback.onComplete(Result.ok(null));
             }
         });
     }
 
-    /**
-     * ESSENCIAL: Adiciona um post-it a uma etapa específica da ideia.
-     */
-    public void addPostitToIdeia(String ideiaId, String etapaChave, String texto, String cor, final FirestoreCallback callback) {
-        DocumentReference ideiaRef = db.collection(IDEIAS_COLLECTION).document(ideiaId);
-        String key = "postIts." + etapaChave;
-        PostIt novoPostIt = new PostIt(texto, cor);
-        novoPostIt.setTimestamp(new Date());
-        ideiaRef.update(key, FieldValue.arrayUnion(novoPostIt))
-                .addOnSuccessListener(aVoid -> callback.onSuccess())
-                .addOnFailureListener(e -> callback.onFailure(e));
+    /** Adiciona um PostIt numa etapa da ideia. */
+    public void addPostitToIdeia(
+            @NonNull String ideiaId,
+            @NonNull String etapaChave,
+            @NonNull String texto,
+            @NonNull String cor,
+            @NonNull Callback<Void> callback
+    ) {
+        try {
+            DocumentReference ideiaRef = db.collection(IDEIAS_COLLECTION).document(ideiaId);
+            String key = "postIts." + etapaChave;
+            PostIt novoPostIt = new PostIt(texto, cor);
+            novoPostIt.setTimestamp(new Date());
+            ideiaRef.update(key, FieldValue.arrayUnion(novoPostIt))
+                    .addOnSuccessListener(aVoid -> callback.onComplete(Result.ok(null)))
+                    .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+        } catch (Exception ex) {
+            callback.onComplete(Result.err(ex));
+        }
     }
 
-    public void updatePostitInIdeia(String ideiaId, String etapaChave, PostIt postitAntigo, String novoTexto, String novaCor, final FirestoreCallback callback) {
-        DocumentReference ideiaRef = db.collection(IDEIAS_COLLECTION).document(ideiaId);
-        String key = "postIts." + etapaChave;
-        db.runTransaction(transaction -> {
-                    transaction.update(ideiaRef, key, FieldValue.arrayRemove(postitAntigo));
-                    PostIt postitNovo = new PostIt(novoTexto, novaCor);
-                    postitNovo.setTimestamp(postitAntigo.getTimestamp());
-                    postitNovo.setLastModified(new Date());
-                    transaction.update(ideiaRef, key, FieldValue.arrayUnion(postitNovo));
-                    return null;
-                }).addOnSuccessListener(aVoid -> callback.onSuccess())
-                .addOnFailureListener(callback::onFailure);
+    /** Atualiza um PostIt (remove o antigo, insere um novo com lastModified). */
+    public void updatePostitInIdeia(
+            @NonNull String ideiaId,
+            @NonNull String etapaChave,
+            @NonNull PostIt postitAntigo,
+            @NonNull String novoTexto,
+            @NonNull String novaCor,
+            @NonNull Callback<Void> callback
+    ) {
+        try {
+            DocumentReference ideiaRef = db.collection(IDEIAS_COLLECTION).document(ideiaId);
+            String key = "postIts." + etapaChave;
+            db.runTransaction(transaction -> {
+                        transaction.update(ideiaRef, key, FieldValue.arrayRemove(postitAntigo));
+                        PostIt postitNovo = new PostIt(novoTexto, novaCor);
+                        postitNovo.setTimestamp(postitAntigo.getTimestamp());
+                        postitNovo.setLastModified(new Date());
+                        transaction.update(ideiaRef, key, FieldValue.arrayUnion(postitNovo));
+                        return null;
+                    })
+                    .addOnSuccessListener(aVoid -> callback.onComplete(Result.ok(null)))
+                    .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+        } catch (Exception ex) {
+            callback.onComplete(Result.err(ex));
+        }
     }
 
-    public void deletePostitFromIdeia(String ideiaId, String etapaChave, PostIt postitParaApagar, final FirestoreCallback callback) {
-        DocumentReference ideiaRef = db.collection(IDEIAS_COLLECTION).document(ideiaId);
-        String key = "postIts." + etapaChave;
-
-        // Remove o objeto PostIt diretamente. É mais seguro e legível.
-        ideiaRef.update(key, FieldValue.arrayRemove(postitParaApagar))
-                .addOnSuccessListener(aVoid -> callback.onSuccess())
-                .addOnFailureListener(callback::onFailure);
+    /** Remove um PostIt de uma etapa. */
+    public void deletePostitFromIdeia(
+            @NonNull String ideiaId,
+            @NonNull String etapaChave,
+            @NonNull PostIt postitParaApagar,
+            @NonNull Callback<Void> callback
+    ) {
+        try {
+            DocumentReference ideiaRef = db.collection(IDEIAS_COLLECTION).document(ideiaId);
+            String key = "postIts." + etapaChave;
+            ideiaRef.update(key, FieldValue.arrayRemove(postitParaApagar))
+                    .addOnSuccessListener(aVoid -> callback.onComplete(Result.ok(null)))
+                    .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+        } catch (Exception ex) {
+            callback.onComplete(Result.err(ex));
+        }
     }
 
-    /**
-     * ESSENCIAL: Atualiza um documento de ideia inteiro.
-     * Usado para salvar o rascunho.
-     */
-    public void updateIdeia(String ideiaId, Ideia ideia, final FirestoreCallback callback, Context context) {
-        db.collection(IDEIAS_COLLECTION).document(ideiaId).set(ideia)
-                .addOnSuccessListener(aVoid -> {
-                    Boolean isOnline = NetworkManager.getInstance(context).isNetworkAvailable().getValue();
-                    String feedback = (isOnline != null && isOnline) ? "Progresso salvo e sincronizado!" : "Progresso salvo offline.";
-                    Toast.makeText(context, feedback, Toast.LENGTH_SHORT).show();
-                    callback.onSuccess();
-                })
-                .addOnFailureListener(e -> {
-                    Toast.makeText(context, "Progresso salvo offline.", Toast.LENGTH_SHORT).show();
-                    callback.onFailure(e);
-                });
+    /** Atualiza o documento completo da ideia (ex.: salvar rascunho). */
+    public void updateIdeia(
+            @NonNull String ideiaId,
+            @NonNull Ideia ideia,
+            @NonNull Callback<Void> callback
+    ) {
+        db.collection(IDEIAS_COLLECTION).document(ideiaId)
+                .set(ideia)
+                .addOnSuccessListener(aVoid -> callback.onComplete(Result.ok(null)))
+                .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
     }
 
-    /**
-     * Busca os rascunhos de um usuário específico.
-     * CORRIGIDO: usa "ownerId" para consistência com o modelo Ideia.java.
-     */
-    public void getMeusRascunhos(String ownerId, IdeiasListener listener) {
-        if (ownerId == null || ownerId.isEmpty()) {
-            listener.onIdeiasCarregadas(new ArrayList<>());
+    /** Rascunhos do usuário (status=RASCUNHO, ownerId=...). */
+    public void getMeusRascunhos(
+            @NonNull String ownerId,
+            @NonNull Callback<List<Ideia>> callback
+    ) {
+        if (ownerId.isEmpty()) {
+            callback.onComplete(Result.ok(new ArrayList<>()));
             return;
         }
 
         db.collection(IDEIAS_COLLECTION)
-                .whereEqualTo("ownerId", ownerId) // CORRIGIDO
+                .whereEqualTo("ownerId", ownerId)
                 .whereEqualTo("status", "RASCUNHO")
                 .orderBy("timestamp", Query.Direction.DESCENDING)
                 .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
+                .addOnSuccessListener(q -> {
                     List<Ideia> rascunhos = new ArrayList<>();
-                    for (DocumentSnapshot doc : queryDocumentSnapshots) {
+                    for (DocumentSnapshot doc : q) {
                         Ideia ideia = doc.toObject(Ideia.class);
                         if (ideia != null) {
                             ideia.setId(doc.getId());
                             rascunhos.add(ideia);
                         }
                     }
-                    listener.onIdeiasCarregadas(rascunhos);
+                    callback.onComplete(Result.ok(rascunhos));
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Erro ao buscar rascunhos", e);
-                    listener.onError(e);
+                    callback.onComplete(Result.err(e));
                 });
     }
 
-    /**
-     * Exclui uma ideia do Firestore.
-     */
-    public void excluirIdeia(String ideiaId, final FirestoreCallback callback) {
-        if (ideiaId == null || ideiaId.isEmpty()) {
-            callback.onFailure(new IllegalArgumentException("ID da ideia nulo"));
+    /** Remove uma ideia. */
+    public void excluirIdeia(
+            @NonNull String ideiaId,
+            @NonNull Callback<Void> callback
+    ) {
+        if (ideiaId.isEmpty()) {
+            callback.onComplete(Result.err(new IllegalArgumentException("ID da ideia nulo/vazio.")));
             return;
         }
         db.collection(IDEIAS_COLLECTION).document(ideiaId)
                 .delete()
-                .addOnSuccessListener(aVoid -> callback.onSuccess())
-                .addOnFailureListener(callback::onFailure);
+                .addOnSuccessListener(aVoid -> callback.onComplete(Result.ok(null)))
+                .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
     }
-    public void getIdeiasPublicadas(IdeiasListener listener) {
+
+    /** Ideias publicadas (status=PUBLICADA). */
+    public void getIdeiasPublicadas(
+            @NonNull Callback<List<Ideia>> callback
+    ) {
         db.collection(IDEIAS_COLLECTION)
-                .whereEqualTo("status", "PUBLICADA") // A condição chave!
+                .whereEqualTo("status", "PUBLICADA")
                 .orderBy("timestamp", Query.Direction.DESCENDING)
                 .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
+                .addOnSuccessListener(q -> {
                     List<Ideia> ideias = new ArrayList<>();
-                    for (DocumentSnapshot doc : queryDocumentSnapshots) {
+                    for (DocumentSnapshot doc : q) {
                         Ideia ideia = doc.toObject(Ideia.class);
                         if (ideia != null) {
                             ideia.setId(doc.getId());
                             ideias.add(ideia);
                         }
                     }
-                    listener.onIdeiasCarregadas(ideias);
+                    callback.onComplete(Result.ok(ideias));
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Erro ao buscar ideias publicadas", e);
-                    listener.onError(e);
+                    callback.onComplete(Result.err(e));
                 });
     }
-    /**
-     * NOVO: Altera o status de uma ideia para "RASCUNHO" e remove o mentor.
-     */
-    public void unpublishIdeia(String ideiaId, final FirestoreCallback callback) {
+
+    /** Escuta a lista de ideias PUBLICADAS em tempo real. */
+    public ListenerRegistration listenToIdeiasPublicadas(
+            @NonNull Callback<List<Ideia>> callback
+    ) {
+        return db.collection(IDEIAS_COLLECTION)
+                .whereEqualTo("status", "PUBLICADA")
+                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .addSnapshotListener((snap, e) -> {
+                    if (e != null) { callback.onComplete(Result.err(e)); return; }
+                    List<Ideia> ideias = new ArrayList<>();
+                    if (snap != null) {
+                        for (DocumentSnapshot doc : snap.getDocuments()) {
+                            Ideia ideia = doc.toObject(Ideia.class);
+                            if (ideia != null) { ideia.setId(doc.getId()); ideias.add(ideia); }
+                        }
+                    }
+                    callback.onComplete(Result.ok(ideias));
+                });
+    }
+
+    /** Escuta rascunhos do usuário em tempo real. */
+    public ListenerRegistration listenToMeusRascunhos(
+            @NonNull String ownerId,
+            @NonNull Callback<List<Ideia>> callback
+    ) {
+        if (ownerId.isEmpty()) {
+            callback.onComplete(Result.ok(new ArrayList<>()));
+            return null;
+        }
+        return db.collection(IDEIAS_COLLECTION)
+                .whereEqualTo("ownerId", ownerId)
+                .whereEqualTo("status", "RASCUNHO")
+                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .addSnapshotListener((snap, e) -> {
+                    if (e != null) { callback.onComplete(Result.err(e)); return; }
+                    List<Ideia> out = new ArrayList<>();
+                    if (snap != null) {
+                        for (DocumentSnapshot doc : snap.getDocuments()) {
+                            Ideia ideia = doc.toObject(Ideia.class);
+                            if (ideia != null) { ideia.setId(doc.getId()); out.add(ideia); }
+                        }
+                    }
+                    callback.onComplete(Result.ok(out));
+                });
+    }
+
+    /** Rebaixa ideia para RASCUNHO e remove o mentor. */
+    public void unpublishIdeia(
+            @NonNull String ideiaId,
+            @NonNull Callback<Void> callback
+    ) {
         Map<String, Object> updates = new HashMap<>();
         updates.put("status", "RASCUNHO");
-        updates.put("mentorId", FieldValue.delete()); // Remove o campo do mentor
+        updates.put("mentorId", FieldValue.delete());
 
         db.collection(IDEIAS_COLLECTION).document(ideiaId)
                 .update(updates)
-                .addOnSuccessListener(aVoid -> callback.onSuccess())
-                .addOnFailureListener(callback::onFailure);
+                .addOnSuccessListener(aVoid -> callback.onComplete(Result.ok(null)))
+                .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
     }
-    /**
-     * Salva a avaliação completa de uma ideia e atualiza o seu status.
-     */
-    public void salvarAvaliacao(String ideiaId, List<Map<String, Object>> avaliacoes, final FirestoreCallback callback) {
+
+    /** Salva avaliação e marca status. */
+    public void salvarAvaliacao(
+            @NonNull String ideiaId,
+            @NonNull List<Map<String, Object>> avaliacoes,
+            @NonNull Callback<Void> callback
+    ) {
         Map<String, Object> updates = new HashMap<>();
         updates.put("avaliacoes", avaliacoes);
         updates.put("avaliacaoStatus", "Avaliada");
 
         db.collection(IDEIAS_COLLECTION).document(ideiaId)
                 .update(updates)
-                .addOnSuccessListener(aVoid -> callback.onSuccess())
-                .addOnFailureListener(callback::onFailure);
-    }
-    //</editor-fold>
-
-    //<editor-fold desc="Mentores">
-    public void addMentorWithId(String mentorId, Mentor mentor, final AddMentorListener listener) {
-        // Garante que o objeto Mentor tenha o seu próprio ID preenchido
-        mentor.setId(mentorId);
-
-        db.collection(MENTORES_COLLECTION).document(mentorId)
-                .set(mentor) // Usa .set() para especificar o ID do documento
-                .addOnSuccessListener(aVoid -> listener.onSuccess(mentorId))
-                .addOnFailureListener(listener::onFailure);
+                .addOnSuccessListener(aVoid -> callback.onComplete(Result.ok(null)))
+                .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
     }
 
-    public void getMentoresPublicados(MentoresListener listener) {
-        db.collection(MENTORES_COLLECTION).get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
+    /** Publica ideia e (opcional) associa mentor. */
+    public void publicarIdeia(
+            @NonNull String ideiaId,
+            @Nullable String mentorId,
+            @NonNull Callback<Void> callback
+    ) {
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("status", "PUBLICADA");
+        updates.put("timestamp", FieldValue.serverTimestamp());
+        if (mentorId != null) updates.put("mentorId", mentorId);
+
+        db.collection(IDEIAS_COLLECTION).document(ideiaId)
+                .update(updates)
+                .addOnSuccessListener(aVoid -> callback.onComplete(Result.ok(null)))
+                .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+    }
+
+    // =========================================================
+    // ======================= MENTORES ========================
+    // =========================================================
+
+    /** Cria/atualiza mentor com ID definido. */
+    public void addMentorWithId(
+            @NonNull String mentorId,
+            @NonNull Mentor mentor,
+            @NonNull Callback<String> callback
+    ) {
+        try {
+            if (mentorId.isEmpty()) {
+                callback.onComplete(Result.err(new IllegalArgumentException("ID do mentor vazio.")));
+                return;
+            }
+            mentor.setId(mentorId);
+            db.collection(MENTORES_COLLECTION).document(mentorId)
+                    .set(mentor)
+                    .addOnSuccessListener(aVoid -> callback.onComplete(Result.ok(mentorId)))
+                    .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+        } catch (Exception ex) {
+            callback.onComplete(Result.err(ex));
+        }
+    }
+
+    /** Atualiza campos de verificação/áreas do mentor. */
+    public void atualizarCamposMentor(
+            @NonNull String mentorId,
+            @Nullable Boolean verificado,
+            @Nullable List<String> areas,
+            @NonNull Callback<Void> callback
+    ) {
+        Map<String, Object> updates = new HashMap<>();
+        if (verificado != null) updates.put("verificado", verificado);
+        if (areas != null)      updates.put("areas", areas);
+
+        db.collection(MENTORES_COLLECTION)
+                .document(mentorId)
+                .update(updates)
+                .addOnSuccessListener(aVoid -> callback.onComplete(Result.ok(null)))
+                .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+    }
+
+    /** Lista mentores (one-shot, sem filtro). */
+    public void getMentoresPublicados(
+            @NonNull Callback<List<Mentor>> callback
+    ) {
+        db.collection(MENTORES_COLLECTION)
+                .get()
+                .addOnSuccessListener(q -> {
                     List<Mentor> mentores = new ArrayList<>();
-                    for (DocumentSnapshot doc : queryDocumentSnapshots) {
+                    for (DocumentSnapshot doc : q) {
                         Mentor mentor = doc.toObject(Mentor.class);
                         if (mentor != null) {
                             mentor.setId(doc.getId());
                             mentores.add(mentor);
                         }
                     }
-                    listener.onMentoresCarregados(mentores);
+                    callback.onComplete(Result.ok(mentores));
                 })
-                .addOnFailureListener(listener::onError);
+                .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
     }
 
-    /**
-     * Encontra o primeiro mentor disponível numa cidade específica.
-     */
-    public void findMentorByCity(String cidade, String authorId, MentorListener listener) {
-        db.collection("mentores")
+    /** Primeiro mentor disponível por cidade (exclui autor); ok(null) se vazio. */
+    public void findMentorByCity(
+            @NonNull String cidade,
+            @NonNull String authorId,
+            @NonNull Callback<Mentor> callback
+    ) {
+        db.collection(MENTORES_COLLECTION)
                 .whereEqualTo("cidade", cidade)
                 .whereNotEqualTo(com.google.firebase.firestore.FieldPath.documentId(), authorId)
                 .limit(1)
                 .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    if (!queryDocumentSnapshots.isEmpty()) {
-                        DocumentSnapshot doc = queryDocumentSnapshots.getDocuments().get(0);
+                .addOnSuccessListener(q -> {
+                    if (!q.isEmpty()) {
+                        DocumentSnapshot doc = q.getDocuments().get(0);
                         Mentor mentor = doc.toObject(Mentor.class);
-                        if (mentor != null) {
-                            mentor.setId(doc.getId());
-                            listener.onMentorEncontrado(mentor);
-                        }
+                        if (mentor != null) mentor.setId(doc.getId());
+                        callback.onComplete(Result.ok(mentor));
                     } else {
-                        listener.onNenhumMentorEncontrado();
+                        callback.onComplete(Result.ok(null));
                     }
                 })
-                .addOnFailureListener(listener::onError);
+                .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
     }
 
-    /**
-     * NOVO: Encontra o primeiro mentor disponível num estado específico.
-     */
-    public void findMentorByState(String estado, String authorId, MentorListener listener) {
-        db.collection("mentores")
+    /** Primeiro mentor disponível por estado (exclui autor); ok(null) se vazio. */
+    public void findMentorByState(
+            @NonNull String estado,
+            @NonNull String authorId,
+            @NonNull Callback<Mentor> callback
+    ) {
+        db.collection(MENTORES_COLLECTION)
                 .whereEqualTo("estado", estado)
                 .whereNotEqualTo(com.google.firebase.firestore.FieldPath.documentId(), authorId)
                 .limit(1)
                 .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    if (!queryDocumentSnapshots.isEmpty()) {
-                        DocumentSnapshot doc = queryDocumentSnapshots.getDocuments().get(0);
+                .addOnSuccessListener(q -> {
+                    if (!q.isEmpty()) {
+                        DocumentSnapshot doc = q.getDocuments().get(0);
                         Mentor mentor = doc.toObject(Mentor.class);
-                        if (mentor != null) {
-                            mentor.setId(doc.getId());
-                            listener.onMentorEncontrado(mentor);
-                        }
+                        if (mentor != null) mentor.setId(doc.getId());
+                        callback.onComplete(Result.ok(mentor));
                     } else {
-                        listener.onNenhumMentorEncontrado();
+                        callback.onComplete(Result.ok(null));
                     }
                 })
-                .addOnFailureListener(listener::onError);
+                .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
     }
 
-    /**
-     * Atualiza o status de uma ideia para "PUBLICADA" e associa um mentor.
-     */
-    public void publicarIdeia(String ideiaId, @Nullable String mentorId, final FirestoreCallback callback) {
-        Map<String, Object> updates = new HashMap<>();
-        updates.put("status", "PUBLICADA");
-        updates.put("timestamp", FieldValue.serverTimestamp()); // Atualiza a data para a da publicação
-        if (mentorId != null) {
-            updates.put("mentorId", mentorId);
-        }
-
-        db.collection(IDEIAS_COLLECTION).document(ideiaId)
-                .update(updates)
-                .addOnSuccessListener(aVoid -> callback.onSuccess())
-                .addOnFailureListener(callback::onFailure);
-    }
-    /**
-     * NOVO: Busca um mentor específico pelo seu ID de documento.
-     * Usado na tela de status da ideia para carregar os detalhes do mentor.
-     */
-    public void findMentorById(String mentorId, MentorListener listener) {
-        if (mentorId == null || mentorId.isEmpty()) {
-            listener.onError(new IllegalArgumentException("O ID do mentor não pode ser nulo."));
+    /** Busca mentor por ID; ok(null) se não existir. */
+    public void findMentorById(
+            @NonNull String mentorId,
+            @NonNull Callback<Mentor> callback
+    ) {
+        if (mentorId.isEmpty()) {
+            callback.onComplete(Result.err(new IllegalArgumentException("ID do mentor vazio.")));
             return;
         }
 
         db.collection(MENTORES_COLLECTION).document(mentorId).get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    if (documentSnapshot.exists()) {
-                        Mentor mentor = documentSnapshot.toObject(Mentor.class);
-                        if (mentor != null) {
-                            mentor.setId(documentSnapshot.getId()); // Garante que o objeto tem o ID
-                            listener.onMentorEncontrado(mentor);
-                        } else {
-                            listener.onError(new Exception("Falha ao converter os dados do mentor."));
-                        }
+                .addOnSuccessListener(snap -> {
+                    if (snap.exists()) {
+                        Mentor mentor = snap.toObject(Mentor.class);
+                        if (mentor != null) mentor.setId(snap.getId());
+                        callback.onComplete(Result.ok(mentor));
                     } else {
-                        listener.onNenhumMentorEncontrado();
+                        callback.onComplete(Result.ok(null));
                     }
                 })
-                .addOnFailureListener(listener::onError);
+                .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
     }
-
-    //</editor-fold>
 }

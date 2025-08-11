@@ -4,9 +4,12 @@ import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
+import android.text.InputFilter;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.RadioGroup;
 import android.widget.TextView;
@@ -15,164 +18,228 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.Fragment;
 
+import com.example.startuppulse.common.Result;
 import com.google.android.material.button.MaterialButton;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
- * VERSÃO FINAL E CORRIGIDA.
- * Esta versão utiliza o objeto PostIt para adição e edição,
- * garantindo segurança de tipos e resolvendo os erros de compilação.
+ * Dialog para adicionar/editar Post-it.
+ * Mantém os IDs do layout dialog_add_postit.xml.
+ * Compatível com FirestoreHelper baseado em Result<T>.
  */
 public class AddPostItDialogFragment extends DialogFragment {
 
-    private static final String ARG_IDEIA_ID = "ideia_id";
-    private static final String ARG_ETAPA_CHAVE = "etapa_chave";
-    private static final String ARG_POSTIT_ANTIGO = "postit_antigo"; // Agora armazena um objeto PostIt
+    private static final String ARG_IDEIA_ID      = "ideia_id";
+    private static final String ARG_ETAPA_CHAVE    = "etapa_chave";
+    private static final String ARG_POSTIT_ANTIGO  = "postit_antigo";
+
+    private static final String STATE_TEXT         = "state_text";
+    private static final String STATE_COLOR        = "state_color";
+    private static final int    MAX_LEN_TEXT       = 280;
 
     private EditText editTextPostIt;
+    private RadioGroup radioGroupColors;
+    private MaterialButton btnSalvar, btnCancelar;
+    private TextView tituloDialog;
+
     private String ideiaId;
     private String etapaChave;
-    private PostIt postitParaEditar; // Variável agora é do tipo PostIt
+    private PostIt postitParaEditar;   // null quando é adição
     private boolean isEditMode = false;
-    private FirestoreHelper firestoreHelper;
-    private AddPostItListener listener;
-    private String corSelecionada = "#F9F871"; // Cor padrão
 
-    // 1. A interface foi corrigida para usar o objeto PostIt
+    private String corSelecionada = "#F9F871"; // default
+    private FirestoreHelper firestoreHelper;
+
     public interface AddPostItListener {
         void onPostItAdded();
         void onPostItEdited(PostIt postitAntigo, String novoTexto, String novaCor);
     }
 
-    // Método para ADICIONAR (continua igual)
+    // Fábrica: Adicionar
     public static AddPostItDialogFragment newInstanceForAdd(String ideiaId, String etapaChave) {
-        AddPostItDialogFragment fragment = new AddPostItDialogFragment();
-        Bundle args = new Bundle();
-        args.putString(ARG_IDEIA_ID, ideiaId);
-        args.putString(ARG_ETAPA_CHAVE, etapaChave);
-        fragment.setArguments(args);
-        return fragment;
+        AddPostItDialogFragment f = new AddPostItDialogFragment();
+        Bundle b = new Bundle();
+        b.putString(ARG_IDEIA_ID, ideiaId);
+        b.putString(ARG_ETAPA_CHAVE, etapaChave);
+        f.setArguments(b);
+        return f;
     }
 
-    // 2. Método para EDITAR foi corrigido para aceitar um objeto PostIt
+    // Fábrica: Editar
     public static AddPostItDialogFragment newInstanceForEdit(String ideiaId, String etapaChave, PostIt postit) {
-        AddPostItDialogFragment fragment = new AddPostItDialogFragment();
-        Bundle args = new Bundle();
-        args.putString(ARG_IDEIA_ID, ideiaId);
-        args.putString(ARG_ETAPA_CHAVE, etapaChave);
-        args.putSerializable(ARG_POSTIT_ANTIGO, postit); // Passa o objeto PostIt
-        fragment.setArguments(args);
-        return fragment;
+        AddPostItDialogFragment f = new AddPostItDialogFragment();
+        Bundle b = new Bundle();
+        b.putString(ARG_IDEIA_ID, ideiaId);
+        b.putString(ARG_ETAPA_CHAVE, etapaChave);
+        b.putSerializable(ARG_POSTIT_ANTIGO, postit);
+        f.setArguments(b);
+        return f;
     }
 
-    @Override
-    public void onAttach(@NonNull Context context) {
-        super.onAttach(context);
-        // O listener agora é o fragmento que o chamou (CanvasBlockFragment)
-        if (getTargetFragment() instanceof AddPostItListener) {
-            listener = (AddPostItListener) getTargetFragment();
-        } else {
-            throw new ClassCastException("O Fragmento alvo deve implementar AddPostItListener");
-        }
+    // Busca listener de forma segura (targetFragment é deprecated em versões recentes)
+    @Nullable
+    private AddPostItListener resolveListener() {
+        Fragment tgt = getTargetFragment();
+        if (tgt instanceof AddPostItListener) return (AddPostItListener) tgt;
+        Fragment parent = getParentFragment();
+        if (parent instanceof AddPostItListener) return (AddPostItListener) parent;
+        if (getActivity() instanceof AddPostItListener) return (AddPostItListener) getActivity();
+        return null;
     }
 
-    @Override
-    public void onCreate(@Nullable Bundle savedInstanceState) {
+    @Override public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         firestoreHelper = new FirestoreHelper();
-        if (getArguments() != null) {
-            ideiaId = getArguments().getString(ARG_IDEIA_ID);
-            etapaChave = getArguments().getString(ARG_ETAPA_CHAVE);
 
-            // 3. Obtém o objeto PostIt para edição
-            if (getArguments().containsKey(ARG_POSTIT_ANTIGO)) {
-                postitParaEditar = (PostIt) getArguments().getSerializable(ARG_POSTIT_ANTIGO);
-                isEditMode = (postitParaEditar != null);
-            }
+        Bundle args = getArguments();
+        if (args != null) {
+            ideiaId     = args.getString(ARG_IDEIA_ID);
+            etapaChave  = args.getString(ARG_ETAPA_CHAVE);
+            postitParaEditar = (PostIt) args.getSerializable(ARG_POSTIT_ANTIGO);
+            isEditMode  = (postitParaEditar != null);
         }
+
+        setStyle(STYLE_NO_TITLE, 0);
     }
 
-    @Nullable
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    @Nullable @Override
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.dialog_add_postit, container, false);
     }
 
-    @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
+    @Override public void onViewCreated(@NonNull View v, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(v, savedInstanceState);
+
         if (getDialog() != null && getDialog().getWindow() != null) {
             getDialog().getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         }
 
-        TextView tituloDialog = view.findViewById(R.id.text_dialog_title);
-        editTextPostIt = view.findViewById(R.id.edit_text_postit);
-        MaterialButton btnSalvar = view.findViewById(R.id.btn_salvar_postit);
-        MaterialButton btnCancelar = view.findViewById(R.id.btn_cancelar_postit);
-        RadioGroup radioGroupColors = view.findViewById(R.id.radio_group_colors);
+        tituloDialog     = v.findViewById(R.id.text_dialog_title);
+        editTextPostIt   = v.findViewById(R.id.edit_text_postit);
+        radioGroupColors = v.findViewById(R.id.radio_group_colors);
+        btnSalvar        = v.findViewById(R.id.btn_salvar_postit);
+        btnCancelar      = v.findViewById(R.id.btn_cancelar_postit);
 
-        // Configura o seletor de cores
-        radioGroupColors.setOnCheckedChangeListener((group, checkedId) -> {
-            if (checkedId == R.id.radio_yellow) corSelecionada = "#F9F871";
-            else if (checkedId == R.id.radio_orange) corSelecionada = "#FFC75F";
-            else if (checkedId == R.id.radio_pink) corSelecionada = "#FF96AD";
-            else if (checkedId == R.id.radio_blue) corSelecionada = "#84D2F6";
-            else if (checkedId == R.id.radio_green) corSelecionada = "#A9F0D1";
-            else if (checkedId == R.id.radio_white) corSelecionada = "#FFFFFF";
-        });
+        // Limite de caracteres no campo de texto (coerente com counterMaxLength=280)
+        editTextPostIt.setFilters(new InputFilter[]{ new InputFilter.LengthFilter(MAX_LEN_TEXT) });
 
-        btnCancelar.setOnClickListener(v -> dismiss());
-        btnSalvar.setOnClickListener(v -> salvar());
-
-        // 4. Lógica de edição corrigida para usar os getters do objeto PostIt
-        if (isEditMode) {
+        // Restaura estado (rotações, etc.)
+        if (savedInstanceState != null) {
+            String restoredText  = savedInstanceState.getString(STATE_TEXT, "");
+            String restoredColor = savedInstanceState.getString(STATE_COLOR, corSelecionada);
+            editTextPostIt.setText(restoredText);
+            setSelectedColor(restoredColor);
+        } else if (isEditMode) {
             tituloDialog.setText("Editar Ponto-Chave");
-            editTextPostIt.setText(postitParaEditar.getTexto());
-            String corExistente = postitParaEditar.getCor();
-            if (corExistente != null) {
-                corSelecionada = corExistente;
-                switch (corExistente.toUpperCase()) { // Usa toUpperCase para segurança
-                    case "#F9F871": radioGroupColors.check(R.id.radio_yellow); break;
-                    case "#FFC75F": radioGroupColors.check(R.id.radio_orange); break;
-                    case "#FF96AD": radioGroupColors.check(R.id.radio_pink); break;
-                    case "#84D2F6": radioGroupColors.check(R.id.radio_blue); break;
-                    case "#A9F0D1": radioGroupColors.check(R.id.radio_green); break;
-                    case "#FFFFFF": radioGroupColors.check(R.id.radio_white); break;
-                    default: radioGroupColors.check(R.id.radio_yellow); break;
-                }
-            } else {
-                radioGroupColors.check(R.id.radio_yellow);
-            }
+            editTextPostIt.setText(safe(postitParaEditar.getTexto()));
+            setSelectedColor(safeColor(postitParaEditar.getCor(), "#F9F871"));
         } else {
             tituloDialog.setText("Adicionar Ponto-Chave");
-            radioGroupColors.check(R.id.radio_yellow);
+            setSelectedColor("#F9F871");
         }
+
+        // Troca de cor
+        radioGroupColors.setOnCheckedChangeListener((group, checkedId) -> {
+            corSelecionada = colorForRadioId(checkedId);
+        });
+
+        btnCancelar.setOnClickListener(vw -> dismissAllowingStateLoss());
+        btnSalvar.setOnClickListener(vw -> salvar());
     }
 
+    @Override public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString(STATE_TEXT, safe(editTextPostIt.getText()));
+        outState.putString(STATE_COLOR, corSelecionada);
+    }
+
+    // ---------- Lógica ----------
+
     private void salvar() {
-        String postItText = editTextPostIt.getText().toString().trim();
-        if (postItText.isEmpty()) {
+        String texto = safe(editTextPostIt.getText()).trim();
+        if (TextUtils.isEmpty(texto)) {
             editTextPostIt.setError("O post-it não pode estar vazio.");
             return;
         }
 
-        // 5. A chamada para o listener foi corrigida
+        // evita duplo clique
+        setButtonsEnabled(false);
+
+        AddPostItListener callback = resolveListener();
+
         if (isEditMode) {
-            listener.onPostItEdited(postitParaEditar, postItText, corSelecionada);
+            // Somente notifica o host; quem edita no Firestore é o Fragment pai (CanvasBlockFragment)
+            if (callback != null) callback.onPostItEdited(postitParaEditar, texto, corSelecionada);
+            closeWithKeyboardHide();
         } else {
-            firestoreHelper.addPostitToIdeia(ideiaId, etapaChave, postItText, corSelecionada, new FirestoreHelper.FirestoreCallback() {
-                @Override
-                public void onSuccess() {
-                    if (listener != null) {
-                        listener.onPostItAdded();
-                    }
-                }
-                @Override
-                public void onFailure(Exception e) {
-                    Toast.makeText(getContext(), "Erro ao salvar.", Toast.LENGTH_SHORT).show();
+            // Adição -> salva direto no Firestore
+            firestoreHelper.addPostitToIdeia(ideiaId, etapaChave, texto, corSelecionada, (Result<Void> r) -> {
+                if (!isAdded()) return;
+                if (r.isOk()) {
+                    if (callback != null) callback.onPostItAdded();
+                    closeWithKeyboardHide();
+                } else {
+                    Toast.makeText(requireContext(),
+                            "Erro ao salvar: " + r.error.getMessage(),
+                            Toast.LENGTH_LONG).show();
+                    setButtonsEnabled(true);
                 }
             });
         }
-        dismiss();
     }
+
+    private void setButtonsEnabled(boolean enabled) {
+        btnSalvar.setEnabled(enabled);
+        btnCancelar.setEnabled(enabled);
+        btnSalvar.setAlpha(enabled ? 1f : .6f);
+        btnCancelar.setAlpha(enabled ? 1f : .6f);
+    }
+
+    private void closeWithKeyboardHide() {
+        View current = getDialog() != null ? getDialog().getCurrentFocus() : null;
+        if (current != null) {
+            InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) imm.hideSoftInputFromWindow(current.getWindowToken(), 0);
+        }
+        dismissAllowingStateLoss();
+    }
+
+    // ---------- Utilitários de cor/seleção ----------
+
+    private static final Map<Integer, String> ID_TO_COLOR = new HashMap<Integer, String>() {{
+        put(R.id.radio_yellow, "#F9F871");
+        put(R.id.radio_orange, "#FFC75F");
+        put(R.id.radio_pink,   "#FF96AD");
+        put(R.id.radio_blue,   "#84D2F6");
+        put(R.id.radio_green,  "#A9F0D1");
+        put(R.id.radio_white,  "#FFFFFF");
+    }};
+    private static final Map<String, Integer> COLOR_TO_ID = new HashMap<String, Integer>() {{
+        put("#F9F871", R.id.radio_yellow);
+        put("#FFC75F", R.id.radio_orange);
+        put("#FF96AD", R.id.radio_pink);
+        put("#84D2F6", R.id.radio_blue);
+        put("#A9F0D1", R.id.radio_green);
+        put("#FFFFFF", R.id.radio_white);
+    }};
+
+    private String colorForRadioId(int id) {
+        String c = ID_TO_COLOR.get(id);
+        return c != null ? c : "#F9F871";
+    }
+
+    private void setSelectedColor(@NonNull String color) {
+        corSelecionada = color.toUpperCase();
+        Integer id = COLOR_TO_ID.get(corSelecionada);
+        radioGroupColors.check(id != null ? id : R.id.radio_yellow);
+    }
+
+    private String safe(CharSequence cs) { return cs == null ? "" : cs.toString(); }
+    private String safeColor(String c, String def) { return TextUtils.isEmpty(c) ? def : c; }
 }

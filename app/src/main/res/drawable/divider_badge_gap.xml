@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- res/drawable/divider_badge_gap.xml -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <size android:width="12dp" />
+    <solid android:color="@android:color/transparent"/>
+</shape>

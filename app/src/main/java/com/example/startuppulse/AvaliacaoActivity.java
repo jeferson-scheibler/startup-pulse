@@ -13,10 +13,12 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.startuppulse.common.Result;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.slider.Slider;
@@ -27,23 +29,17 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/**
- * VERSÃO REFEITA E ROBUSTA - 07/07/2025
- *
- * Esta classe foi reescrita para ser mais segura e para incluir logs de diagnóstico detalhados.
- * Se a tela fechar inesperadamente, verifique o Logcat filtrando pela tag "AVALIACAO_DEBUG".
- */
 public class AvaliacaoActivity extends AppCompatActivity {
 
     private static final String TAG = "AVALIACAO";
 
-    // Componentes da UI
+    // UI
     private RecyclerView recyclerViewCriterios;
     private TextView textAverageScore;
     private MaterialButton btnEnviarAvaliacao;
     private MaterialToolbar toolbar;
 
-    // Dados e Helpers
+    // Dados
     private AvaliacaoAdapter adapter;
     private String ideiaId;
     private final List<CriterioAvaliacao> criteriosList = new ArrayList<>();
@@ -52,123 +48,121 @@ public class AvaliacaoActivity extends AppCompatActivity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Log.d(TAG, "onCreate: Iniciando a AvaliacaoActivity.");
+        Log.d(TAG, "onCreate: iniciando AvaliacaoActivity");
+        setContentView(R.layout.activity_avaliacao);
 
-        try {
-            setContentView(R.layout.activity_avaliacao);
+        firestoreHelper = new FirestoreHelper();
+        ideiaId = getIntent().getStringExtra("ideia_id");
 
-            firestoreHelper = new FirestoreHelper();
-
-            ideiaId = getIntent().getStringExtra("ideia_id");
-
-            if (ideiaId == null || ideiaId.trim().isEmpty()) {
-                Toast.makeText(this, "Erro: ID da ideia não foi fornecido.", Toast.LENGTH_LONG).show();
-                finish();
-                return;
-            }
-
-            // 3. Configurar a UI
-            setupToolbar();
-            bindUiViews();
-            setupCriterios();
-            setupRecyclerView();
-            setupClickListeners();
-
-            // 4. Atualizar a UI com os dados iniciais
-            updateAverageScore();
-
-            Log.d(TAG, "onCreate: Configuração da tela concluída com sucesso.");
-
-        } catch (Exception e) {
-            // Se qualquer coisa der errado (ex: um ID de view não encontrado no XML), este bloco irá capturar.
-            Log.e(TAG, "onCreate: OCORREU UMA EXCEÇÃO INESPERADA! A tela pode fechar.", e);
-            Toast.makeText(this, "Ocorreu um erro crítico ao abrir a avaliação.", Toast.LENGTH_LONG).show();
+        if (ideiaId == null || ideiaId.trim().isEmpty()) {
+            Toast.makeText(this, "Erro: ID da ideia não foi fornecido.", Toast.LENGTH_LONG).show();
             finish();
+            return;
         }
+
+        setupToolbar();
+        bindUiViews();
+        setupCriterios();
+        setupRecyclerView();
+        setupClickListeners();
+        updateAverageScore();
     }
 
     private void setupToolbar() {
         toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle("Avaliar Ideia");
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setDisplayShowHomeEnabled(true);
         }
         toolbar.setNavigationOnClickListener(v -> finish());
-        Log.d(TAG, "setupToolbar: Toolbar configurada.");
     }
 
     private void bindUiViews() {
         textAverageScore = findViewById(R.id.text_average_score);
         recyclerViewCriterios = findViewById(R.id.recycler_view_criterios);
         btnEnviarAvaliacao = findViewById(R.id.btn_enviar_avaliacao);
-        Log.d(TAG, "bindUiViews: Views da UI vinculadas com sucesso.");
     }
 
     private void setupCriterios() {
-        criteriosList.clear(); // Garante que a lista está limpa antes de adicionar
+        criteriosList.clear();
         criteriosList.add(new CriterioAvaliacao("Problema e Solução", "A ideia resolve um problema real de forma eficaz?"));
         criteriosList.add(new CriterioAvaliacao("Mercado Potencial", "O mercado para esta solução é grande e acessível?"));
         criteriosList.add(new CriterioAvaliacao("Originalidade", "Qual o nível de inovação e diferenciação da ideia?"));
         criteriosList.add(new CriterioAvaliacao("Modelo de Negócio", "Existe um caminho claro para a sustentabilidade financeira?"));
-        Log.d(TAG, "setupCriterios: Lista de critérios de avaliação criada.");
     }
 
     private void setupRecyclerView() {
         adapter = new AvaliacaoAdapter(criteriosList, this::updateAverageScore);
         recyclerViewCriterios.setLayoutManager(new LinearLayoutManager(this));
         recyclerViewCriterios.setAdapter(adapter);
-        Log.d(TAG, "setupRecyclerView: RecyclerView e Adapter configurados.");
     }
 
     private void setupClickListeners() {
-        btnEnviarAvaliacao.setOnClickListener(v -> enviarAvaliacao());
-        Log.d(TAG, "setupClickListeners: Listener do botão de enviar configurado.");
+        btnEnviarAvaliacao.setOnClickListener(v -> {
+            if (!validarCampos()) return;
+            // Confirmação antes de enviar
+            new AlertDialog.Builder(this)
+                    .setTitle("Enviar avaliação?")
+                    .setMessage("Após enviar, o autor verá seu feedback.")
+                    .setPositiveButton("Enviar", (d, w) -> enviarAvaliacao())
+                    .setNegativeButton("Cancelar", null)
+                    .show();
+        });
+    }
+
+    private boolean validarCampos() {
+        // Opcional: exigir feedback quando nota < 5 (exemplo de UX)
+        for (CriterioAvaliacao c : criteriosList) {
+            if (c.nota < 0f || c.nota > 10f) {
+                Toast.makeText(this, "Notas devem estar entre 0 e 10.", Toast.LENGTH_SHORT).show();
+                return false;
+            }
+            if (c.nota < 5f && (c.feedback == null || c.feedback.trim().isEmpty())) {
+                Toast.makeText(this, "Explique rapidamente por que a nota de \"" + c.nome + "\" foi baixa.", Toast.LENGTH_LONG).show();
+                return false;
+            }
+        }
+        return true;
     }
 
     private void updateAverageScore() {
         if (criteriosList.isEmpty()) return;
-
-        float total = 0;
-        for (CriterioAvaliacao criterio : criteriosList) {
-            total += criterio.nota;
-        }
+        float total = 0f;
+        for (CriterioAvaliacao c : criteriosList) total += c.nota;
         float media = total / criteriosList.size();
-        textAverageScore.setText(String.format(Locale.US, "%.1f", media));
-        Log.d(TAG, "updateAverageScore: Média calculada e exibida: " + media);
+        textAverageScore.setText(String.format(Locale.getDefault(), "%.1f", media));
     }
 
     private void enviarAvaliacao() {
-        Log.d(TAG, "enviarAvaliacao: Botão de enviar clicado. Tentando salvar no Firestore.");
         btnEnviarAvaliacao.setEnabled(false);
         btnEnviarAvaliacao.setText("A enviar...");
 
         List<Map<String, Object>> avaliacoesParaSalvar = adapter.getAvaliacoes();
 
-        firestoreHelper.salvarAvaliacao(ideiaId, avaliacoesParaSalvar, new FirestoreHelper.FirestoreCallback() {
-            @Override
-            public void onSuccess() {
-                Toast.makeText(AvaliacaoActivity.this, "Avaliação enviada com sucesso!", Toast.LENGTH_LONG).show();
+        firestoreHelper.salvarAvaliacao(ideiaId, avaliacoesParaSalvar, r -> {
+            if (r.isOk()) {
+                Toast.makeText(this, "Avaliação enviada com sucesso!", Toast.LENGTH_LONG).show();
                 setResult(RESULT_OK);
                 finish();
-            }
-            @Override
-            public void onFailure(Exception e) {
-                Toast.makeText(AvaliacaoActivity.this, "Erro ao enviar avaliação: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            } else {
                 btnEnviarAvaliacao.setEnabled(true);
                 btnEnviarAvaliacao.setText("Enviar Avaliação");
+                String msg = (r.error != null && r.error.getMessage() != null)
+                        ? r.error.getMessage()
+                        : "Erro desconhecido";
+                Toast.makeText(this, "Erro ao enviar avaliação: " + msg, Toast.LENGTH_LONG).show();
             }
         });
     }
 
-    // ===================================================================
-    // ==     Classe interna para o Modelo de Dados do Critério         ==
-    // ===================================================================
+    // ================= Modelo interno =================
     private static class CriterioAvaliacao {
         String nome;
         String descricao;
-        float nota = 5.0f;
-        String feedback = "";
+        float nota = 5.0f;   // valor inicial
+        String feedback = ""; // opcional
 
         CriterioAvaliacao(String nome, String descricao) {
             this.nome = nome;
@@ -176,9 +170,7 @@ public class AvaliacaoActivity extends AppCompatActivity {
         }
     }
 
-    // ===================================================================
-    // ==     Classe interna para o Adaptador do RecyclerView           ==
-    // ===================================================================
+    // ================= Adapter =================
     private static class AvaliacaoAdapter extends RecyclerView.Adapter<AvaliacaoAdapter.CriterioViewHolder> {
 
         private final List<CriterioAvaliacao> criterios;
@@ -192,8 +184,8 @@ public class AvaliacaoActivity extends AppCompatActivity {
         @NonNull
         @Override
         public CriterioViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_criterio_avaliacao, parent, false);
-            return new CriterioViewHolder(view, onNotaChanged);
+            View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_criterio_avaliacao, parent, false);
+            return new CriterioViewHolder(v, onNotaChanged);
         }
 
         @Override
@@ -206,24 +198,26 @@ public class AvaliacaoActivity extends AppCompatActivity {
             return criterios.size();
         }
 
-        public List<Map<String, Object>> getAvaliacoes() {
-            List<Map<String, Object>> lista = new ArrayList<>();
+        List<Map<String, Object>> getAvaliacoes() {
+            List<Map<String, Object>> out = new ArrayList<>();
             for (CriterioAvaliacao c : criterios) {
-                Map<String, Object> map = new HashMap<>();
-                map.put("criterio", c.nome);
-                map.put("nota", c.nota);
-                map.put("feedback", c.feedback);
-                lista.add(map);
+                Map<String, Object> m = new HashMap<>();
+                m.put("criterio", c.nome);
+                m.put("nota", c.nota);
+                m.put("feedback", c.feedback);
+                out.add(m);
             }
-            return lista;
+            return out;
         }
 
         static class CriterioViewHolder extends RecyclerView.ViewHolder {
-            TextView nome, descricao, notaDisplay;
-            Slider sliderNota;
-            EditText feedback;
-            Runnable onNotaChangedCallback;
-            private TextWatcher textWatcher;
+            final TextView nome;
+            final TextView descricao;
+            final TextView notaDisplay;
+            final Slider sliderNota;
+            final EditText feedback;
+            private final Runnable onNotaChangedCallback;
+            private TextWatcher watcher;
 
             CriterioViewHolder(@NonNull View itemView, Runnable onNotaChangedCallback) {
                 super(itemView);
@@ -235,36 +229,34 @@ public class AvaliacaoActivity extends AppCompatActivity {
                 feedback = itemView.findViewById(R.id.edit_text_feedback);
             }
 
-            void bind(final CriterioAvaliacao criterio) {
-                nome.setText(criterio.nome);
-                descricao.setText(criterio.descricao);
-                sliderNota.setValue(criterio.nota);
-                notaDisplay.setText(String.format(Locale.US, "%.1f", criterio.nota));
-                feedback.setText(criterio.feedback);
+            void bind(final CriterioAvaliacao c) {
+                nome.setText(c.nome);
+                descricao.setText(c.descricao);
+
+                // Garante range/valor
+                if (sliderNota.getValueFrom() != 0f) sliderNota.setValueFrom(0f);
+                if (sliderNota.getValueTo() != 10f) sliderNota.setValueTo(10f);
+                if (c.nota < 0f) c.nota = 0f;
+                if (c.nota > 10f) c.nota = 10f;
+
+                sliderNota.setValue(c.nota);
+                notaDisplay.setText(String.format(Locale.getDefault(), "%.1f", c.nota));
 
                 sliderNota.clearOnChangeListeners();
-                sliderNota.addOnChangeListener((slider, value, fromUser) -> {
-                    criterio.nota = value;
-                    notaDisplay.setText(String.format(Locale.US, "%.1f", value));
-                    if (fromUser && onNotaChangedCallback != null) {
-                        onNotaChangedCallback.run();
-                    }
+                sliderNota.addOnChangeListener((s, value, fromUser) -> {
+                    c.nota = value;
+                    notaDisplay.setText(String.format(Locale.getDefault(), "%.1f", value));
+                    if (fromUser && onNotaChangedCallback != null) onNotaChangedCallback.run();
                 });
 
-                if (textWatcher != null) {
-                    feedback.removeTextChangedListener(textWatcher);
-                }
-                textWatcher = new TextWatcher() {
-                    @Override
-                    public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-                    @Override
-                    public void onTextChanged(CharSequence s, int start, int before, int count) {}
-                    @Override
-                    public void afterTextChanged(Editable s) {
-                        criterio.feedback = s.toString();
-                    }
+                if (watcher != null) feedback.removeTextChangedListener(watcher);
+                feedback.setText(c.feedback);
+                watcher = new TextWatcher() {
+                    @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                    @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                    @Override public void afterTextChanged(Editable s) { c.feedback = s.toString(); }
                 };
-                feedback.addTextChangedListener(textWatcher);
+                feedback.addTextChangedListener(watcher);
             }
         }
     }

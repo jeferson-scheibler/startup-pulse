@@ -8,16 +8,16 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentTransaction;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
-import androidx.lifecycle.Observer;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -32,31 +32,29 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_main); // activity_main deve ter um FrameLayout com id fragment_container
         offlineIndicatorBar = findViewById(R.id.offline_indicator_bar);
 
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
-
         if (currentUser == null) {
             startActivity(new Intent(this, LoginActivity.class));
             finish();
             return;
         }
 
+        // Indicador de offline/online
         NetworkManager networkManager = NetworkManager.getInstance(getApplicationContext());
-        networkManager.isNetworkAvailable().observe(this, new Observer<Boolean>() {
-            @Override
-            public void onChanged(Boolean isAvailable) {
-                offlineIndicatorBar.setVisibility(isAvailable ? View.GONE : View.VISIBLE);
-            }
-        });
+        networkManager.isNetworkAvailable().observe(this, isAvailable ->
+                offlineIndicatorBar.setVisibility(Boolean.TRUE.equals(isAvailable) ? View.GONE : View.VISIBLE)
+        );
 
-        // Referências para os componentes
+        // Referências UI
         fabAddIdea = findViewById(R.id.fab_add_idea);
         fabAddMentor = findViewById(R.id.fab_add_mentor);
+
         navButtonIdeias = findViewById(R.id.nav_button_ideias);
         navButtonMentores = findViewById(R.id.nav_button_mentores);
-        navButtonPerfil = findViewById(R.id.nav_button_perfil);
+        navButtonPerfil  = findViewById(R.id.nav_button_perfil);
 
         navIconIdeias = findViewById(R.id.nav_icon_ideias);
         navIconMentores = findViewById(R.id.nav_icon_mentores);
@@ -67,20 +65,17 @@ public class MainActivity extends AppCompatActivity {
         navTextPerfil = findViewById(R.id.nav_text_perfil);
 
         verificarSeUsuarioEhMentor();
-        // Configura os cliques dos botões de navegação
         setupButtonClickListeners();
 
+        // FABs
         fabAddIdea.setOnClickListener(view -> {
             Intent intent = new Intent(MainActivity.this, CanvasIdeiaActivity.class);
-
             Ideia novaIdeia = new Ideia();
-
             FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
             if (user != null) {
                 novaIdeia.setOwnerId(user.getUid());
                 novaIdeia.setAutorNome(user.getDisplayName());
             }
-
             intent.putExtra("ideia", novaIdeia);
             startActivity(intent);
         });
@@ -88,19 +83,17 @@ public class MainActivity extends AppCompatActivity {
         fabAddMentor.setOnClickListener(view -> {
             Intent intent = new Intent(MainActivity.this, CanvasMentorActivity.class);
             Mentor novoMentor = new Mentor();
-
             if (currentUser != null) {
                 novoMentor.setId(currentUser.getUid());
                 novoMentor.setNome(currentUser.getDisplayName());
             }
-
             intent.putExtra("mentor", novoMentor);
             startActivity(intent);
         });
 
-        // Define a tela inicial padrão
+        // Tela inicial: IdeiasHostFragment (tabs: Publicadas / Meus rascunhos)
         if (savedInstanceState == null) {
-            navigateTo(new IdeiasFragment());
+            loadFragment(new IdeiasHostFragment());
             updateButtonState(navButtonIdeias);
         }
     }
@@ -108,10 +101,9 @@ public class MainActivity extends AppCompatActivity {
     private void verificarSeUsuarioEhMentor() {
         if (currentUser == null) {
             isMentor = false;
-            fabAddMentor.setVisibility(View.GONE);
+            atualizarVisibilidadeFabMentor();
             return;
         }
-
         String uid = currentUser.getUid();
         FirebaseFirestore.getInstance()
                 .collection("mentores")
@@ -128,7 +120,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void atualizarVisibilidadeFabMentor() {
-        Fragment fragment = getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment);
+        Fragment fragment = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        // Exibe o FAB de "Adicionar Mentor" somente quando estamos na aba de mentores
+        // e o usuário AINDA não tem cadastro de mentor (isMentor == false).
         if (fragment instanceof MentoresFragment && !isMentor) {
             fabAddMentor.setVisibility(View.VISIBLE);
         } else {
@@ -138,54 +132,52 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupButtonClickListeners() {
         navButtonIdeias.setOnClickListener(v -> {
-            navigateTo(new IdeiasFragment());
+            loadFragment(new IdeiasHostFragment()); // host com tabs
             updateButtonState(v);
+            // Na aba de ideias, mostrar FAB de ideias e esconder o de mentor
+            fabAddIdea.setVisibility(View.VISIBLE);
+            fabAddMentor.setVisibility(View.GONE);
         });
 
         navButtonMentores.setOnClickListener(v -> {
-            navigateTo(new MentoresFragment());
+            loadFragment(new MentoresFragment());
             updateButtonState(v);
+            // Na aba de mentores, esconder FAB de ideias e decidir FAB de mentor
+            fabAddIdea.setVisibility(View.GONE);
+            verificarSeUsuarioEhMentor(); // decide visibilidade do fabAddMentor
         });
 
         navButtonPerfil.setOnClickListener(v -> {
-            navigateTo(new PerfilFragment());
+            loadFragment(new PerfilFragment());
             updateButtonState(v);
+            // Na aba de perfil, esconder ambos
+            fabAddIdea.setVisibility(View.GONE);
+            fabAddMentor.setVisibility(View.GONE);
         });
     }
 
-    private void navigateTo(Fragment fragment) {
-        if (fragment instanceof MentoresFragment) {
-            fabAddIdea.setVisibility(View.GONE);
-            verificarSeUsuarioEhMentor();
-        } else {
-            fabAddIdea.setVisibility(View.VISIBLE);
-            fabAddMentor.setVisibility(View.GONE);
-        }
-
-        getSupportFragmentManager().beginTransaction()
-                .replace(R.id.nav_host_fragment, fragment)
-                .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
+    private void loadFragment(@NonNull Fragment fragment) {
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.fragment_container, fragment)
                 .commit();
-
-        // Atualiza visibilidade do botão mentor com base na flag isMentor
+        // Atualiza visibilidade do FAB mentor após trocar o fragment
         fabAddMentor.postDelayed(this::atualizarVisibilidadeFabMentor, 100);
     }
 
     private void updateButtonState(View selectedButton) {
-        // Primeiro, diz a todos os botões que eles NÃO estão selecionados
+        // Reseta estados (seleção e textos)
         navButtonIdeias.setSelected(false);
         navButtonMentores.setSelected(false);
         navButtonPerfil.setSelected(false);
 
-        // Esconde todos os textos
         navTextIdeias.setVisibility(View.GONE);
         navTextMentores.setVisibility(View.GONE);
         navTextPerfil.setVisibility(View.GONE);
 
-        // Agora, diz apenas ao botão clicado que ele ESTÁ selecionado
+        // Seleciona o clicado
         selectedButton.setSelected(true);
 
-        // E mostra apenas o texto do botão selecionado
         if (selectedButton.getId() == R.id.nav_button_ideias) {
             navTextIdeias.setVisibility(View.VISIBLE);
         } else if (selectedButton.getId() == R.id.nav_button_mentores) {
@@ -193,17 +185,21 @@ public class MainActivity extends AppCompatActivity {
         } else if (selectedButton.getId() == R.id.nav_button_perfil) {
             navTextPerfil.setVisibility(View.VISIBLE);
         }
+
+        // (opcional) tints nos ícones se você quiser realçar visualmente
+        tintNavIcons();
     }
 
-    private void resetButtonState(ImageView icon, TextView text, int color) {
-        icon.setImageTintList(ColorStateList.valueOf(color));
-        text.setVisibility(View.GONE);
-        text.setTextColor(color);
-    }
+    private void tintNavIcons() {
+        int selected = ContextCompat.getColor(this, R.color.primary_color);
+        int normal   = ContextCompat.getColor(this, R.color.strokeSoft);
 
-    private void setButtonSelected(ImageView icon, TextView text, int color) {
-        icon.setImageTintList(ColorStateList.valueOf(color));
-        text.setVisibility(View.VISIBLE);
-        text.setTextColor(color);
+        boolean ideiasSel   = navButtonIdeias.isSelected();
+        boolean mentoresSel = navButtonMentores.isSelected();
+        boolean perfilSel   = navButtonPerfil.isSelected();
+
+        navIconIdeias.setImageTintList(ColorStateList.valueOf(ideiasSel ? selected : normal));
+        navIconMentores.setImageTintList(ColorStateList.valueOf(mentoresSel ? selected : normal));
+        navIconPerfil.setImageTintList(ColorStateList.valueOf(perfilSel ? selected : normal));
     }
 }

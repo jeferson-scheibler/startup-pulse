@@ -1,27 +1,25 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources>
+    <!-- Tema principal claro/escuro automático -->
     <style name="Theme.StartupPulse" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/primary_color</item>
-        <item name="colorSecondary">@color/secondary_color</item>
-        <item name="colorSurface">@color/background_color</item>
-        <item name="android:colorBackground">@color/background_color</item>
+        <!-- Paleta -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorOnPrimary">@color/colorOnPrimary</item>
 
+        <item name="colorSecondary">@color/colorSecondary</item>
+        <item name="colorOnSecondary">@color/colorOnSecondary</item>
+
+        <item name="colorSurface">@color/colorSurface</item>
+        <item name="colorOnSurface">@color/colorOnSurface</item>
+        <item name="colorSurfaceVariant">@color/colorSurfaceVariant</item>
+
+        <!-- Fundo -->
+        <item name="android:windowBackground">@color/colorSurface</item>
+        <item name="android:colorBackground">@color/colorSurface</item>
+
+        <!-- Barras transparentes (compat) -->
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar">true</item>
     </style>
 
-    <style name="ShapeAppearance.App.Button.LessRounded" parent="">
-        <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">12dp</item> <!-- << Altere este valor como quiser -->
-    </style>
-
-    <!-- 2. Cria um estilo para o botão preenchido (Salvar) usando o novo formato -->
-    <style name="App.Button.LessRounded" parent="Widget.Material3.Button">
-        <item name="shapeAppearanceOverlay">@style/ShapeAppearance.App.Button.LessRounded</item>
-    </style>
-
-    <!-- 3. Cria um estilo para o botão com contorno (Cancelar) usando o novo formato -->
-    <style name="App.Button.Outlined.LessRounded" parent="Widget.Material3.Button.OutlinedButton">
-        <item name="shapeAppearanceOverlay">@style/ShapeAppearance.App.Button.LessRounded</item>
-    </style>
+    <style name="Theme.StartupPulse.NoActionBar" parent="Theme.StartupPulse" />
 </resources>

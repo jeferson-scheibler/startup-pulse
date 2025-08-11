@@ -1,7 +1,6 @@
 package com.example.startuppulse;
 
 import android.Manifest;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Address;
@@ -9,17 +8,16 @@ import android.location.Geocoder;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.View;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
-import android.widget.TextView;
 import android.widget.Toast;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.Group;
@@ -27,6 +25,7 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.viewpager2.widget.ViewPager2;
 
+import com.example.startuppulse.common.Result;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.material.button.MaterialButton;
@@ -42,7 +41,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
-public class CanvasIdeiaActivity extends AppCompatActivity implements CanvasInicioFragment.InicioStateListener, CanvasBlockFragment.CanvasBlockListener, AmbienteCheckFragment.AmbienteCheckListener {
+public class CanvasIdeiaActivity extends AppCompatActivity
+        implements CanvasInicioFragment.InicioStateListener,
+        CanvasBlockFragment.CanvasBlockListener,
+        AmbienteCheckFragment.AmbienteCheckListener {
 
     private ViewPager2 viewPager;
     private CanvasPagerAdapter adapter;
@@ -51,7 +53,6 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements CanvasInic
     private List<CanvasEtapa> etapas;
     private ListenerRegistration ideiaListener;
 
-    // Componentes da UI
     private ProgressBar loadingIndicator;
     private Group contentGroup;
     private MaterialButton btnProximo, btnAnterior, btnPublicar, btnDespublicar, btnAvaliar;
@@ -59,21 +60,22 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements CanvasInic
 
     private AlertDialog loadingDialog;
     private ActivityResultLauncher<String> requestLocationPermissionLauncher;
+    private ActivityResultLauncher<Intent> avaliacaoLauncher;
     private FusedLocationProviderClient fusedLocationClient;
 
     private boolean isReadOnlyMode = false;
     private final Handler loadingHandler = new Handler(Looper.getMainLooper());
-    private ActivityResultLauncher<Intent> avaliacaoLauncher;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_canvas_ideia);
 
         firestoreHelper = new FirestoreHelper();
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
         loadingIndicator = findViewById(R.id.loading_indicator);
-        contentGroup = findViewById(R.id.content_group);
+        contentGroup     = findViewById(R.id.content_group);
 
         setupLocationPermissionLauncher();
 
@@ -88,23 +90,15 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements CanvasInic
         } else {
             Toast.makeText(this, "Erro: Nenhuma ideia ou ID fornecido.", Toast.LENGTH_SHORT).show();
             finish();
+            return;
         }
+
         avaliacaoLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
-                    // Este código será executado quando a AvaliacaoActivity fechar
-                    if (result.getResultCode() == RESULT_OK) {
-                        // SUCESSO! A avaliação foi enviada.
-                        // A melhor forma de atualizar a UI é forçar o recarregamento dos dados
-                        // da ideia, re-anexando o listener do Firestore.
-                        Log.d("CANVAS_IDEIA", "Resultado OK recebido da AvaliacaoActivity. A recarregar dados.");
+                    if (result.getResultCode() == RESULT_OK && ideia != null && ideia.getId() != null) {
                         Toast.makeText(this, "Status da ideia atualizado!", Toast.LENGTH_SHORT).show();
-
-                        if (ideia != null && ideia.getId() != null) {
-                            // Re-anexar o listener força uma nova leitura do banco de dados,
-                            // o que atualiza a UI com o novo status "Avaliada".
-                            attachIdeiaListener(ideia.getId(), isReadOnlyMode);
-                        }
+                        attachIdeiaListener(ideia.getId(), isReadOnlyMode); // força refresh
                     }
                 }
         );
@@ -113,7 +107,7 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements CanvasInic
     private void setupForNewIdeia() {
         showLoading(false);
         this.isReadOnlyMode = false;
-        setupEtapas(ideia.getStatus());
+        setupEtapas("RASCUNHO");
         setupUI();
         setupButtonClickListeners();
     }
@@ -124,18 +118,20 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements CanvasInic
     }
 
     private void setupUI() {
-        viewPager = findViewById(R.id.view_pager_canvas);
-        btnProximo = findViewById(R.id.btn_proximo);
-        btnAnterior = findViewById(R.id.btn_anterior);
-        btnVoltar = findViewById(R.id.btn_voltar);
-        btnPublicar = findViewById(R.id.btn_publicar_ideia);
-        btnDespublicar = findViewById(R.id.btn_despublicar_ideia);
-        btnAvaliar = findViewById(R.id.btn_avaliar_ideia);
+        viewPager       = findViewById(R.id.view_pager_canvas);
+        btnProximo      = findViewById(R.id.btn_proximo);
+        btnAnterior     = findViewById(R.id.btn_anterior);
+        btnVoltar       = findViewById(R.id.btn_voltar);
+        btnPublicar     = findViewById(R.id.btn_publicar_ideia);
+        btnDespublicar  = findViewById(R.id.btn_despublicar_ideia);
+        btnAvaliar      = findViewById(R.id.btn_avaliar_ideia);
         btnAvaliar.setEnabled(false);
 
         adapter = new CanvasPagerAdapter(this, ideia, etapas, isReadOnlyMode);
         viewPager.setAdapter(adapter);
-        viewPager.setUserInputEnabled(isReadOnlyMode);
+
+        // Swipe do ViewPager habilitado (leitura e edição). O gate da etapa fica no botão "Próximo".
+        viewPager.setUserInputEnabled(true);
 
         setupTabs();
     }
@@ -145,11 +141,9 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements CanvasInic
         new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {}).attach();
 
         viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
-            @Override
-            public void onPageSelected(int position) {
+            @Override public void onPageSelected(int position) {
                 super.onPageSelected(position);
                 if (btnAnterior == null) return;
-
                 updateActionButtonsVisibility(position);
             }
         });
@@ -157,19 +151,16 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements CanvasInic
 
     private void updateActionButtonsVisibility(int position) {
         boolean isLastPage = (position == adapter.getItemCount() - 1);
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        boolean isOwner = user != null && ideia != null && user.getUid().equals(ideia.getOwnerId());
+        FirebaseUser user  = FirebaseAuth.getInstance().getCurrentUser();
+        boolean isOwner  = user != null && ideia != null && user.getUid().equals(ideia.getOwnerId());
         boolean isMentor = user != null && ideia != null && user.getUid().equals(ideia.getMentorId());
 
-        // Botão ANTERIOR
         btnAnterior.setVisibility(position == 0 ? View.INVISIBLE : View.VISIBLE);
 
-        // Botão PRÓXIMO
-        btnProximo.setVisibility(View.VISIBLE); // Sempre visível
-        btnProximo.setEnabled(!isLastPage);    // Desativado na última página
+        btnProximo.setVisibility(View.VISIBLE);
+        btnProximo.setEnabled(!isLastPage);
         btnProximo.setAlpha(isLastPage ? 0.5f : 1.0f);
 
-        // Lógica para o check-up de ambiente (sobrepõe a lógica do Próximo se necessário)
         if (etapas != null && etapas.size() > position && !isReadOnlyMode) {
             String etapaKey = etapas.get(position).getKey();
             if ("AMBIENTE_CHECK".equals(etapaKey)) {
@@ -188,7 +179,7 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements CanvasInic
                 btnPublicar.setVisibility(View.GONE);
                 btnDespublicar.setVisibility(View.VISIBLE);
                 btnAvaliar.setVisibility(View.GONE);
-            } else if (isLastPage){ // Rascunho
+            } else if (isLastPage) {
                 btnPublicar.setVisibility(View.VISIBLE);
                 btnDespublicar.setVisibility(View.GONE);
                 btnAvaliar.setVisibility(View.GONE);
@@ -198,7 +189,6 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements CanvasInic
                 btnAvaliar.setVisibility(View.GONE);
             }
         } else {
-            // Se não for dono nem mentor, esconde tudo
             btnPublicar.setVisibility(View.GONE);
             btnDespublicar.setVisibility(View.GONE);
             btnAvaliar.setVisibility(View.GONE);
@@ -207,28 +197,29 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements CanvasInic
 
     private void setupButtonClickListeners() {
         btnVoltar.setOnClickListener(v -> {
-            if (!isReadOnlyMode) {
-                saveAndFinish(true);
-            } else {
-                finish();
-            }
+            if (!isReadOnlyMode) saveAndFinish(true);
+            else finish();
         });
+
         btnAnterior.setOnClickListener(v -> {
             if (!isReadOnlyMode) {
-                saveProgress(() -> viewPager.setCurrentItem(viewPager.getCurrentItem() - 1));
+                saveProgress(() -> viewPager.setCurrentItem(Math.max(0, viewPager.getCurrentItem() - 1)));
             } else {
-                viewPager.setCurrentItem(viewPager.getCurrentItem() - 1);
+                viewPager.setCurrentItem(Math.max(0, viewPager.getCurrentItem() - 1));
             }
         });
+
         btnPublicar.setOnClickListener(v -> verificarPermissaoEPublicar());
-        btnDespublicar.setOnClickListener(v -> {
-            new AlertDialog.Builder(this)
-                    .setTitle("Despublicar Ideia")
-                    .setMessage("A sua ideia voltará a ser um rascunho privado. Deseja continuar?")
-                    .setPositiveButton("Sim, despublicar", (dialog, which) -> despublicarIdeia())
-                    .setNegativeButton("Cancelar", null)
-                    .show();
-        });
+
+        btnDespublicar.setOnClickListener(v ->
+                new AlertDialog.Builder(this)
+                        .setTitle("Despublicar Ideia")
+                        .setMessage("A sua ideia voltará a ser um rascunho privado. Deseja continuar?")
+                        .setPositiveButton("Sim, despublicar", (dialog, which) -> despublicarIdeia())
+                        .setNegativeButton("Cancelar", null)
+                        .show()
+        );
+
         btnAvaliar.setOnClickListener(v -> {
             if (ideia != null && ideia.getId() != null) {
                 Intent intent = new Intent(this, AvaliacaoActivity.class);
@@ -242,30 +233,24 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements CanvasInic
         btnProximo.setOnClickListener(v -> {
             int currentItem = viewPager.getCurrentItem();
             String etapaKey = etapas.get(currentItem).getKey();
-            
-            Runnable advanceAction = () -> viewPager.setCurrentItem(currentItem + 1);
+
+            Runnable advance = () -> viewPager.setCurrentItem(Math.min(adapter.getItemCount() - 1, currentItem + 1));
 
             switch (etapaKey) {
                 case "INICIO":
                     validateAndAdvanceFromFirstPage();
                     break;
                 case "AMBIENTE_CHECK":
-                    if (btnProximo.isEnabled()) {
-                        advanceAction.run();
-                    }
+                    if (btnProximo.isEnabled()) advance.run();
                     break;
                 case "STATUS":
-                    advanceAction.run();
+                    advance.run();
                     break;
                 default:
                     if (validateAndAdvanceFromBlockPage(etapaKey)) {
-                        if (!isReadOnlyMode) {
-                            saveProgress(advanceAction);
-                        } else {
-                            advanceAction.run();
-                        }
+                        if (!isReadOnlyMode) saveProgress(advance);
+                        else advance.run();
                     }
-                    break;
             }
         });
     }
@@ -274,54 +259,53 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements CanvasInic
         if (ideiaListener != null) ideiaListener.remove();
         if (ideiaId == null) return;
 
-        ideiaListener = firestoreHelper.listenToIdeia(ideiaId, new FirestoreHelper.IdeiaUnicaListener() {
-            @Override
-            public void onIdeiaCarregada(Ideia ideiaCarregada) {
-                boolean isFirstLoad = (CanvasIdeiaActivity.this.ideia == null);
-
-                FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-                boolean isOwner = user != null && user.getUid().equals(ideiaCarregada.getOwnerId());
-                isReadOnlyMode = openAsReadOnly || (isOwner && !"RASCUNHO".equals(ideiaCarregada.getStatus()));
-
-                CanvasIdeiaActivity.this.ideia = ideiaCarregada;
-
-                if (isFirstLoad) {
-                    setupEtapas(ideiaCarregada.getStatus());
-                    setupUI();
-                    setupButtonClickListeners();
-                    showLoading(false);
-                } else {
-                    notificarFragmentoAtual();
-                }
-                updateActionButtonsVisibility(viewPager.getCurrentItem());
-            }
-            @Override
-            public void onError(Exception e) {
+        ideiaListener = firestoreHelper.listenToIdeia(ideiaId, r -> {
+            if (!r.isOk()) {
                 showLoading(false);
-                Toast.makeText(CanvasIdeiaActivity.this, "Erro ao carregar ideia: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Erro ao carregar ideia: " + r.error.getMessage(), Toast.LENGTH_SHORT).show();
                 finish();
+                return;
             }
+            Ideia loaded = r.data; // pode ser null se removida
+            if (loaded == null) {
+                showLoading(false);
+                Toast.makeText(this, "Esta ideia não existe mais.", Toast.LENGTH_SHORT).show();
+                finish();
+                return;
+            }
+
+            boolean firstLoad = (CanvasIdeiaActivity.this.ideia == null);
+            FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+            boolean isOwner = user != null && user.getUid().equals(loaded.getOwnerId());
+
+            // read-only se veio assim OU se o dono abriu algo que não é rascunho
+            isReadOnlyMode = openAsReadOnly || (isOwner && !"RASCUNHO".equals(loaded.getStatus()));
+
+            CanvasIdeiaActivity.this.ideia = loaded;
+
+            if (firstLoad) {
+                setupEtapas(loaded.getStatus());
+                setupUI();
+                setupButtonClickListeners();
+                showLoading(false);
+            } else {
+                notificarFragmentoAtual();
+            }
+            updateActionButtonsVisibility(viewPager.getCurrentItem());
         });
     }
 
     private void setupLocationPermissionLauncher() {
-        requestLocationPermissionLauncher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
-            if (isGranted) {
-                iniciarProcessoDePublicacao();
-            } else {
-                Toast.makeText(this, "Permissão de localização negada.", Toast.LENGTH_LONG).show();
-            }
-        });
+        requestLocationPermissionLauncher =
+                registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+                    if (isGranted) iniciarProcessoDePublicacao();
+                    else Toast.makeText(this, "Permissão de localização negada.", Toast.LENGTH_LONG).show();
+                });
     }
 
     private void showLoading(boolean isLoading) {
-        if (isLoading) {
-            loadingIndicator.setVisibility(View.VISIBLE);
-            contentGroup.setVisibility(View.GONE);
-        } else {
-            loadingIndicator.setVisibility(View.GONE);
-            contentGroup.setVisibility(View.VISIBLE);
-        }
+        loadingIndicator.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+        contentGroup.setVisibility(isLoading ? View.GONE : View.VISIBLE);
     }
 
     private void setupEtapas(String status) {
@@ -348,45 +332,43 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements CanvasInic
     }
 
     private void validateAndAdvanceFromFirstPage() {
-        if (ideia.getNome() == null || ideia.getNome().trim().isEmpty() || ideia.getDescricao() == null || ideia.getDescricao().trim().isEmpty()) {
+        if (ideia == null ||
+                ideia.getNome() == null || ideia.getNome().trim().isEmpty() ||
+                ideia.getDescricao() == null || ideia.getDescricao().trim().isEmpty()) {
             Toast.makeText(this, "Preencha o nome e a descrição da ideia.", Toast.LENGTH_SHORT).show();
             return;
         }
 
         int currentItem = viewPager.getCurrentItem();
         if (ideia.getId() == null) {
-            // ---- NOVA LÓGICA OFFLINE-FIRST ----
-            // 1. Gera um ID local para o novo documento.
-            String novoIdeiaId = firestoreHelper.getNewIdeiaId();
-            ideia.setId(novoIdeiaId);
+            String novoId = firestoreHelper.getNewIdeiaId();
+            ideia.setId(novoId);
             ideia.setOwnerId(Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser()).getUid());
 
-            // 2. Salva a ideia em segundo plano. O Firestore gere a fila offline.
-            saveProgress(null); // Passamos null para não executar nenhuma ação de UI aqui
-
-            // 3. Anexa o listener e navega imediatamente.
-            attachIdeiaListener(novoIdeiaId, false);
+            saveProgress(null);            // deixa o Firestore sincronizar (offline-first)
+            attachIdeiaListener(novoId, false);
             viewPager.setCurrentItem(currentItem + 1);
-
         } else {
-            if (!isReadOnlyMode) {
-                saveProgress(() -> viewPager.setCurrentItem(currentItem + 1));
-            } else {
-                viewPager.setCurrentItem(currentItem + 1);
-            }
+            if (!isReadOnlyMode) saveProgress(() -> viewPager.setCurrentItem(currentItem + 1));
+            else viewPager.setCurrentItem(currentItem + 1);
         }
     }
 
     private boolean validateAndAdvanceFromBlockPage(String etapaChave) {
-        if (ideia.getPostItsPorChave(etapaChave) == null || ideia.getPostItsPorChave(etapaChave).isEmpty()) {
-            Toast.makeText(this, "Adicione pelo menos um post-it para avançar.", Toast.LENGTH_SHORT).show();
-            return false;
-        }
-        return true;
+        return !(ideia == null ||
+                ideia.getPostItsPorChave(etapaChave) == null ||
+                ideia.getPostItsPorChave(etapaChave).isEmpty())
+                || showAndReturnFalse("Adicione pelo menos um post-it para avançar.");
+    }
+
+    private boolean showAndReturnFalse(String msg) {
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+        return false;
     }
 
     private void verificarPermissaoEPublicar() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED) {
             iniciarProcessoDePublicacao();
         } else {
             requestLocationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION);
@@ -395,11 +377,13 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements CanvasInic
 
     private void iniciarProcessoDePublicacao() {
         showLoadingDialog("A obter a sua localização...");
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
             hideLoadingDialog();
             Toast.makeText(this, "Permissão de localização necessária.", Toast.LENGTH_SHORT).show();
             return;
         }
+
         fusedLocationClient.getLastLocation().addOnSuccessListener(this, location -> {
             loadingHandler.postDelayed(() -> {
                 if (location != null) {
@@ -426,20 +410,18 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements CanvasInic
     private void procurarMentorNaCidade(String cidade, String estado) {
         updateLoadingDialog(String.format("A procurar mentores em %s...", cidade));
         loadingHandler.postDelayed(() -> {
-            firestoreHelper.findMentorByCity(cidade,ideia.getOwnerId(), new FirestoreHelper.MentorListener() {
-                @Override
-                public void onMentorEncontrado(Mentor mentor) {
+            firestoreHelper.findMentorByCity(cidade, ideia.getOwnerId(), r -> {
+                if (!r.isOk()) {
+                    hideLoadingDialog();
+                    Toast.makeText(this, "Erro ao procurar mentor.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                Mentor mentor = r.data;
+                if (mentor != null) {
                     updateLoadingDialog("Mentor encontrado! A publicar a sua ideia...");
                     loadingHandler.postDelayed(() -> publicarIdeiaComMentor(mentor.getId()), 2000);
-                }
-                @Override
-                public void onNenhumMentorEncontrado() {
+                } else {
                     procurarMentorNoEstado(estado);
-                }
-                @Override
-                public void onError(Exception e) {
-                    hideLoadingDialog();
-                    Toast.makeText(CanvasIdeiaActivity.this, "Erro ao procurar mentor.", Toast.LENGTH_SHORT).show();
                 }
             });
         }, 2500);
@@ -448,73 +430,59 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements CanvasInic
     private void procurarMentorNoEstado(String estado) {
         updateLoadingDialog("Nenhum mentor na sua cidade. A expandir para " + estado + "...");
         loadingHandler.postDelayed(() -> {
-            firestoreHelper.findMentorByState(estado, ideia.getOwnerId(), new FirestoreHelper.MentorListener() {
-                @Override
-                public void onMentorEncontrado(Mentor mentor) {
+            firestoreHelper.findMentorByState(estado, ideia.getOwnerId(), r -> {
+                if (!r.isOk()) {
+                    hideLoadingDialog();
+                    Toast.makeText(this, "Erro ao procurar mentor.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                Mentor mentor = r.data;
+                if (mentor != null) {
                     updateLoadingDialog("Mentor encontrado! A publicar a sua ideia...");
                     loadingHandler.postDelayed(() -> publicarIdeiaComMentor(mentor.getId()), 2000);
-                }
-                @Override
-                public void onNenhumMentorEncontrado() {
+                } else {
                     publicarIdeiaSemMentor();
-                }
-                @Override
-                public void onError(Exception e) {
-                    hideLoadingDialog();
-                    Toast.makeText(CanvasIdeiaActivity.this, "Erro ao procurar mentor.", Toast.LENGTH_SHORT).show();
                 }
             });
         }, 2500);
     }
 
     private void publicarIdeiaComMentor(String mentorId) {
-        firestoreHelper.publicarIdeia(ideia.getId(), mentorId, new FirestoreHelper.FirestoreCallback() {
-            @Override
-            public void onSuccess() {
-                hideLoadingDialog();
-                Toast.makeText(CanvasIdeiaActivity.this, "Ideia publicada e enviada para um mentor!", Toast.LENGTH_LONG).show();
+        firestoreHelper.publicarIdeia(ideia.getId(), mentorId, r -> {
+            hideLoadingDialog();
+            if (r.isOk()) {
+                Toast.makeText(this, "Ideia publicada e enviada para um mentor!", Toast.LENGTH_LONG).show();
                 finish();
-            }
-            @Override
-            public void onFailure(Exception e) {
-                hideLoadingDialog();
-                Toast.makeText(CanvasIdeiaActivity.this, "Erro ao publicar ideia.", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Erro ao publicar ideia.", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
     private void publicarIdeiaSemMentor() {
         updateLoadingDialog("Nenhum mentor na sua região. A publicar para avaliação geral...");
-        loadingHandler.postDelayed(() -> {
-            firestoreHelper.publicarIdeia(ideia.getId(), null, new FirestoreHelper.FirestoreCallback() {
-                @Override
-                public void onSuccess() {
-                    hideLoadingDialog();
-                    Toast.makeText(CanvasIdeiaActivity.this, "Ideia publicada para avaliação geral!", Toast.LENGTH_LONG).show();
-                    finish();
-                }
-                @Override
-                public void onFailure(Exception e) {
-                    hideLoadingDialog();
-                    Toast.makeText(CanvasIdeiaActivity.this, "Erro ao publicar ideia.", Toast.LENGTH_SHORT).show();
-                }
-            });
-        }, 2000);
+        loadingHandler.postDelayed(() ->
+                        firestoreHelper.publicarIdeia(ideia.getId(), null, r -> {
+                            hideLoadingDialog();
+                            if (r.isOk()) {
+                                Toast.makeText(this, "Ideia publicada para avaliação geral!", Toast.LENGTH_LONG).show();
+                                finish();
+                            } else {
+                                Toast.makeText(this, "Erro ao publicar ideia.", Toast.LENGTH_SHORT).show();
+                            }
+                        })
+                , 2000);
     }
 
     private void despublicarIdeia() {
         showLoadingDialog("A converter para rascunho...");
-        firestoreHelper.unpublishIdeia(ideia.getId(), new FirestoreHelper.FirestoreCallback() {
-            @Override
-            public void onSuccess() {
-                hideLoadingDialog();
-                Toast.makeText(CanvasIdeiaActivity.this, "Ideia revertida para rascunho! Pode editá-la no seu perfil.", Toast.LENGTH_LONG).show();
+        firestoreHelper.unpublishIdeia(ideia.getId(), r -> {
+            hideLoadingDialog();
+            if (r.isOk()) {
+                Toast.makeText(this, "Ideia revertida para rascunho! Pode editá-la no seu perfil.", Toast.LENGTH_LONG).show();
                 finish();
-            }
-            @Override
-            public void onFailure(Exception e) {
-                hideLoadingDialog();
-                Toast.makeText(CanvasIdeiaActivity.this, "Erro ao despublicar.", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Erro ao despublicar.", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -522,12 +490,9 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements CanvasInic
     private void showLoadingDialog(String message) {
         if (loadingDialog == null) {
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            LayoutInflater inflater = this.getLayoutInflater();
-            View dialogView = inflater.inflate(R.layout.dialog_loading, null);
+            View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_loading, null);
             TextView loadingText = dialogView.findViewById(R.id.loading_text);
-            if (loadingText != null) {
-                loadingText.setText(message);
-            }
+            if (loadingText != null) loadingText.setText(message);
             builder.setView(dialogView);
             builder.setCancelable(false);
             loadingDialog = builder.create();
@@ -536,9 +501,7 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements CanvasInic
             }
         } else {
             TextView loadingText = loadingDialog.findViewById(R.id.loading_text);
-            if (loadingText != null) {
-                loadingText.setText(message);
-            }
+            if (loadingText != null) loadingText.setText(message);
         }
         loadingDialog.show();
     }
@@ -546,16 +509,12 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements CanvasInic
     private void updateLoadingDialog(String message) {
         if (loadingDialog != null && loadingDialog.isShowing()) {
             TextView loadingText = loadingDialog.findViewById(R.id.loading_text);
-            if (loadingText != null) {
-                loadingText.setText(message);
-            }
+            if (loadingText != null) loadingText.setText(message);
         }
     }
 
     private void hideLoadingDialog() {
-        if (loadingDialog != null && loadingDialog.isShowing()) {
-            loadingDialog.dismiss();
-        }
+        if (loadingDialog != null && loadingDialog.isShowing()) loadingDialog.dismiss();
     }
 
     @Override
@@ -575,68 +534,43 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements CanvasInic
     public void onPularCheck() {
         if (viewPager == null) return;
         int currentItem = viewPager.getCurrentItem();
-        if (etapas.size() > currentItem) {
-            String etapaKey = etapas.get(currentItem).getKey();
-            if ("AMBIENTE_CHECK".equals(etapaKey)) {
-                viewPager.setCurrentItem(currentItem + 1);
-            }
+        if (etapas.size() > currentItem && "AMBIENTE_CHECK".equals(etapas.get(currentItem).getKey())) {
+            viewPager.setCurrentItem(currentItem + 1);
         }
     }
 
     private void notificarFragmentoAtual() {
         if (viewPager == null) return;
-        Fragment fragmentoAtual = getSupportFragmentManager().findFragmentByTag("f" + viewPager.getCurrentItem());
-        if (fragmentoAtual instanceof CanvasBlockFragment) {
-            ((CanvasBlockFragment) fragmentoAtual).atualizarDadosIdeia(this.ideia);
+        Fragment frag = getSupportFragmentManager().findFragmentByTag("f" + viewPager.getCurrentItem());
+        if (frag instanceof CanvasBlockFragment) {
+            ((CanvasBlockFragment) frag).atualizarDadosIdeia(this.ideia);
         }
     }
 
-    private void saveProgress(Runnable onComplete) {
+    private void saveProgress(@Nullable Runnable onComplete) {
         if (ideia != null && ideia.getId() != null) {
-            firestoreHelper.updateIdeia(ideia.getId(), ideia, new FirestoreHelper.FirestoreCallback() {
-                @Override
-                public void onSuccess() {
-                    if (onComplete != null) {
-                        onComplete.run();
-                    }
+            firestoreHelper.updateIdeia(ideia.getId(), ideia, r -> {
+                if (!r.isOk()) {
+                    Toast.makeText(this, "Erro ao salvar progresso.", Toast.LENGTH_SHORT).show();
                 }
-                @Override
-                public void onFailure(Exception e) {
-                    Toast.makeText(CanvasIdeiaActivity.this, "Erro ao salvar progresso.", Toast.LENGTH_SHORT).show();
-                    if (onComplete != null) {
-                        onComplete.run();
-                    }
-                }
-            }, this);
+                if (onComplete != null) onComplete.run();
+            });
         } else if (onComplete != null) {
             onComplete.run();
         }
     }
 
     private void saveAndFinish(boolean shouldFinish) {
-        // Verifica se a ideia existe e se o seu status é "RASCUNHO"
         if (ideia != null && ideia.getId() != null && "RASCUNHO".equals(ideia.getStatus())) {
-
-            // Se for um rascunho, salva e mostra a mensagem
-            firestoreHelper.updateIdeia(ideia.getId(), ideia, new FirestoreHelper.FirestoreCallback() {
-                @Override
-                public void onSuccess() {
-                    Toast.makeText(CanvasIdeiaActivity.this, "Rascunho salvo com sucesso!", Toast.LENGTH_LONG).show();
-                    if (shouldFinish) {
-                        finish();
-                    }
+            firestoreHelper.updateIdeia(ideia.getId(), ideia, r -> {
+                if (r.isOk()) {
+                    Toast.makeText(this, "Rascunho salvo com sucesso!", Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(this, "Erro ao salvar o rascunho.", Toast.LENGTH_SHORT).show();
                 }
-                @Override
-                public void onFailure(Exception e) {
-                    Toast.makeText(CanvasIdeiaActivity.this, "Erro ao salvar o rascunho.", Toast.LENGTH_SHORT).show();
-                    if (shouldFinish) {
-                        finish();
-                    }
-                }
-            }, this);
+                if (shouldFinish) finish();
+            });
         } else if (shouldFinish) {
-            // Para qualquer outro caso (ideia publicada, mentor a sair, etc.),
-            // simplesmente fecha a tela sem salvar ou mostrar nenhuma mensagem.
             finish();
         }
     }
@@ -644,14 +578,12 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements CanvasInic
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (ideiaListener != null) {
-            ideiaListener.remove();
-        }
+        if (ideiaListener != null) ideiaListener.remove();
     }
 
     @Override
     public void onFieldsChanged(Ideia ideiaAtualizada) {
-        if (this.ideia != null) {
+        if (this.ideia != null && ideiaAtualizada != null) {
             this.ideia.setNome(ideiaAtualizada.getNome());
             this.ideia.setDescricao(ideiaAtualizada.getDescricao());
         }
@@ -659,6 +591,6 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements CanvasInic
 
     @Override
     public void onPostItAdded() {
-        // A UI atualiza-se via listener, não é preciso fazer nada aqui.
+        // atualizações chegam pelo listener do Firestore
     }
 }

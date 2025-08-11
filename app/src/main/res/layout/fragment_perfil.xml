@@ -1,76 +1,75 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/my_deep_glow"
+    xmlns:tools="http://schemas.android.com/tools"
     android:fillViewport="true"
-    tools:context=".PerfilFragment">
+    android:background="@drawable/my_deep_glow">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:paddingBottom="24dp">
 
-        <View
-            android:id="@+id/header_background"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:background="@drawable/glass_fume_background"
-            android:alpha="0.1"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toBottomOf="@id/text_view_email_perfil"
-            android:layout_marginBottom="-30dp"/>
-
+        <!-- Botão sair (mesmo ID) -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_sair"
             style="@style/Widget.Material3.Button.IconButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:layout_marginTop="16dp"
             android:layout_marginEnd="16dp"
+            android:contentDescription="@string/sair_conta"
+            android:insetLeft="0dp"
+            android:insetRight="0dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:background="@drawable/bg_icon_circle_tonal"
+            app:cornerRadius="20dp"
             app:icon="@drawable/ic_logout"
-            app:iconTint="?attr/colorError"
-            app:iconSize="28dp"
-            android:contentDescription="Sair da Conta"
-            android:elevation="10dp"
+            app:iconSize="20dp"
+            app:iconTint="@color/colorError"
+            app:rippleColor="@android:color/transparent"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            />
+            app:layout_constraintEnd_toEndOf="parent"/>
 
+        <!-- AVATAR com aro premium -->
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/image_view_perfil"
-            android:layout_width="100dp"
-            android:layout_height="100dp"
-            android:layout_marginTop="32dp"
-            android:elevation="8dp"
+            android:layout_width="112dp"
+            android:layout_height="112dp"
+            android:layout_marginTop="72dp"
             android:padding="4dp"
             android:scaleType="centerCrop"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
             app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
-            app:strokeColor="@color/primary_color"
+            app:strokeColor="@color/colorSecondary"
             app:strokeWidth="2dp"
-            tools:src="@drawable/ic_person" />
+            android:contentDescription="@string/perfil_foto"
+            android:elevation="10dp"
+            android:background="@drawable/avatar_glow_ring"
+            />
 
+        <!-- Nome (mesmo ID) -->
         <TextView
             android:id="@+id/text_view_nome_perfil"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
             android:layout_marginHorizontal="24dp"
-            android:layout_marginTop="16dp"
             android:gravity="center"
             android:textAppearance="?attr/textAppearanceHeadlineSmall"
             android:textStyle="bold"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
+            android:textColor="@color/colorSurface"
             app:layout_constraintTop_toBottomOf="@id/image_view_perfil"
-            tools:text="Nome Incrível do Usuário" />
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            tools:text="JEFERSON SCHEIBLER" />
 
+        <!-- Email (mesmo ID) -->
         <TextView
             android:id="@+id/text_view_email_perfil"
             android:layout_width="0dp"
@@ -78,24 +77,63 @@
             android:layout_marginTop="4dp"
             android:gravity="center"
             android:textAppearance="?attr/textAppearanceBodyMedium"
-            android:textColor="?android:attr/textColorSecondary"
-            app:layout_constraintEnd_toEndOf="@id/text_view_nome_perfil"
-            app:layout_constraintStart_toStartOf="@id/text_view_nome_perfil"
+            android:textColor="@color/colorSurface"
+            android:alpha="0.92"
             app:layout_constraintTop_toBottomOf="@id/text_view_nome_perfil"
-            tools:text="usuario.premium@email.com" />
+            app:layout_constraintStart_toStartOf="@id/text_view_nome_perfil"
+            app:layout_constraintEnd_toEndOf="@id/text_view_nome_perfil"
+            tools:text="jeff@example.com" />
 
+        <!-- BADGES (novos, opcionais) -->
+        <LinearLayout
+            android:id="@+id/badges_row"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginTop="12dp"
+            android:paddingHorizontal="24dp"
+            android:clipToPadding="false"
+            android:showDividers="middle"
+            android:divider="@drawable/divider_badge_gap"
+            app:layout_constraintTop_toBottomOf="@id/text_view_email_perfil"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
 
+            <TextView
+                android:id="@+id/chip_premium"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_badge_primary"
+                android:text="Premium"
+                android:textStyle="bold"
+                android:textColor="@color/colorPrimary"
+                android:fontFamily="sans-serif-medium"/>
+
+            <TextView
+                android:id="@+id/chip_member_since"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_badge_neutral"
+                android:text="Membro há 1 mês"
+                android:textColor="@color/colorOnSurface"
+                android:alpha="0.9"
+                android:fontFamily="sans-serif-medium"/>
+        </LinearLayout>
+
+        <!-- CARD DO PLANO (mesmos IDs dentro) -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/card_perfil"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="24dp"
-            android:layout_marginTop="24dp"
+            android:layout_marginHorizontal="20dp"
+            android:layout_marginTop="18dp"
+            app:cardElevation="0dp"
             app:strokeWidth="0dp"
             app:cardBackgroundColor="@android:color/transparent"
-            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/badges_row"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/text_view_email_perfil">
+            app:layout_constraintEnd_toEndOf="parent">
 
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
@@ -108,21 +146,21 @@
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:src="@drawable/ic_rocket_launch"
+                    app:tint="@color/colorPrimary"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:tint="@color/primary_color" />
+                    app:layout_constraintTop_toTopOf="parent" />
 
                 <TextView
                     android:id="@+id/text_view_nome_plano"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:layout_marginStart="14dp"
                     android:textStyle="bold"
-                    android:textColor="@color/white"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textColor="@color/colorOnSurface"
                     app:layout_constraintStart_toEndOf="@id/icon_plano"
-                    app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintTop_toTopOf="@id/icon_plano"
+                    app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintBottom_toTopOf="@id/text_view_validade_plano"
                     app:layout_constraintVertical_chainStyle="packed"
                     tools:text="Plano Premium" />
@@ -131,12 +169,13 @@
                     android:id="@+id/text_view_validade_plano"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:textColor="@color/white"
+                    android:textColor="@color/colorOnSurface"
+                    android:alpha="0.9"
                     app:layout_constraintStart_toStartOf="@id/text_view_nome_plano"
                     app:layout_constraintEnd_toEndOf="@id/text_view_nome_plano"
                     app:layout_constraintTop_toBottomOf="@id/text_view_nome_plano"
                     app:layout_constraintBottom_toBottomOf="@id/icon_plano"
-                    tools:text="Válido até 24/12/2025" />
+                    tools:text="Válido até 08/09/2025" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnGerenciarAssinatura"
@@ -145,77 +184,172 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
                     android:paddingVertical="12dp"
-                    android:text="Gerenciar assinatura"
-                    android:textColor="@color/primary_color"
+                    android:text="@string/gerenciar_assinatura"
+                    android:textAllCaps="false"
+                    android:textColor="@color/colorPrimary"
+                    app:iconTint="@color/colorPrimary"
+                    app:strokeColor="@color/colorPrimary"
+                    app:strokeWidth="1dp"
                     app:layout_constraintTop_toBottomOf="@id/icon_plano"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"/>
+                    app:layout_constraintEnd_toEndOf="parent" />
 
             </androidx.constraintlayout.widget.ConstraintLayout>
-
         </com.google.android.material.card.MaterialCardView>
 
-
-        <TextView
-            android:id="@+id/header_rascunhos"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
-            android:text="Meus rascunhos"
-            android:textAppearance="?attr/textAppearanceTitleLarge"
-            android:textStyle="bold"
-            app:layout_constraintStart_toStartOf="@id/card_perfil"
-            app:layout_constraintEnd_toEndOf="@id/card_perfil"
-            app:layout_constraintTop_toBottomOf="@id/card_perfil" />
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recycler_view_rascunhos"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:nestedScrollingEnabled="false"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/header_rascunhos"
-            android:clipToPadding="false"
-            android:paddingHorizontal="16dp"
-            tools:itemCount="2"
-            tools:listitem="@layout/item_ideia" />
-
+        <!-- MÉTRICAS RÁPIDAS (novas) -->
         <LinearLayout
-            android:id="@+id/view_empty_state_rascunhos"
-            android:layout_width="wrap_content"
+            android:id="@+id/row_stats"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:visibility="gone"
-            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="18dp"
+            android:layout_marginHorizontal="20dp"
+            android:orientation="horizontal"
+            app:layout_constraintTop_toBottomOf="@id/card_perfil"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/header_rascunhos"
-            tools:visibility="visible">
+            app:layout_constraintEnd_toEndOf="parent">
 
-            <com.airbnb.lottie.LottieAnimationView
-                android:layout_width="180dp"
-                android:layout_height="180dp"
-                app:lottie_autoPlay="true"
-                app:lottie_loop="true"
-                app:lottie_rawRes="@raw/anim_rascunhos" />
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="0dp"
+                android:layout_height="72dp"
+                android:layout_weight="1"
+                app:cardBackgroundColor="@android:color/transparent"
+                app:strokeWidth="0dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:background="@drawable/glass_fume_background"
+                    android:gravity="center">
+                    <TextView
+                        android:id="@+id/stat_publicadas"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="—"
+                        android:textStyle="bold"
+                        android:textSize="18sp"
+                        android:textColor="@color/colorOnSurface"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/ideias_publicadas"
+                        android:textSize="12sp"
+                        android:alpha="0.75"
+                        android:textColor="@color/colorOnSurface"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="As grandes ideias começam aqui."
-                android:textAppearance="?attr/textAppearanceBodyLarge"
-                android:textColor="?android:attr/textColorSecondary"/>
+            <Space android:layout_width="12dp" android:layout_height="0dp"/>
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="Crie o seu primeiro rascunho!"
-                android:textAppearance="?attr/textAppearanceBodyMedium"
-                android:textColor="?attr/colorPrimary"/>
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="0dp"
+                android:layout_height="72dp"
+                android:layout_weight="1"
+                app:cardBackgroundColor="@android:color/transparent"
+                app:strokeWidth="0dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:background="@drawable/glass_fume_background"
+                    android:gravity="center">
+                    <TextView
+                        android:id="@+id/stat_seguindo"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="—"
+                        android:textStyle="bold"
+                        android:textSize="18sp"
+                        android:textColor="@color/colorOnSurface"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/mentores_seguidos"
+                        android:textSize="12sp"
+                        android:alpha="0.75"
+                        android:textColor="@color/colorOnSurface"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <Space android:layout_width="12dp" android:layout_height="0dp"/>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="0dp"
+                android:layout_height="72dp"
+                android:layout_weight="1"
+                app:cardBackgroundColor="@android:color/transparent"
+                app:strokeWidth="0dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:background="@drawable/glass_fume_background"
+                    android:gravity="center">
+                    <TextView
+                        android:id="@+id/stat_dias"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="—"
+                        android:textStyle="bold"
+                        android:textSize="18sp"
+                        android:textColor="@color/colorOnSurface"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/dias_de_conta"
+                        android:textSize="12sp"
+                        android:alpha="0.75"
+                        android:textColor="@color/colorOnSurface"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
+
+        <!-- AÇÕES RÁPIDAS (novas, você decide o fluxo) -->
+        <LinearLayout
+            android:id="@+id/row_actions"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:layout_marginHorizontal="20dp"
+            android:orientation="vertical"
+            app:layout_constraintTop_toBottomOf="@id/row_stats"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnEditarPerfil"
+                style="@style/App.Button.Outlined.LessRounded"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/editar_perfil"
+                app:icon="@drawable/ic_edit"
+                app:iconPadding="10dp"
+                android:textAllCaps="false"/>
+
+            <Space android:layout_width="0dp" android:layout_height="10dp"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPrivacidade"
+                style="@style/App.Button.Outlined.LessRounded"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/privacidade_e_seguranca"
+                app:icon="@drawable/ic_shield"
+                app:iconPadding="10dp"
+                android:textAllCaps="false"/>
+
+            <Space android:layout_width="0dp" android:layout_height="10dp"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAjuda"
+                style="@style/App.Button.Outlined.LessRounded"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/ajuda_e_suporte"
+                app:icon="@drawable/ic_help"
+                app:iconPadding="10dp"
+                android:textAllCaps="false"/>
+        </LinearLayout>
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>

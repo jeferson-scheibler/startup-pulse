@@ -10,7 +10,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -19,9 +18,11 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.airbnb.lottie.LottieAnimationView;
+import com.example.startuppulse.common.Result;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 
+import java.util.List;
 import java.util.Map;
 
 public class IdeiaStatusFragment extends Fragment {
@@ -53,10 +54,9 @@ public class IdeiaStatusFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        if (ideia == null || !isAdded()) return;
 
-        if (ideia == null) return;
-
-        // Mapeamento dos componentes
+        // Views
         TextView textIdeiaTitle = view.findViewById(R.id.text_ideia_title);
         TextView textIdeiaDescription = view.findViewById(R.id.text_ideia_description);
         LottieAnimationView lottieAnimation = view.findViewById(R.id.lottie_status_animation);
@@ -70,33 +70,33 @@ public class IdeiaStatusFragment extends Fragment {
         TextView textAvaliacaoStatus = view.findViewById(R.id.text_avaliacao_status);
         MaterialButton btnVerFeedback = view.findViewById(R.id.btn_ver_feedback);
 
-        // Preenche as informações básicas
+        // Dados básicos
         textIdeiaTitle.setText(ideia.getNome());
         textIdeiaDescription.setText(ideia.getDescricao());
 
-        // Lógica para o status do Mentor
-        boolean hasMentor = (ideia.getMentorId() != null && !ideia.getMentorId().isEmpty());
+        // Status do Mentor
+        boolean hasMentor = ideia.getMentorId() != null && !ideia.getMentorId().isEmpty();
         if (hasMentor) {
             int colorActive = ContextCompat.getColor(requireContext(), R.color.primary_color);
             cardMentor.setStrokeColor(colorActive);
             iconMentor.setImageTintList(ColorStateList.valueOf(colorActive));
-            // Busca o nome do mentor...
-            FirestoreHelper firestoreHelper = new FirestoreHelper();
-            firestoreHelper.findMentorById(ideia.getMentorId(), new FirestoreHelper.MentorListener() {
-                @Override
-                public void onMentorEncontrado(Mentor mentor) {
-                    textMentorName.setText(mentor.getNome());
+
+            new FirestoreHelper().findMentorById(ideia.getMentorId(), r -> {
+                if (!isAdded()) return;
+                if (r.isOk() && r.data != null) {
+                    textMentorName.setText(r.data.getNome());
+                } else if (r.isOk()) {
+                    textMentorName.setText("Mentor não encontrado");
+                } else {
+                    textMentorName.setText("Erro de conexão");
                 }
-                @Override
-                public void onNenhumMentorEncontrado() { textMentorName.setText("Mentor não encontrado"); }
-                @Override
-                public void onError(Exception e) { textMentorName.setText("Erro de conexão"); }
             });
+
         } else {
             textMentorName.setText("A procurar o mentor ideal...");
         }
 
-        // Lógica para o status da Avaliação
+        // Status da Avaliação
         boolean isAvaliada = "Avaliada".equals(ideia.getAvaliacaoStatus());
         if (isAvaliada) {
             int colorActive = ContextCompat.getColor(requireContext(), R.color.green_success);
@@ -104,54 +104,72 @@ public class IdeiaStatusFragment extends Fragment {
             iconAvaliacao.setImageTintList(ColorStateList.valueOf(colorActive));
             textAvaliacaoStatus.setText("Ideia Avaliada!");
 
-            if (ideia.getAvaliacoes() != null && !ideia.getAvaliacoes().isEmpty()) {
+            List<?> avals = ideia.getAvaliacoes();
+            if (avals != null && !avals.isEmpty()) {
                 btnVerFeedback.setVisibility(View.VISIBLE);
                 btnVerFeedback.setOnClickListener(v -> showFeedbackDialog());
+            } else {
+                btnVerFeedback.setVisibility(View.GONE);
             }
         } else {
             textAvaliacaoStatus.setText("Aguardando avaliação");
+            btnVerFeedback.setVisibility(View.GONE);
         }
 
-        // Define a animação principal
+        // Animação
         if (isAvaliada) {
-            lottieAnimation.setAnimation(R.raw.anim_sucess); // Animação de troféu/sucesso
+            lottieAnimation.setAnimation(R.raw.anim_sucess);
         } else if (hasMentor) {
-            lottieAnimation.setAnimation(R.raw.anim_analise_mentor); // Animação de análise
+            lottieAnimation.setAnimation(R.raw.anim_analise_mentor);
         } else {
-            lottieAnimation.setAnimation(R.raw.anim_mapa_procurando); // Animação de busca
+            lottieAnimation.setAnimation(R.raw.anim_mapa_procurando);
         }
         lottieAnimation.playAnimation();
     }
 
     private void showFeedbackDialog() {
-        if (getContext() == null || ideia.getAvaliacoes() == null || ideia.getAvaliacoes().isEmpty()) return;
+        if (!isAdded() || ideia.getAvaliacoes() == null || ideia.getAvaliacoes().isEmpty()) return;
 
-        SpannableStringBuilder formattedFeedback = new SpannableStringBuilder();
+        SpannableStringBuilder formatted = new SpannableStringBuilder();
 
-        for (Avaliacao avaliacao : ideia.getAvaliacoes()) {
-            String criterio = avaliacao.getCriterio();
-            double nota = avaliacao.getNota();
-            String feedbackTexto = avaliacao.getFeedback();
+        for (Object item : ideia.getAvaliacoes()) {
+            String criterio = null;
+            String feedback = null;
+            double nota = -1;
 
-            if (criterio != null) {
-                // Adiciona o título do critério em negrito
-                String criterioTitle = criterio + ": " + nota + "/10\n";
-                int start = formattedFeedback.length();
-                formattedFeedback.append(criterioTitle);
-                formattedFeedback.setSpan(new StyleSpan(android.graphics.Typeface.BOLD), start, formattedFeedback.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            // Aceita tanto Avaliacao (objeto) quanto Map (persistido pelo Firestore)
+            if (item instanceof Avaliacao) {
+                Avaliacao av = (Avaliacao) item;
+                criterio = av.getCriterio();
+                feedback = av.getFeedback();
+                nota = av.getNota();
+            } else if (item instanceof Map) {
+                Map<?, ?> m = (Map<?, ?>) item;
+                Object c = m.get("criterio");
+                Object f = m.get("feedback");
+                Object n = m.get("nota");
+                if (c instanceof String) criterio = (String) c;
+                if (f instanceof String) feedback = (String) f;
+                if (n instanceof Number) nota = ((Number) n).doubleValue();
+            }
 
-                // Adiciona o feedback em texto normal
-                if (feedbackTexto != null && !feedbackTexto.trim().isEmpty()) {
-                    formattedFeedback.append(feedbackTexto + "\n\n");
-                } else {
-                    formattedFeedback.append("Nenhum feedback específico.\n\n");
-                }
+            if (criterio == null) continue;
+
+            String header = criterio + (nota >= 0 ? (": " + nota + "/10") : "") + "\n";
+            int start = formatted.length();
+            formatted.append(header);
+            formatted.setSpan(new StyleSpan(android.graphics.Typeface.BOLD), start, formatted.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+            if (feedback != null && !feedback.trim().isEmpty()) {
+                formatted.append(feedback).append("\n\n");
+            } else {
+                formatted.append("Nenhum feedback específico.\n\n");
             }
         }
 
         new AlertDialog.Builder(requireContext())
                 .setTitle("Feedback do Mentor")
-                .setMessage(formattedFeedback)
+                .setMessage(formatted)
                 .setPositiveButton("Entendi", null)
                 .show();
     }

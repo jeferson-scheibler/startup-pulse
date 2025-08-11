@@ -10,6 +10,7 @@
     android:background="@drawable/my_deep_glow"
     tools:context=".MainActivity">
 
+    <!-- Barra de aviso offline -->
     <TextView
         android:id="@+id/offline_indicator_bar"
         android:layout_width="0dp"
@@ -21,46 +22,50 @@
         android:textColor="@color/white"
         android:textSize="12sp"
         android:visibility="gone"
-        app:layout_constraintBottom_toTopOf="@id/nav_host_fragment"
+        app:layout_constraintBottom_toTopOf="@id/fragment_container"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         tools:visibility="visible" />
 
-    <androidx.fragment.app.FragmentContainerView
-        android:id="@+id/nav_host_fragment"
+    <!-- Container dos fragments (tela principal) -->
+    <FrameLayout
+        android:id="@+id/fragment_container"
         android:layout_width="0dp"
         android:layout_height="0dp"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/bottom_nav_container"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <!-- FAB: adicionar ideia -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_add_idea"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="24dp"
         android:layout_marginBottom="16dp"
-        app:backgroundTint="@color/primary_color"
-        app:tint="@color/secondary_color"
         android:contentDescription="@string/fab_content_desc"
         android:src="@drawable/ic_add"
+        app:backgroundTint="@color/primary_color"
+        app:tint="@color/secondary_color"
         app:layout_constraintBottom_toTopOf="@id/bottom_nav_container"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <!-- FAB: adicionar mentor (visível apenas quando aplicável) -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_add_mentor"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="24dp"
         android:layout_marginBottom="16dp"
-        app:backgroundTint="@color/primary_color"
-        app:tint="@color/secondary_color"
         android:contentDescription="@string/fab_content_desc2"
         android:src="@drawable/ic_add"
+        app:backgroundTint="@color/primary_color"
+        app:tint="@color/secondary_color"
         app:layout_constraintBottom_toTopOf="@id/bottom_nav_container"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <!-- Barra inferior custom -->
     <LinearLayout
         android:id="@+id/bottom_nav_container"
         android:layout_width="0dp"

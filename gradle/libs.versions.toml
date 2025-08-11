@@ -20,6 +20,8 @@ osmdroidAndroid = "6.1.18"
 playServicesAuth = "21.3.0"
 swiperefreshlayout = "1.1.0"
 playServicesLocation = "21.3.0"
+firebaseConfig = "23.0.0"
+preference = "1.2.1"
 
 [libraries]
 compiler = { module = "com.github.bumptech.glide:compiler", version.ref = "glide" }
@@ -44,6 +46,8 @@ osmdroid-android = { module = "org.osmdroid:osmdroid-android", version.ref = "os
 play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
 androidx-swiperefreshlayout = { group = "androidx.swiperefreshlayout", name = "swiperefreshlayout", version.ref = "swiperefreshlayout" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+firebase-config = { group = "com.google.firebase", name = "firebase-config", version.ref = "firebaseConfig" }
+androidx-preference = { group = "androidx.preference", name = "preference", version.ref = "preference" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

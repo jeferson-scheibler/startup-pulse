@@ -15,19 +15,66 @@
     <string name="login_button_google">Entrar com Google</string>
     <string name="login_icon_google_description">Ícone do Google</string>
     <string name="default_web_client_id" translatable="false">SEU_ID_GERADO_AQUI.apps.googleusercontent.com</string>
+
     <string name="nova_ideia_label_titulo">Título da sua Ideia</string>
     <string name="nova_ideia_hint_titulo">Um nome curto e impactante</string>
     <string name="nova_ideia_label_descricao">Descreva sua Ideia</string>
     <string name="nova_ideia_hint_descricao">Detalhe como sua ideia funciona...</string>
     <string name="nova_ideia_botao_publicar">Publicar Ideia</string>
+
     <string name="menu_ideias">Ideias</string>
     <string name="menu_perfil">Perfil</string>
     <string name="menu_mentores">Mentores</string>
+
     <string name="fab_content_desc">Adicionar nova ideia</string>
     <string name="fab_content_desc2">Adicionar novo mentor</string>
+
     <string name="ideias_empty_title">O Universo Aguarda</string>
     <string name="ideias_empty_subtitle">Nenhuma faísca foi lançada ainda. Seja o primeiro a compartilhar sua grande ideia com o mundo!</string>
+
     <string name="canvas_inicio_titulo">Vamos Começar a Jornada</string>
     <string name="nova_ideia_hint_inspirador_titulo">Qual o nome da sua faísca?</string>
     <string name="canvas_inicio_hint_descricao">Descreva a ideia em uma frase</string>
+
+    <!-- ===== Novas strings: Canvas Início ===== -->
+    <string name="cd_anim_boas_vindas">Animação de boas-vindas</string>
+    <string name="canvas_inicio_helper_titulo">Seja claro e objetivo (até 60 caracteres)</string>
+    <string name="canvas_inicio_helper_descricao">Explique em poucas linhas o propósito da sua ideia (até 200 caracteres)</string>
+
+    <!-- ===== Novas strings: Canvas Bloco ===== -->
+    <string name="cd_icone_etapa">Ícone da etapa</string>
+    <string name="empty_postit_title">Nenhum ponto-chave aqui.</string>
+    <string name="empty_postit_subtitle">Toque em “+” para adicionar o primeiro.</string>
+    <string name="cd_adicionar_postit">Adicionar novo post-it</string>
+
+    <!-- ===== Novas strings: Ambiente Check ===== -->
+    <string name="cd_indicador_luz">Indicador de nível de luz do ambiente</string>
+    <string name="cd_indicador_som">Indicador de nível de ruído do ambiente</string>
+    <string name="btn_pular_calibracao">Pular calibração</string>
+    <string name="privacy_note_mic">Usamos o microfone apenas para medir o nível de ruído; nada é gravado ou enviado.</string>
+
+    <!-- ===== Filtro de Mentores ===== -->
+    <string name="todas_as_areas">Todas as áreas</string>
+    <string name="meus_rascunhos">Meus rascunhos</string>
+    <string name="gerenciar_assinatura">Gerenciar assinatura</string>
+    <string name="perfil_foto">Foto perfil</string>
+    <string name="sair_conta">Sair da conta</string>
+
+    <string name="empty_rascunhos_title">As grandes ideias começam aqui.</string>
+    <string name="empty_rascunhos_subtitle">Crie o seu primeiro rascunho!</string>
+    <string name="status_avaliacao_content_desc">Status da avaliação</string>
+    <string name="mentor_avatar_content_desc">Foto do mentor</string>
+    <string name="mentor_verificado_content_desc">Mentor verificado</string>
+    <string name="ver_detalhes_mentor_content_desc">Ver detalhes do mentor</string>
+    <string name="avaliacao_titulo">Tela de avaliação\n</string>
+
+    <string name="premium_label">Premium</string>
+    <string name="ideias_publicadas">Publicadas</string>
+    <string name="mentores_seguidos">Seguindo</string>
+    <string name="dias_de_conta">Dias</string>
+    <string name="editar_perfil">Editar perfil</string>
+    <string name="privacidade_e_seguranca">Privacidade e segurança</string>
+    <string name="ajuda_e_suporte">Ajuda e suporte</string>
+    <string name="limpar">Limpar</string>
+    <string name="filtrar_por_area">Filtro por área</string>
 </resources>
