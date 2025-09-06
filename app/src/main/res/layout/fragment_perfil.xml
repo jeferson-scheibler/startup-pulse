@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     xmlns:tools="http://schemas.android.com/tools"
     android:fillViewport="true"
-    android:background="@drawable/my_deep_glow">
+    android:background="@color/colorSurface">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
@@ -63,7 +63,7 @@
             android:gravity="center"
             android:textAppearance="?attr/textAppearanceHeadlineSmall"
             android:textStyle="bold"
-            android:textColor="@color/colorSurface"
+            android:textColor="@color/colorOnSurface"
             app:layout_constraintTop_toBottomOf="@id/image_view_perfil"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
@@ -77,7 +77,7 @@
             android:layout_marginTop="4dp"
             android:gravity="center"
             android:textAppearance="?attr/textAppearanceBodyMedium"
-            android:textColor="@color/colorSurface"
+            android:textColor="@color/colorOnSurface"
             android:alpha="0.92"
             app:layout_constraintTop_toBottomOf="@id/text_view_nome_perfil"
             app:layout_constraintStart_toStartOf="@id/text_view_nome_perfil"

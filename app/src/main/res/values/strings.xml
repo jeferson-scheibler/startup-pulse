@@ -77,4 +77,45 @@
     <string name="ajuda_e_suporte">Ajuda e suporte</string>
     <string name="limpar">Limpar</string>
     <string name="filtrar_por_area">Filtro por área</string>
+    <string name="listar_mentoria_publicamente">Listar minha mentoria publicamente</string>
+    <string name="sobre_mim">Sobre mim</string>
+    <string name="posso_ajudar_com">Posso ajudar com…</string>
+
+    <string name="areas_necessarias_titulo">De quais áreas você precisa?</string>
+    <string name="titulo_detalhe_mentor">Detalhes do mentor</string>
+    <string-array name="areas_predefinidas">
+        <item>Marketing</item>
+        <item>Vendas</item>
+        <item>Finanças</item>
+        <item>Estratégia</item>
+        <item>Produto</item>
+        <item>Tecnologia</item>
+        <item>Operações</item>
+        <item>Jurídico</item>
+        <item>RH</item>
+        <item>UX/UI</item>
+    </string-array>
+
+    <string name="mentores_mapa_content_desc">Mapa com distribuição de mentores</string>
+    <string name="empty_mentores_title">Nenhum mentor encontrado</string>
+    <string name="empty_mentores_subtitle">Ajuste o filtro de área ou puxe para atualizar</string>
+    <string name="selecione_uma_rea_de_interesse">Selecione uma área de interesse.</string>
+    <string name="abrir_lista">Abrir lista</string>
+    <string name="voc_est_offline">Você está offline, verifique sua conexão!</string>
+
+    <!-- IdeiasFragment -->
+    <string name="ideias_header_title">Explore as Ideias</string>
+    <string name="empty_ideias_title">Nenhuma ideia publicada</string>
+    <string name="empty_ideias_subtitle">Parece que ninguém publicou uma ideia ainda. Que tal ser o primeiro?</string>
+    <string name="empty_ideias_anim_content_desc">Animação ilustrativa para estado vazio de ideias</string>
+
+    <!-- IdeiasHostFragment -->
+    <string name="ideas_tabs_content_desc">Abas de navegação de ideias</string>
+    <string name="ideas_pager_content_desc">Lista paginada de ideias por aba</string>
+
+    <!-- Títulos das abas (use no TabLayoutMediator) -->
+    <string name="ideas_tab_published">Publicadas</string>
+    <string name="ideas_tab_drafts">Rascunhos</string>
+    <string name="nenhum_rascunho_por_enquanto">Nenhum rascunho por enquanto</string>
+    <string name="crie_uma_ideia_para_come_ar">Crie uma ideia para começar</string>
 </resources>

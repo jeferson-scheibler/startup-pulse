@@ -4,7 +4,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".MeusRascunhosFragment">
+    tools:context=".MeusRascunhosFragment"
+    android:background="@color/colorSurface">
 
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipeRefreshLayout"
@@ -36,24 +37,27 @@
             android:layout_width="72dp"
             android:layout_height="72dp"
             android:src="@drawable/ic_lightbulb"
+            android:textColor="@color/colorOnSurface"
             android:alpha="0.6" />
 
         <TextView
             android:layout_marginTop="12dp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Nenhum rascunho por enquanto"
+            android:text="@string/nenhum_rascunho_por_enquanto"
+            android:textAppearance="@style/Text.TitleLarge"
             android:textSize="16sp"
-            android:textColor="@android:color/white" />
+            android:textColor="@color/colorOnSurface"  />
 
         <TextView
             android:layout_marginTop="4dp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Crie uma ideia para começar"
+            android:text="@string/crie_uma_ideia_para_come_ar"
+            android:textAppearance="@style/Text.BodyMedium"
             android:textSize="14sp"
             android:alpha="0.8"
-            android:textColor="@android:color/white" />
+            android:textColor="@color/colorOnSurface" />
     </LinearLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

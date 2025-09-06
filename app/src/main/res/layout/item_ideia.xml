@@ -13,22 +13,23 @@
     android:minHeight="64dp"
     app:cardCornerRadius="16dp"
     app:cardElevation="0dp"
-    app:cardUseCompatPadding="true"
-    app:rippleColor="?attr/colorOnSecondary"
+    app:cardUseCompatPadding="false"
+    app:rippleColor="@color/rippleNeutral"
     app:strokeColor="?attr/colorOutline"
-    app:strokeWidth="1dp">
+    app:strokeWidth="1dp"
+    app:cardBackgroundColor="@color/colorSurface">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:paddingVertical="12dp">
 
-        <!-- Destaque lateral quando o usuário é mentor desta ideia -->
+        <!-- Destaque lateral (quando o usuário é mentor) -->
         <View
             android:id="@+id/mentor_highlight_view"
             android:layout_width="6dp"
             android:layout_height="0dp"
-            android:background="?attr/colorPrimary"
+            android:background="@color/colorSecondary"
             android:visibility="gone"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
@@ -80,12 +81,11 @@
                     android:ellipsize="end"
                     tools:text="Por: Nome do Empreendedor" />
 
-                <!-- Espaçador flexível quando o título quebra linha -->
                 <View
                     android:layout_width="8dp"
                     android:layout_height="0dp" />
 
-                <!-- Ícone de status (Avaliada / Em análise) -->
+                <!-- Ícone de status (ex.: Em análise / Avaliada) -->
                 <ImageView
                     android:id="@+id/icon_status_avaliacao"
                     android:layout_width="18dp"
@@ -93,7 +93,7 @@
                     android:layout_marginStart="8dp"
                     android:contentDescription="@string/status_avaliacao_content_desc"
                     android:visibility="gone"
-                    app:tint="?attr/colorPrimary"
+                    app:tint="@color/colorPrimary"
                     tools:src="@drawable/ic_hourglass"
                     tools:visibility="visible" />
             </LinearLayout>

@@ -238,6 +238,13 @@ public class CanvasIdeiaActivity extends AppCompatActivity
 
             switch (etapaKey) {
                 case "INICIO":
+                    Fragment current = getSupportFragmentManager()
+                            .findFragmentByTag( "f" + viewPager.getCurrentItem());
+                    if (current instanceof CanvasInicioFragment) {
+                        CanvasInicioFragment inicio = (CanvasInicioFragment) current;
+                        if (!inicio.validateSelectionOrToast()) return;
+                        inicio.persistAreasToIdeia();
+                    }
                     validateAndAdvanceFromFirstPage();
                     break;
                 case "AMBIENTE_CHECK":
@@ -393,7 +400,7 @@ public class CanvasIdeiaActivity extends AppCompatActivity
                         if (addresses != null && !addresses.isEmpty()) {
                             String cidade = addresses.get(0).getLocality();
                             String estado = addresses.get(0).getAdminArea();
-                            procurarMentorNaCidade(cidade, estado);
+                            procurarMentorComAreasOuProximidade(cidade, estado);
                         } else {
                             publicarIdeiaSemMentor();
                         }
@@ -404,6 +411,49 @@ public class CanvasIdeiaActivity extends AppCompatActivity
                     publicarIdeiaSemMentor();
                 }
             }, 2000);
+        });
+    }
+
+    private void procurarMentorComAreasOuProximidade(String cidade, String estado) {
+        List<String> areas = (ideia != null) ? ideia.getAreasNecessarias() : null;
+        String ownerId = (ideia != null) ? ideia.getOwnerId() : null;
+
+        // Se não há áreas, mantém o fluxo legado (proximidade)
+        if (areas == null || areas.isEmpty()) { procurarMentorNaCidade(cidade, estado); return; }
+
+        updateLoadingDialog("A procurar mentores por área em " + cidade + "…");
+        firestoreHelper.findMentoresByAreasInCity(areas, cidade, ownerId, rCity -> {
+            if (!rCity.isOk()) { hideLoadingDialog(); Toast.makeText(this, "Erro ao procurar mentor.", Toast.LENGTH_SHORT).show(); return; }
+            List<Mentor> candidatosCidade = rCity.data != null ? rCity.data : new ArrayList<>();
+            if (!candidatosCidade.isEmpty()) {
+                List<Mentor> ordenados = MentorMatchService.ordenarPorAfinidadeELocal(candidatosCidade, areas, cidade, estado);
+                publicarIdeiaComMentor(ordenados.get(0).getId());
+                return;
+            }
+            // Estado
+            updateLoadingDialog("Sem mentor por área na cidade. A expandir para " + estado + "…");
+            firestoreHelper.findMentoresByAreasInState(areas, estado, ownerId, rUf -> {
+                if (!rUf.isOk()) { hideLoadingDialog(); Toast.makeText(this, "Erro ao procurar mentor.", Toast.LENGTH_SHORT).show(); return; }
+                List<Mentor> candidatosEstado = rUf.data != null ? rUf.data : new ArrayList<>();
+                if (!candidatosEstado.isEmpty()) {
+                    List<Mentor> ordenados = MentorMatchService.ordenarPorAfinidadeELocal(candidatosEstado, areas, cidade, estado);
+                    publicarIdeiaComMentor(ordenados.get(0).getId());
+                    return;
+                }
+                // Global por área
+                updateLoadingDialog("A procurar mentores por área em outras regiões…");
+                firestoreHelper.findMentoresByAreas(areas, ownerId, rAll -> {
+                    if (!rAll.isOk()) { hideLoadingDialog(); Toast.makeText(this, "Erro ao procurar mentor.", Toast.LENGTH_SHORT).show(); return; }
+                    List<Mentor> candidatos = rAll.data != null ? rAll.data : new ArrayList<>();
+                    if (!candidatos.isEmpty()) {
+                        List<Mentor> ordenados = MentorMatchService.ordenarPorAfinidadeELocal(candidatos, areas, cidade, estado);
+                        publicarIdeiaComMentor(ordenados.get(0).getId());
+                    } else {
+                        // fallback final: fluxo antigo por proximidade
+                        procurarMentorNaCidade(cidade, estado);
+                    }
+                });
+            });
         });
     }
 
@@ -586,6 +636,7 @@ public class CanvasIdeiaActivity extends AppCompatActivity
         if (this.ideia != null && ideiaAtualizada != null) {
             this.ideia.setNome(ideiaAtualizada.getNome());
             this.ideia.setDescricao(ideiaAtualizada.getDescricao());
+            this.ideia.setAreasNecessarias(ideiaAtualizada.getAreasNecessarias());
         }
     }
 

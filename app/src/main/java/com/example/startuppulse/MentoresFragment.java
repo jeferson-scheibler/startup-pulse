@@ -1,6 +1,8 @@
 package com.example.startuppulse;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
@@ -11,16 +13,21 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.InputType;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.AnimationUtils;
 import android.widget.ArrayAdapter;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.preference.PreferenceManager; // <- AndroidX
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.startuppulse.common.Result;
 import com.example.startuppulse.databinding.FragmentMentoresBinding;
@@ -52,6 +59,8 @@ public class MentoresFragment extends Fragment implements MentoresAdapter.OnMent
     private String selectedArea = "Todas as áreas";
     private GeoCache geoCache;
 
+    private RecyclerView.ItemDecoration gridSpacingDeco;
+
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -72,10 +81,12 @@ public class MentoresFragment extends Fragment implements MentoresAdapter.OnMent
         setupRecyclerView();
         setupFilterUi();
 
+        addPressAnimation(binding.cardStatMentores);
+        addPressAnimation(binding.cardStatAreas);
+
         // A11y
         binding.mapView.setContentDescription("Mapa com agrupamento de mentores por cidade");
         binding.cardFilter.setContentDescription("Filtro por área de atuação");
-        binding.btnClearAreaFilter.setContentDescription("Limpar filtro por área");
         binding.viewEmptyStateMentores.setContentDescription("Nenhum mentor encontrado para o filtro selecionado");
 
         binding.swipeRefreshLayout.setOnRefreshListener(this::carregarMentores);
@@ -85,7 +96,6 @@ public class MentoresFragment extends Fragment implements MentoresAdapter.OnMent
     @Override
     public void onResume() {
         super.onResume();
-        if (binding != null) binding.mapView.onResume();
         carregarMentores();
     }
 
@@ -110,18 +120,36 @@ public class MentoresFragment extends Fragment implements MentoresAdapter.OnMent
     }
 
     private void setupRecyclerView() {
-        binding.recyclerViewMentores.setLayoutManager(new LinearLayoutManager(requireContext()));
-        mentoresAdapter = new MentoresAdapter(this);
-        binding.recyclerViewMentores.setAdapter(mentoresAdapter);
-        binding.recyclerViewMentores.setContentDescription("Lista de mentores");
+        final RecyclerView rv = binding.recyclerViewMentores;
+
+        // 1 coluna (lista)
+        LinearLayoutManager llm = new LinearLayoutManager(requireContext());
+        rv.setLayoutManager(llm); // <- trocado de Grid para Linear
+
+        if (mentoresAdapter == null) {
+            mentoresAdapter = new MentoresAdapter(this);
+        }
+        rv.setAdapter(mentoresAdapter);
+
+        rv.setHasFixedSize(true);
+        rv.setClipToPadding(false);
+        rv.setItemViewCacheSize(16);
+
+        // Remova decorações de grid se existirem
+        if (gridSpacingDeco != null) {
+            rv.removeItemDecoration(gridSpacingDeco);
+            gridSpacingDeco = null;
+        }
     }
 
     private void setupFilterUi() {
-        // Deixa o campo realmente como dropdown (sem teclado)
+        // Dropdown sem teclado
         binding.autoCompleteAreaFilter.setInputType(InputType.TYPE_NULL);
         binding.autoCompleteAreaFilter.setKeyListener(null);
         binding.autoCompleteAreaFilter.setFocusable(false);
         binding.autoCompleteAreaFilter.setOnClickListener(v -> binding.autoCompleteAreaFilter.showDropDown());
+        binding.iconChevron.setOnClickListener(v -> binding.autoCompleteAreaFilter.showDropDown());
+        binding.filterPill.setOnClickListener(v -> binding.autoCompleteAreaFilter.showDropDown());
 
         // Adapter vazio – será preenchido ao carregar mentores
         ArrayAdapter<String> dropAdapter = new ArrayAdapter<>(
@@ -134,12 +162,6 @@ public class MentoresFragment extends Fragment implements MentoresAdapter.OnMent
         binding.autoCompleteAreaFilter.setOnItemClickListener((parent, view, position, id) -> {
             String chosen = (String) parent.getItemAtPosition(position);
             selectedArea = chosen;
-            aplicarFiltroEAtualizarUI();
-        });
-
-        binding.btnClearAreaFilter.setOnClickListener(v -> {
-            selectedArea = "Todas as áreas";
-            binding.autoCompleteAreaFilter.setText(selectedArea, false);
             aplicarFiltroEAtualizarUI();
         });
     }
@@ -224,8 +246,7 @@ public class MentoresFragment extends Fragment implements MentoresAdapter.OnMent
         binding.viewEmptyStateMentores.setVisibility(vazio ? View.VISIBLE : View.GONE);
         binding.recyclerViewMentores.setVisibility(vazio ? View.GONE : View.VISIBLE);
 
-        mentoresAdapter.submitList(visiveis);
-        adicionarClustersNoMapa(visiveis);
+        onMentoresLoaded(visiveis);
     }
 
     private void adicionarClustersNoMapa(List<Mentor> mentores) {
@@ -331,16 +352,59 @@ public class MentoresFragment extends Fragment implements MentoresAdapter.OnMent
         return new android.graphics.drawable.BitmapDrawable(getResources(), bitmap);
     }
 
+
+    private void onMentoresLoaded(@Nullable List<Mentor> mentores) {
+        if (mentores == null) mentores = new ArrayList<>();
+        mentoresAdapter.submitList(mentores);
+
+        // Atualiza cards
+        updateStats(mentores);
+
+        adicionarClustersNoMapa(mentores);
+    }
+
+    private void updateStats(@NonNull List<Mentor> list) {
+        if (binding == null) return;
+
+        int total = list.size();
+        binding.statCountMentores.setText(String.valueOf(total)); // <- camelCase
+
+        java.util.HashSet<String> areas = new java.util.HashSet<>();
+        for (Mentor m : list) {
+            List<String> a = m.getAreas();
+            if (a == null) continue;
+            for (String s : a) {
+                if (s != null) {
+                    String t = s.trim();
+                    if (!t.isEmpty()) areas.add(t);
+                }
+            }
+        }
+        binding.statCountAreas.setText(String.valueOf(areas.size())); // <- camelCase
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private void addPressAnimation(View v) {
+        v.setOnTouchListener((view, event) -> {
+            switch (event.getAction()) {
+                case android.view.MotionEvent.ACTION_DOWN:
+                    view.animate().translationY(3f).setDuration(100).start();
+                    break;
+                case android.view.MotionEvent.ACTION_UP:
+                case android.view.MotionEvent.ACTION_CANCEL:
+                    view.animate().translationY(0f).setDuration(150).start();
+                    break;
+            }
+            return false;
+        });
+    }
+
     @Override
     public void onMentorClick(Mentor mentor) {
-        if (binding == null) return;
-        Snackbar sb = Snackbar.make(binding.getRoot(), "Clicou em: " + mentor.getNome(), Snackbar.LENGTH_SHORT);
-        sb.addCallback(new Snackbar.Callback() {
-            @Override public void onShown(Snackbar transientBottomBar) {
-                transientBottomBar.getView().announceForAccessibility("Clicou no mentor " + mentor.getNome());
-            }
-        });
-        sb.show();
+        if (getContext() == null) return;
+        Intent i = new Intent(getContext(), MentorDetailActivity.class);
+        i.putExtra("mentor", mentor); // Mentor implementa Serializable
+        startActivity(i);
     }
 
     private void showErrorSnackbar(@NonNull String msg) {

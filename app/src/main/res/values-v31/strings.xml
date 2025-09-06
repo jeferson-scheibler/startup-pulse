@@ -3,4 +3,6 @@
     <string name="avaliacao_titulo">Tela de avaliação\n</string>
     <string name="limpar">Limpar</string>
     <string name="filtrar_por_area">Filtro por área</string>
+    <string name="posso_ajudar_com">Posso ajudar com:</string>
+    <string name="voc_est_offline">Você está offline, verifique sua conexão!</string>
 </resources>

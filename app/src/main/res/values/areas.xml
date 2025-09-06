@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="areas_atuacao_opcoes">
+        <item>Marketing Digital</item>
+        <item>Vendas</item>
+        <item>Growth</item>
+        <item>SEO</item>
+        <item>Produto</item>
+        <item>UX/UI</item>
+        <item>Pesquisa com Usuários</item>
+        <item>Tecnologia (Web)</item>
+        <item>Tecnologia (Mobile)</item>
+        <item>Arquitetura de Software</item>
+        <item>Dados &amp; Analytics</item>
+        <item>Machine Learning</item>
+        <item>IA Generativa</item>
+        <item>DevOps / Cloud</item>
+        <item>Segurança</item>
+        <item>Finanças</item>
+        <item>Precificação</item>
+        <item>Jurídico</item>
+        <item>LGPD</item>
+        <item>Operações</item>
+        <item>Logística</item>
+        <item>People / RH</item>
+        <item>OKRs / Gestão</item>
+        <item>Pitch &amp; Storytelling</item>
+        <item>Captação de Recursos</item>
+        <item>Go-to-Market</item>
+        <item>Parcerias</item>
+        <item>Customer Success</item>
+        <item>Educação / Edtech</item>
+        <item>Saúde / Healthtech</item>
+        <item>Agro / Agritech</item>
+        <item>Indústria 4.0</item>
+        <item>Sustentabilidade / ESG</item>
+        <item>Impacto Social</item>
+        <item>Legal Design</item>
+        <item>Design de Serviços</item>
+        <item>Comunicação</item>
+        <item>Comunidade</item>
+        <item>MVP &amp; Lean</item>
+    </string-array>
+</resources>

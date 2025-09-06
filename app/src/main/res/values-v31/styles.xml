@@ -1,0 +1,12 @@
+<resources>
+    <style name="Theme.StartupPulse.Splash" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Fundo da splash -->
+        <item name="android:windowSplashScreenBackground">@color/colorSurface</item>
+
+        <!-- Ícone controlado (quadrado, sem distorção) -->
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_animated_icon</item>
+
+        <!-- Tamanho desejado do ícone -->
+        <!-- <item name="android:windowSplashScreenIconSize">120dp</item> -->
+    </style>
+</resources>

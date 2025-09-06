@@ -11,67 +11,271 @@
         android:id="@+id/container_root"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:layout_gravity="center"
+        android:background="@android:color/transparent"
+        app:cardBackgroundColor="@android:color/transparent">
 
-        <!-- Barra de filtro -->
+        <!-- ===== Filtro (clean, premium) ===== -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/card_filter"
-            style="@style/Widget.Material3.CardView.Outlined"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_margin="12dp"
+            android:background="@android:color/transparent"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="2dp"
             app:strokeWidth="1dp"
-            app:strokeColor="?attr/colorOutline"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="0dp">
+            app:strokeColor="@color/strokeSoft">
 
-            <LinearLayout
+            <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:padding="12dp">
+                android:paddingStart="12dp"
+                android:paddingTop="10dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="10dp">
 
-                <!-- Exposed Dropdown -->
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/textFieldAreaFilter"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:hint="@string/filtrar_por_area"
-                    app:boxBackgroundMode="outline"
-                    app:endIconMode="dropdown_menu">
-
-                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                        android:id="@+id/autoCompleteAreaFilter"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="@string/todas_as_areas"
-                        android:inputType="none"
-                        android:focusable="true"
-                        android:clickable="true" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnClearAreaFilter"
-                    style="@style/App.Button.Outlined.LessRounded"
+                <!-- Label sutil -->
+                <TextView
+                    android:id="@+id/labelFiltro"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
-                    android:text="@string/limpar" />
-            </LinearLayout>
+                    android:text="@string/filtrar_por_area"
+                    android:textAppearance="@style/Text.BodyMedium"
+                    android:textColor="@color/colorOnSurface"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <!-- Pílula do filtro -->
+                <LinearLayout
+                    android:id="@+id/filterPill"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_filter_pill"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="2dp"
+                    android:paddingBottom="2dp"
+                    app:layout_constraintTop_toBottomOf="@id/labelFiltro"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent">
+
+                    <!-- ícone de lupa -->
+                    <ImageView
+                        android:id="@+id/iconSearch"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:contentDescription="@string/selecione_uma_rea_de_interesse"
+                        android:textAppearance="@style/Text.BodyMedium"
+                        android:src="@drawable/ic_search"
+                        app:tint="@color/colorOnSurface" />
+
+                    <!-- Dropdown “todas as áreas” (sem underline) -->
+                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                        android:id="@+id/autoCompleteAreaFilter"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:background="@android:color/transparent"
+                        android:hint="@string/todas_as_areas"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:inputType="none"
+                        android:focusable="true"
+                        android:clickable="true"
+                        android:textAppearance="@style/Text.BodyMedium"
+                        android:textColor="@color/colorOnSurface"
+                        android:textColorHint="@color/colorHint"
+                        app:tint="@color/colorOnSurface"/>
+
+                    <!-- divisor vertical -->
+                    <View
+                        android:layout_width="1dp"
+                        android:layout_height="22dp"
+                        android:layout_marginEnd="8dp"
+                        android:background="@color/strokeSoft" />
+
+                    <!-- seta do dropdown (opcional) -->
+                    <ImageView
+                        android:id="@+id/iconChevron"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:layout_marginEnd="8dp"
+                        android:contentDescription="@string/abrir_lista"
+                        android:src="@drawable/ic_chevron_down"
+                        app:tint="@color/colorOnSurface"/>
+                </LinearLayout>
+            </androidx.constraintlayout.widget.ConstraintLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Mapa -->
-        <org.osmdroid.views.MapView
-            android:id="@+id/map_view"
+        <!-- ===== Mapa cardificado com overlay status ===== -->
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
-            android:layout_height="220dp"
+            android:layout_height="wrap_content"
             android:layout_marginHorizontal="12dp"
-            android:layout_marginBottom="8dp" />
+            android:layout_marginBottom="8dp"
+            app:cardCornerRadius="16dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="@color/strokeSoft"
+            app:cardBackgroundColor="@color/colorSurface">
 
-        <!-- Lista com pull-to-refresh -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="220dp">
+                <org.osmdroid.views.MapView
+                    android:id="@+id/map_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:contentDescription="@string/mentores_mapa_content_desc"/>
+            </FrameLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- ===== Métricas (cards) ===== -->
+        <HorizontalScrollView
+            android:id="@+id/stats_scroller"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:overScrollMode="never"
+            android:scrollbars="none"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:background="@android:color/transparent"
+            app:cardBackgroundColor="@android:color/transparent"
+            android:layout_marginBottom="6dp">
+
+            <LinearLayout
+                android:id="@+id/stats_container"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_gravity="center"
+                android:showDividers="none"
+                android:divider="@null"
+                android:clipToPadding="false"
+                android:paddingBottom="4dp">
+
+                <!-- Card 1: Mentores -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_stat_mentores"
+                    style="@style/Widget.Material3.CardView.Filled"
+                    android:layout_width="0dp"
+                    android:layout_height="90dp"
+                    android:layout_marginEnd="10dp"
+                    android:minWidth="150dp"
+                    android:layout_weight="1"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="2dp"
+                    app:strokeWidth="0dp"
+                    app:cardBackgroundColor="@color/colorSecondary"
+                    app:cardUseCompatPadding="true"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground">
+
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:padding="14dp"
+                        android:background="@color/colorPrimary">
+
+                        <TextView
+                            android:id="@+id/stat_count_mentores"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0"
+                            android:textStyle="bold"
+                            android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
+                            android:textColor="@color/colorOnSecondary"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Mentores"
+                            android:textAppearance="@style/Text.BodyMedium"
+                            android:textColor="@color/colorOnSecondary"
+                            app:layout_constraintStart_toStartOf="@id/stat_count_mentores"
+                            app:layout_constraintTop_toBottomOf="@id/stat_count_mentores" />
+
+                        <ImageView
+                            android:id="@+id/stat_icon_mentores"
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:src="@drawable/ic_mentor"
+                            android:alpha="0.24"
+                            app:tint="@color/colorOnSecondary"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintTop_toTopOf="parent"
+                            app:layout_constraintBottom_toBottomOf="parent" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Card 2: Áreas -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_stat_areas"
+                    style="@style/Widget.Material3.CardView.Filled"
+                    android:layout_width="0dp"
+                    android:layout_height="90dp"
+                    android:minWidth="150dp"
+                    android:layout_weight="1"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="2dp"
+                    app:strokeWidth="0dp"
+                    app:cardUseCompatPadding="true"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground">
+
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:padding="14dp"
+                        android:background="@drawable/bg_constraint_stroke">
+
+                        <TextView
+                            android:id="@+id/stat_count_areas"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0"
+                            android:textStyle="bold"
+                            android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
+                            android:textColor="@color/colorOnSurface"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Áreas"
+                            android:textAppearance="@style/Text.BodyMedium"
+                            android:textColor="@color/colorOnSurface"
+                            app:layout_constraintStart_toStartOf="@id/stat_count_areas"
+                            app:layout_constraintTop_toBottomOf="@id/stat_count_areas" />
+
+                        <ImageView
+                            android:id="@+id/stat_icon_areas"
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:src="@drawable/ic_location_pin"
+                            android:alpha="0.24"
+                            app:tint="@color/colorOnSurface"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintTop_toTopOf="parent"
+                            app:layout_constraintBottom_toBottomOf="parent" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
+        </HorizontalScrollView>
+
+        <!-- ===== Lista / Grid com pull-to-refresh ===== -->
         <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
             android:id="@+id/swipe_refresh_layout"
             android:layout_width="match_parent"
@@ -83,12 +287,15 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:clipToPadding="false"
-                android:paddingHorizontal="12dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
                 android:paddingBottom="12dp"
-                tools:listitem="@layout/item_mentor" />
+                tools:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
+                tools:listitem="@layout/item_mentor"
+                tools:spanCount="2" />
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-        <!-- Empty state -->
+        <!-- ===== Empty state ===== -->
         <LinearLayout
             android:id="@+id/view_empty_state_mentores"
             android:layout_width="match_parent"
@@ -99,26 +306,28 @@
             android:padding="24dp"
             android:visibility="gone">
 
-            <ImageView
-                android:layout_width="72dp"
-                android:layout_height="72dp"
-                android:alpha="0.7"
-                android:src="@drawable/ic_mentor" />
+            <com.google.android.material.imageview.ShapeableImageView
+                android:layout_width="84dp"
+                android:layout_height="84dp"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
+                android:src="@drawable/ic_person"
+                app:tint="@color/colorPrimary"/>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:text="Nenhum mentor encontrado"
-                android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+                android:text="@string/empty_mentores_title"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="@color/colorOnSurface"/>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:alpha="0.8"
-                android:text="Tente outro filtro ou atualize a página"
-                android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+                android:layout_marginTop="4dp"
+                android:text="@string/empty_mentores_subtitle"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="@color/colorHint"/>
         </LinearLayout>
     </LinearLayout>
-
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

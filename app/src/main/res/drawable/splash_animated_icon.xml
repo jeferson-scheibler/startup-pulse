@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Caixa quadrada centralizada para o logo (sem stretch) -->
+    <item
+        android:width="200dp"
+        android:height="80dp"
+        android:gravity="center"
+        android:tint="@color/colorOnSurface">
+        <bitmap
+            android:src="@drawable/ic_logo_splash"
+        android:filter="true"
+        android:antialias="true" />
+    </item>
+</layer-list>

@@ -7,23 +7,33 @@
     android:layout_height="match_parent"
     android:paddingHorizontal="0dp"
     android:paddingTop="0dp"
+    android:background="@color/colorSurface"
     tools:context=".IdeiasHostFragment">
 
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/tabLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/colorOnSurface"
-        app:tabIndicatorFullWidth="false"
+        android:contentDescription="@string/ideas_tabs_content_desc"
+        android:background="@color/colorSurface"
+        android:elevation="2dp"
         app:tabMode="fixed"
         app:tabGravity="fill"
-        app:tabTextAppearance="@style/TextAppearance.Material3.BodyMedium"
-        app:tabIndicatorAnimationMode="elastic" />
+        app:tabInlineLabel="true"
+        app:tabIndicatorFullWidth="false"
+        app:tabIndicatorAnimationMode="elastic"
+        app:tabIndicatorColor="@color/colorSecondary"
+        app:tabSelectedTextColor="@color/colorOnSurface"
+        app:tabTextColor="@color/colorOnSurface"
+        app:tabIconTint="@color/colorOnSurface"
+        android:textAppearance="@style/Text.BodyMedium"/>
 
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/viewPager"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        tools:listitem="@layout/item_ideia" />
+        android:contentDescription="@string/ideas_pager_content_desc"
+        tools:listitem="@layout/item_ideia"
+        android:textAppearance="@style/Text.BodyMedium"/>
 </LinearLayout>

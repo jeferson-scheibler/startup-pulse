@@ -35,7 +35,6 @@ public class SplashActivity extends AppCompatActivity {
         // Android 12+: usa o tema Theme.SplashScreen; versões antigas ignoram
         SplashScreen splash = SplashScreen.installSplashScreen(this);
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
 
         // Mantém a splash até que os inits acabem ou o timeout role
         final long start = System.currentTimeMillis();

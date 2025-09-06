@@ -7,7 +7,6 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
-    android:background="@drawable/my_deep_glow"
     tools:context=".MainActivity">
 
     <!-- Barra de aviso offline -->
@@ -15,11 +14,11 @@
         android:id="@+id/offline_indicator_bar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:background="#424242"
+        android:background="@color/colorOnSurface"
         android:gravity="center"
         android:padding="4dp"
-        android:text="Você está offline. O seu progresso será sincronizado."
-        android:textColor="@color/white"
+        android:text="@string/voc_est_offline"
+        android:textColor="@color/colorPrimary"
         android:textSize="12sp"
         android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@id/fragment_container"
@@ -37,7 +36,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- FAB: adicionar ideia -->
+    <!-- FAB: adicionar ideia (ação primária) -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_add_idea"
         android:layout_width="wrap_content"
@@ -46,12 +45,12 @@
         android:layout_marginBottom="16dp"
         android:contentDescription="@string/fab_content_desc"
         android:src="@drawable/ic_add"
-        app:backgroundTint="@color/primary_color"
-        app:tint="@color/secondary_color"
+        app:backgroundTint="@color/colorPrimary"
+        app:tint="@color/colorOnPrimary"
         app:layout_constraintBottom_toTopOf="@id/bottom_nav_container"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- FAB: adicionar mentor (visível apenas quando aplicável) -->
+    <!-- FAB: adicionar mentor (ação secundária/tonal) -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_add_mentor"
         android:layout_width="wrap_content"
@@ -60,8 +59,8 @@
         android:layout_marginBottom="16dp"
         android:contentDescription="@string/fab_content_desc2"
         android:src="@drawable/ic_add"
-        app:backgroundTint="@color/primary_color"
-        app:tint="@color/secondary_color"
+        app:backgroundTint="@color/colorSurface"
+        app:tint="@color/colorSecondary"
         app:layout_constraintBottom_toTopOf="@id/bottom_nav_container"
         app:layout_constraintEnd_toEndOf="parent" />
 
@@ -96,7 +95,7 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:src="@drawable/ic_lightbulb"
-                app:tint="@color/bottom_nav_item_tint"
+                app:tint="@color/colorSecondary"
                 android:duplicateParentState="true"/>
 
             <TextView
@@ -105,8 +104,9 @@
                 android:layout_height="wrap_content"
                 android:text="@string/menu_ideias"
                 android:textSize="12sp"
-                android:textColor="@color/bottom_nav_item_tint"
-                android:duplicateParentState="true"/>
+                android:textColor="@color/colorSecondary"
+                android:duplicateParentState="true"
+                android:textAppearance="@style/Text.TitleLarge"/>
         </LinearLayout>
 
         <LinearLayout
@@ -124,7 +124,7 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:src="@drawable/ic_mentor"
-                app:tint="@color/bottom_nav_item_tint"
+                app:tint="@color/colorSecondary"
                 android:duplicateParentState="true"/>
 
             <TextView
@@ -133,8 +133,9 @@
                 android:layout_height="wrap_content"
                 android:text="@string/menu_mentores"
                 android:textSize="12sp"
-                android:textColor="@color/bottom_nav_item_tint"
-                android:duplicateParentState="true"/>
+                android:textColor="@color/colorSecondary"
+                android:duplicateParentState="true"
+                android:textAppearance="@style/Text.TitleLarge"/>
         </LinearLayout>
 
         <LinearLayout
@@ -152,7 +153,7 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:src="@drawable/ic_person"
-                app:tint="@color/bottom_nav_item_tint"
+                app:tint="@color/colorSecondary"
                 android:duplicateParentState="true"/>
 
             <TextView
@@ -161,8 +162,9 @@
                 android:layout_height="wrap_content"
                 android:text="@string/menu_perfil"
                 android:textSize="12sp"
-                android:textColor="@color/bottom_nav_item_tint"
-                android:duplicateParentState="true"/>
+                android:textColor="@color/colorSecondary"
+                android:duplicateParentState="true"
+                android:textAppearance="@style/Text.TitleLarge"/>
         </LinearLayout>
     </LinearLayout>
 

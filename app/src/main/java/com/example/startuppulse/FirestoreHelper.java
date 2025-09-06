@@ -6,6 +6,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.example.startuppulse.common.Result;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
@@ -35,6 +36,75 @@ public class FirestoreHelper {
     private static final String USUARIOS_COLLECTION = "usuarios";
     private static final String IDEIAS_COLLECTION   = "ideias";
     private static final String MENTORES_COLLECTION = "mentores";
+
+    public void findMentoresByAreas(
+                @NonNull List<String> areas,
+                @Nullable String excludeUserId,
+                @NonNull Callback<List<Mentor>> callback
+        ) {
+                if (areas == null || areas.isEmpty()) { callback.onComplete(Result.ok(new ArrayList<>())); return; }
+                Query q = db.collection(MENTORES_COLLECTION)
+                                .whereArrayContainsAny("areas", areas);
+                if (excludeUserId != null && !excludeUserId.isEmpty()) {
+                        q = q.whereNotEqualTo(com.google.firebase.firestore.FieldPath.documentId(), excludeUserId);
+                    }
+                q.get().addOnSuccessListener(snap -> {
+                        List<Mentor> out = new ArrayList<>();
+                        for (DocumentSnapshot d : snap.getDocuments()) {
+                                Mentor m = d.toObject(Mentor.class);
+                                if (m != null) { m.setId(d.getId()); out.add(m); }
+                            }
+                        callback.onComplete(Result.ok(out));
+                    }).addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+            }
+
+    /** Mentores por ÁREAS na CIDADE. */
+                public void findMentoresByAreasInCity(
+                @NonNull List<String> areas,
+                @NonNull String cidade,
+                @Nullable String excludeUserId,
+                @NonNull Callback<List<Mentor>> callback
+        ) {
+                if (areas == null || areas.isEmpty() || cidade.isEmpty()) { callback.onComplete(Result.ok(new ArrayList<>())); return; }
+                Query q = db.collection(MENTORES_COLLECTION)
+                                .whereEqualTo("cidade", cidade)
+                                .whereArrayContainsAny("areas", areas);
+                if (excludeUserId != null && !excludeUserId.isEmpty()) {
+                        q = q.whereNotEqualTo(com.google.firebase.firestore.FieldPath.documentId(), excludeUserId);
+                    }
+                q.get().addOnSuccessListener(snap -> {
+                        List<Mentor> out = new ArrayList<>();
+                        for (DocumentSnapshot d : snap.getDocuments()) {
+                                Mentor m = d.toObject(Mentor.class);
+                                if (m != null) { m.setId(d.getId()); out.add(m); }
+                            }
+                        callback.onComplete(Result.ok(out));
+                    }).addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+            }
+
+    /** Mentores por ÁREAS no ESTADO. */
+                public void findMentoresByAreasInState(
+                @NonNull List<String> areas,
+                @NonNull String estado,
+                @Nullable String excludeUserId,
+                @NonNull Callback<List<Mentor>> callback
+        ) {
+                if (areas == null || areas.isEmpty() || estado.isEmpty()) { callback.onComplete(Result.ok(new ArrayList<>())); return; }
+                Query q = db.collection(MENTORES_COLLECTION)
+                                .whereEqualTo("estado", estado)
+                                .whereArrayContainsAny("areas", areas);
+                if (excludeUserId != null && !excludeUserId.isEmpty()) {
+                        q = q.whereNotEqualTo(com.google.firebase.firestore.FieldPath.documentId(), excludeUserId);
+                    }
+                q.get().addOnSuccessListener(snap -> {
+                        List<Mentor> out = new ArrayList<>();
+                        for (DocumentSnapshot d : snap.getDocuments()) {
+                                Mentor m = d.toObject(Mentor.class);
+                                if (m != null) { m.setId(d.getId()); out.add(m); }
+                            }
+                        callback.onComplete(Result.ok(out));
+                    }).addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+            }
 
     public interface Callback<T> { void onComplete(Result<T> r); }
 
@@ -418,15 +488,33 @@ public class FirestoreHelper {
             @NonNull Callback<String> callback
     ) {
         try {
-            if (mentorId.isEmpty()) {
-                callback.onComplete(Result.err(new IllegalArgumentException("ID do mentor vazio.")));
+            String uid = FirebaseAuth.getInstance().getUid();
+            if (uid == null || uid.isEmpty()) {
+                callback.onComplete(Result.err(new IllegalStateException("Usuário não autenticado.")));
                 return;
             }
-            mentor.setId(mentorId);
-            db.collection(MENTORES_COLLECTION).document(mentorId)
-                    .set(mentor)
+
+            // MONTA MAP EXPLÍCITO (não confia no POJO para ownerId)
+            Map<String, Object> data = new HashMap<>();
+            data.put("ownerId", uid);                          // <- ESSENCIAL p/ create
+            if (mentor.getNome() != null)   data.put("nome", mentor.getNome());
+            if (mentor.getImagem() != null) data.put("imagem", mentor.getImagem());
+            if (mentor.getCidade() != null) data.put("cidade", mentor.getCidade());
+            if (mentor.getEstado() != null) data.put("estado", mentor.getEstado());
+            if (mentor.getAreas() != null)  data.put("areas", mentor.getAreas());
+            if (mentor.getProfissao() != null) data.put("profissao", mentor.getProfissao());
+            data.put("verificado", mentor.isVerificado());     // se nulo no POJO, ajuste
+
+            // (Opcional) publicado: defina conforme seu fluxo
+            // data.put("publicado", false);
+
+            FirebaseFirestore db = FirebaseFirestore.getInstance();
+            db.collection("mentores").document(mentorId)
+                    // MERGE garante que ownerId do doc nunca "some" em updates futuros
+                    .set(data, SetOptions.merge())
                     .addOnSuccessListener(aVoid -> callback.onComplete(Result.ok(mentorId)))
                     .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+
         } catch (Exception ex) {
             callback.onComplete(Result.err(ex));
         }
@@ -541,3 +629,4 @@ public class FirestoreHelper {
                 .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
     }
 }
+

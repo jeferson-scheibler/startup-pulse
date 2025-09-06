@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
-    android:background="@drawable/glass_fume_background">
+    android:background="@color/colorSurface">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
@@ -17,7 +17,7 @@
             android:id="@+id/text_ideia_title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:textAppearance="?attr/textAppearanceHeadlineSmall"
+            android:textAppearance="@style/Text.TitleLarge"
             android:textColor="?attr/colorOnSurface"
             android:textStyle="bold"
             app:layout_constraintEnd_toEndOf="parent"
@@ -30,7 +30,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:textAppearance="@style/Text.BodyMedium"
             android:textColor="?attr/colorOnSurfaceVariant"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -64,7 +64,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            app:cardBackgroundColor="?attr/colorPrimary"
+            app:cardBackgroundColor="@color/colorPrimary"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/lottie_status_animation">
@@ -81,7 +81,7 @@
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:src="@drawable/ic_rocket_launch"
-                    app:tint="@color/secondary_color" />
+                    android:textColor="@color/colorSurface" />
 
                 <TextView
                     android:id="@+id/label_publicada"
@@ -90,8 +90,8 @@
                     android:layout_marginStart="16dp"
                     android:layout_weight="1"
                     android:text="Ideia publicada"
-                    android:textAppearance="?attr/textAppearanceTitleMedium"
-                    android:textColor="@color/secondary_color" />
+                    android:textAppearance="@style/Text.BodyMedium"
+                    android:textColor="@color/colorSurface" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -125,7 +125,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
                     android:layout_weight="1"
-                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textAppearance="@style/Text.BodyMedium"
                     tools:text="A procurar mentor..." />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -165,7 +165,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="16dp"
                         android:layout_weight="1"
-                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:textAppearance="@style/Text.BodyMedium"
                         tools:text="Aguardando Avaliação" />
                 </LinearLayout>
 
@@ -177,8 +177,10 @@
                     android:layout_gravity="end"
                     android:layout_marginTop="16dp"
                     android:text="Ver Feedback"
+                    android:textColor="@color/colorSurface"
                     android:visibility="gone"
-                    tools:visibility="visible" />
+                    tools:visibility="visible"
+                    android:textAppearance="@style/Text.BodyMedium"/>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

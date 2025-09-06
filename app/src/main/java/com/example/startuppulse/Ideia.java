@@ -20,6 +20,7 @@ public class Ideia implements Serializable {
     private String mentorId;
     private String avaliacaoStatus;
     private List<Avaliacao> avaliacoes;
+    private List<String> areasNecessarias;
 
     @ServerTimestamp
     private Date timestamp;
@@ -28,6 +29,7 @@ public class Ideia implements Serializable {
     public Ideia() {
         postIts = new HashMap<>();
         avaliacoes = new ArrayList<>();
+        areasNecessarias = new ArrayList<>();
         this.status = "RASCUNHO";
         this.avaliacaoStatus = "Pendente";
     }
@@ -57,6 +59,11 @@ public class Ideia implements Serializable {
     public void setTimestamp(Date timestamp) { this.timestamp = timestamp; }
     public Map<String, List<PostIt>> getPostIts() { return postIts; }
     public void setPostIts(Map<String, List<PostIt>> postIts) { this.postIts = postIts; }
+
+    public List<String> getAreasNecessarias() { return areasNecessarias; }
+    public void setAreasNecessarias(List<String> areasNecessarias) {
+        this.areasNecessarias = areasNecessarias != null ? areasNecessarias : new ArrayList<>();
+    }
 
     public List<PostIt> getPostItsPorChave(String etapaChave) {
         if (postIts == null) {

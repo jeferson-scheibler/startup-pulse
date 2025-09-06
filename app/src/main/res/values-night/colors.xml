@@ -1,0 +1,44 @@
+<resources>
+    <!-- Brand -->
+    <color name="colorPrimary">#FFC700</color>        <!-- Amarelo vibrante -->
+    <color name="colorOnPrimary">#1A1A1A</color>      <!-- Preto/Grafite escuro -->
+
+    <color name="colorSecondary">#FFD740</color>      <!-- Amarelo suave -->
+    <color name="colorOnSecondary">#1A1A1A</color>
+
+    <!-- Surfaces -->
+    <color name="colorSurface">#121212</color>        <!-- Preto profundo -->
+    <color name="colorOnSurface">#EAEAEA</color>      <!-- Texto claro -->
+    <color name="colorSurfaceVariant">#1E1E1E</color> <!-- Grafite escuro -->
+    <color name="colorDivider">#26FFFFFF</color>
+
+    <!-- Estados -->
+    <color name="colorSuccess">#4CAF50</color>
+    <color name="colorWarning">#FFC107</color>
+    <color name="colorError">#F44336</color>
+
+    <!-- Ripples discretos -->
+    <color name="rippleNeutral">#33FFC700</color>
+    <color name="ripplePrimary">#4DFFC700</color>
+
+    <color name="strokeSoft">#26FFFFFF</color>
+    <color name="green_success">#4CAF50</color>
+    <color name="googleStroke">#26FFFFFF</color>
+    <color name="colorHint">#99FFFFFF</color>
+    <color name="delete_red">#FF4D4F</color>
+
+    <!-- Acentos do card -->
+    <color name="cardAccentStart">#FFD740</color>   <!-- Amarelo suave -->
+    <color name="cardAccentMid">#FFC700</color>     <!-- Amarelo forte -->
+    <color name="cardAccentEnd">#FFD740</color>
+
+    <!-- Metálico grafite -->
+    <color name="mentorCardBaseStart">#101215</color>
+    <color name="mentorCardBaseCenter">#171B20</color>
+    <color name="mentorCardBaseEnd">#0E1114</color>
+
+    <color name="mentorCardVignetteStart">#22000000</color>
+    <color name="mentorCardVignetteEnd">#00000000</color>
+
+    <color name="mentorCardStrokeAccent">#26FFC700</color>
+</resources>

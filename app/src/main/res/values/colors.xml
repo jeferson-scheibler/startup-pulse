@@ -1,16 +1,16 @@
 <resources>
     <!-- Brand -->
-    <color name="colorPrimary">#0052FF</color>
+    <color name="colorPrimary">#0052FF</color>         <!-- Azul marcante -->
     <color name="colorOnPrimary">#FFFFFF</color>
 
-    <color name="colorSecondary">#FFC700</color>
-    <color name="colorOnSecondary">#282C34</color>
+    <color name="colorSecondary">#007ACC</color>       <!-- Azul claro de apoio -->
+    <color name="colorOnSecondary">#FFFFFF</color>
 
     <!-- Surfaces -->
-    <color name="colorSurface">#F9F9F9</color>
-    <color name="colorOnSurface">#282C34</color>
-    <color name="colorSurfaceVariant">#EEF2FF</color>
-    <color name="colorDivider">#14000000</color>
+    <color name="colorSurface">#F4F5F7</color>         <!-- Cinza clarinho (fundo) -->
+    <color name="colorOnSurface">#1F1F1F</color>       <!-- Grafite bem escuro para contraste -->
+    <color name="colorSurfaceVariant">#E8EBF5</color>  <!-- Variante levemente azulada -->
+    <color name="colorDivider">#1A000000</color>
 
     <!-- Estados -->
     <color name="colorSuccess">#16A34A</color>
@@ -18,12 +18,28 @@
     <color name="colorError">#EF4444</color>
 
     <!-- Ripples discretos -->
-    <color name="rippleNeutral">#140052FF</color>
-    <color name="ripplePrimary">#200052FF</color>
+    <color name="rippleNeutral">#200052FF</color>
+    <color name="ripplePrimary">#330052FF</color>
 
     <color name="strokeSoft">#1A000000</color>
     <color name="green_success">#16A34A</color>
     <color name="googleStroke">#1A000000</color>
     <color name="colorHint">#66000000</color>
     <color name="delete_red">#FF4D4F</color>
+
+    <!-- Acentos do card -->
+    <color name="cardAccentStart">#4A90E2</color>   <!-- Azul mais vibrante -->
+    <color name="cardAccentMid">#0052FF</color>
+    <color name="cardAccentEnd">#4A90E2</color>
+
+    <color name="mentorCardBaseStart">#FFFFFFFF</color>
+    <color name="mentorCardBaseCenter">#FFFAFCFF</color>
+    <color name="mentorCardBaseEnd">#FFF7F9FE</color>
+
+    <!-- vinheta praticamente zero no claro -->
+    <color name="mentorCardVignetteStart">#00000000</color>
+    <color name="mentorCardVignetteEnd">#00000000</color>
+
+    <!-- filete interno bem sutil -->
+    <color name="mentorCardStrokeAccent">#1A000000</color> <!-- 10% preto -->
 </resources>

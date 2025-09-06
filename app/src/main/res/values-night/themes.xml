@@ -15,5 +15,23 @@
 
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+
+        <item name="android:fontFamily">@font/font_texto</item>
     </style>
+
+    <!-- Títulos -->
+    <style name="Text.TitleLarge" parent="TextAppearance.Material3.TitleLarge">
+        <item name="fontFamily">@font/font_titulo</item>
+    </style>
+
+    <style name="Text.TitleMedium" parent="TextAppearance.Material3.TitleMedium">
+        <item name="fontFamily">@font/font_titulo</item>
+    </style>
+
+    <!-- Corpo -->
+    <style name="Text.BodyMedium" parent="TextAppearance.Material3.BodyMedium">
+        <item name="fontFamily">@font/font_texto</item>
+    </style>
+
+    <style name="Theme.StartupPulse.NoActionBar" parent="Theme.StartupPulse" />
 </resources>

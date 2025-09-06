@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Base -->
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="22dp"/>
+            <gradient
+                android:type="linear"
+                android:angle="90"
+                android:startColor="@color/mentorCardBaseStart"
+                android:centerColor="@color/mentorCardBaseCenter"
+                android:endColor="@color/mentorCardBaseEnd"/>
+        </shape>
+    </item>
+
+    <!-- Vinheta sutil -->
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="20dp"/>
+            <gradient
+                android:type="radial"
+                android:gradientRadius="280dp"
+                android:centerX="50%"
+                android:centerY="35%"
+                android:startColor="@color/mentorCardVignetteStart"
+                android:endColor="@color/mentorCardVignetteEnd"/>
+        </shape>
+    </item>
+
+    <!-- Filete interno -->
+    <item android:top="2dp" android:bottom="2dp" android:left="2dp" android:right="2dp">
+        <shape android:shape="rectangle">
+            <corners android:radius="20dp"/>
+            <stroke
+                android:width="1dp"
+                android:color="@color/mentorCardStrokeAccent"/>
+        </shape>
+    </item>
+
+</layer-list>
