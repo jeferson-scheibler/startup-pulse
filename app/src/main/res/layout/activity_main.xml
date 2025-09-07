@@ -75,7 +75,7 @@
         android:elevation="8dp"
         android:background="@drawable/glass_fume_background"
         android:paddingVertical="4dp"
-        android:weightSum="3"
+        android:weightSum="4"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -139,6 +139,35 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/nav_button_investidores"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless">
+
+            <ImageView
+                android:id="@+id/nav_icon_investidores"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_trending_up"
+                app:tint="@color/colorSecondary"
+                android:duplicateParentState="true"/>
+
+            <TextView
+                android:id="@+id/nav_text_investidores"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Investidores"
+                android:textSize="12sp"
+                android:textColor="@color/colorSecondary"
+                android:duplicateParentState="true"
+                android:textAppearance="@style/Text.TitleLarge"/>
+        </LinearLayout>
+
+        <LinearLayout
             android:id="@+id/nav_button_perfil"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -166,6 +195,7 @@
                 android:duplicateParentState="true"
                 android:textAppearance="@style/Text.TitleLarge"/>
         </LinearLayout>
+
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

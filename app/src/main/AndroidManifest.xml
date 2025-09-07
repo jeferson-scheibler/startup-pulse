@@ -55,6 +55,10 @@
             android:name=".AvaliacaoActivity"
             android:label="@string/avaliacao_titulo" />
         <activity
+            android:name=".InvestorDetailActivity"
+            android:label="@string/titulo_detalhe_investidor"
+            android:parentActivityName=".MainActivity" />
+        <activity
             android:name=".MentorDetailActivity"
             android:exported="false"
             android:label="@string/titulo_detalhe_mentor"

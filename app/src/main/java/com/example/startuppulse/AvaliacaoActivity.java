@@ -3,65 +3,54 @@ package com.example.startuppulse;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
-import com.example.startuppulse.common.Result;
-import com.google.android.material.appbar.MaterialToolbar;
-import com.google.android.material.button.MaterialButton;
+import com.example.startuppulse.databinding.ActivityAvaliacaoBinding; // Import ViewBinding
 import com.google.android.material.slider.Slider;
-
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
 public class AvaliacaoActivity extends AppCompatActivity {
 
-    private static final String TAG = "AVALIACAO";
-
-    // UI
-    private RecyclerView recyclerViewCriterios;
-    private TextView textAverageScore;
-    private MaterialButton btnEnviarAvaliacao;
-    private MaterialToolbar toolbar;
-
-    // Dados
+    private ActivityAvaliacaoBinding binding; // Usa ViewBinding para segurança e clareza
     private AvaliacaoAdapter adapter;
     private String ideiaId;
     private final List<CriterioAvaliacao> criteriosList = new ArrayList<>();
     private FirestoreHelper firestoreHelper;
+    private FirebaseUser currentUser;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Log.d(TAG, "onCreate: iniciando AvaliacaoActivity");
-        setContentView(R.layout.activity_avaliacao);
+        binding = ActivityAvaliacaoBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
         firestoreHelper = new FirestoreHelper();
+        currentUser = FirebaseAuth.getInstance().getCurrentUser();
         ideiaId = getIntent().getStringExtra("ideia_id");
 
-        if (ideiaId == null || ideiaId.trim().isEmpty()) {
-            Toast.makeText(this, "Erro: ID da ideia não foi fornecido.", Toast.LENGTH_LONG).show();
+        // Validação robusta na inicialização
+        if (ideiaId == null || ideiaId.trim().isEmpty() || currentUser == null) {
+            Toast.makeText(this, "Erro: Dados insuficientes para avaliar.", Toast.LENGTH_LONG).show();
             finish();
             return;
         }
 
         setupToolbar();
-        bindUiViews();
         setupCriterios();
         setupRecyclerView();
         setupClickListeners();
@@ -69,20 +58,12 @@ public class AvaliacaoActivity extends AppCompatActivity {
     }
 
     private void setupToolbar() {
-        toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+        setSupportActionBar(binding.toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Avaliar Ideia");
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            getSupportActionBar().setDisplayShowHomeEnabled(true);
         }
-        toolbar.setNavigationOnClickListener(v -> finish());
-    }
-
-    private void bindUiViews() {
-        textAverageScore = findViewById(R.id.text_average_score);
-        recyclerViewCriterios = findViewById(R.id.recycler_view_criterios);
-        btnEnviarAvaliacao = findViewById(R.id.btn_enviar_avaliacao);
+        binding.toolbar.setNavigationOnClickListener(v -> finish());
     }
 
     private void setupCriterios() {
@@ -95,17 +76,16 @@ public class AvaliacaoActivity extends AppCompatActivity {
 
     private void setupRecyclerView() {
         adapter = new AvaliacaoAdapter(criteriosList, this::updateAverageScore);
-        recyclerViewCriterios.setLayoutManager(new LinearLayoutManager(this));
-        recyclerViewCriterios.setAdapter(adapter);
+        binding.recyclerViewCriterios.setLayoutManager(new LinearLayoutManager(this));
+        binding.recyclerViewCriterios.setAdapter(adapter);
     }
 
     private void setupClickListeners() {
-        btnEnviarAvaliacao.setOnClickListener(v -> {
+        binding.btnEnviarAvaliacao.setOnClickListener(v -> {
             if (!validarCampos()) return;
-            // Confirmação antes de enviar
             new AlertDialog.Builder(this)
                     .setTitle("Enviar avaliação?")
-                    .setMessage("Após enviar, o autor verá seu feedback.")
+                    .setMessage("Após o envio, o autor da ideia receberá seu feedback.")
                     .setPositiveButton("Enviar", (d, w) -> enviarAvaliacao())
                     .setNegativeButton("Cancelar", null)
                     .show();
@@ -113,14 +93,9 @@ public class AvaliacaoActivity extends AppCompatActivity {
     }
 
     private boolean validarCampos() {
-        // Opcional: exigir feedback quando nota < 5 (exemplo de UX)
         for (CriterioAvaliacao c : criteriosList) {
-            if (c.nota < 0f || c.nota > 10f) {
-                Toast.makeText(this, "Notas devem estar entre 0 e 10.", Toast.LENGTH_SHORT).show();
-                return false;
-            }
             if (c.nota < 5f && (c.feedback == null || c.feedback.trim().isEmpty())) {
-                Toast.makeText(this, "Explique rapidamente por que a nota de \"" + c.nome + "\" foi baixa.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Para notas baixas em \"" + c.nome + "\", um feedback é obrigatório.", Toast.LENGTH_LONG).show();
                 return false;
             }
         }
@@ -132,47 +107,42 @@ public class AvaliacaoActivity extends AppCompatActivity {
         float total = 0f;
         for (CriterioAvaliacao c : criteriosList) total += c.nota;
         float media = total / criteriosList.size();
-        textAverageScore.setText(String.format(Locale.getDefault(), "%.1f", media));
+        binding.textAverageScore.setText(String.format(Locale.getDefault(), "%.1f", media));
     }
 
     private void enviarAvaliacao() {
-        btnEnviarAvaliacao.setEnabled(false);
-        btnEnviarAvaliacao.setText("A enviar...");
+        binding.btnEnviarAvaliacao.setEnabled(false);
+        binding.btnEnviarAvaliacao.setText("Enviando...");
 
-        List<Map<String, Object>> avaliacoesParaSalvar = adapter.getAvaliacoes();
+        // Converte a lista interna em uma lista de objetos Avaliacao (seu modelo original)
+        List<Avaliacao> criteriosAvaliados = adapter.getAvaliacoesAsList();
 
-        firestoreHelper.salvarAvaliacao(ideiaId, avaliacoesParaSalvar, r -> {
+        // Cria o objeto de avaliação completo
+        AvaliacaoCompleta avaliacaoCompleta = new AvaliacaoCompleta(currentUser, criteriosAvaliados);
+
+        firestoreHelper.salvarAvaliacao(ideiaId, (List<Map<String, Object>>) avaliacaoCompleta, r -> {
             if (r.isOk()) {
                 Toast.makeText(this, "Avaliação enviada com sucesso!", Toast.LENGTH_LONG).show();
                 setResult(RESULT_OK);
                 finish();
             } else {
-                btnEnviarAvaliacao.setEnabled(true);
-                btnEnviarAvaliacao.setText("Enviar Avaliação");
-                String msg = (r.error != null && r.error.getMessage() != null)
-                        ? r.error.getMessage()
-                        : "Erro desconhecido";
-                Toast.makeText(this, "Erro ao enviar avaliação: " + msg, Toast.LENGTH_LONG).show();
+                binding.btnEnviarAvaliacao.setEnabled(true);
+                binding.btnEnviarAvaliacao.setText("Enviar Avaliação");
+                String msg = (r.error != null) ? r.error.getMessage() : "Erro desconhecido";
+                Toast.makeText(this, "Erro ao enviar: " + msg, Toast.LENGTH_LONG).show();
             }
         });
     }
 
-    // ================= Modelo interno =================
+    // ================= Modelo interno (semelhante ao seu, mas agora `private`) =================
     private static class CriterioAvaliacao {
-        String nome;
-        String descricao;
-        float nota = 5.0f;   // valor inicial
-        String feedback = ""; // opcional
-
-        CriterioAvaliacao(String nome, String descricao) {
-            this.nome = nome;
-            this.descricao = descricao;
-        }
+        String nome, descricao, feedback = "";
+        float nota = 5.0f;
+        CriterioAvaliacao(String nome, String descricao) { this.nome = nome; this.descricao = descricao; }
     }
 
-    // ================= Adapter =================
+    // ================= Adapter (atualizado para retornar List<Avaliacao>) =================
     private static class AvaliacaoAdapter extends RecyclerView.Adapter<AvaliacaoAdapter.CriterioViewHolder> {
-
         private final List<CriterioAvaliacao> criterios;
         private final Runnable onNotaChanged;
 
@@ -194,18 +164,15 @@ public class AvaliacaoActivity extends AppCompatActivity {
         }
 
         @Override
-        public int getItemCount() {
-            return criterios.size();
-        }
+        public int getItemCount() { return criterios.size(); }
 
-        List<Map<String, Object>> getAvaliacoes() {
-            List<Map<String, Object>> out = new ArrayList<>();
+        /**
+         * Novo método que retorna uma lista de objetos Avaliacao, fortemente tipada.
+         */
+        List<Avaliacao> getAvaliacoesAsList() {
+            List<Avaliacao> out = new ArrayList<>();
             for (CriterioAvaliacao c : criterios) {
-                Map<String, Object> m = new HashMap<>();
-                m.put("criterio", c.nome);
-                m.put("nota", c.nota);
-                m.put("feedback", c.feedback);
-                out.add(m);
+                out.add(new Avaliacao(c.nome, c.nota, c.feedback));
             }
             return out;
         }

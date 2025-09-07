@@ -84,6 +84,7 @@ dependencies {
     implementation(libs.glide)
     implementation(libs.firebase.config)
     implementation(libs.androidx.preference)
+    implementation(libs.cronet.embedded)
     annotationProcessor(libs.compiler)
     implementation(libs.lottie)
 

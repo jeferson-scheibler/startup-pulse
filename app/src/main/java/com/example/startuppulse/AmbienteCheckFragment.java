@@ -77,6 +77,10 @@ public class AmbienteCheckFragment extends Fragment implements SensorEventListen
 
     private ActivityResultLauncher<String> requestPermissionLauncher;
 
+    public static AmbienteCheckFragment newInstance() {
+        return new AmbienteCheckFragment();
+    }
+
     // Runnables
     private final Runnable soundSamplingRunnable = new Runnable() {
         @Override public void run() {

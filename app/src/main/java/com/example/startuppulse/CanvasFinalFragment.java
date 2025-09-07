@@ -14,4 +14,11 @@ public class CanvasFinalFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_canvas_final, container, false);
     }
+    public static CanvasFinalFragment newInstance(Ideia ideia, boolean isReadOnly) {
+        CanvasFinalFragment fragment = new CanvasFinalFragment();
+        Bundle args = new Bundle();
+        args.putSerializable("ideia", ideia);
+        fragment.setArguments(args);
+        return fragment;
+    }
 }

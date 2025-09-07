@@ -18,7 +18,6 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.airbnb.lottie.LottieAnimationView;
-import com.example.startuppulse.common.Result;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 
@@ -29,10 +28,10 @@ public class IdeiaStatusFragment extends Fragment {
 
     private Ideia ideia;
 
-    public static IdeiaStatusFragment newInstance(Ideia ideia) {
+    public static IdeiaStatusFragment newInstance(String ideiaId) {
         IdeiaStatusFragment fragment = new IdeiaStatusFragment();
         Bundle args = new Bundle();
-        args.putSerializable("ideia", ideia);
+        args.putString("ideia_id", ideiaId);
         fragment.setArguments(args);
         return fragment;
     }

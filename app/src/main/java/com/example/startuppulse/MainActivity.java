@@ -25,6 +25,9 @@ public class MainActivity extends AppCompatActivity {
     ImageView navIconIdeias, navIconMentores, navIconPerfil;
     TextView navTextIdeias, navTextMentores, navTextPerfil;
     FloatingActionButton fabAddIdea, fabAddMentor;
+    LinearLayout navButtonInvestidores;
+    ImageView navIconInvestidores;
+    TextView navTextInvestidores;
     private boolean isMentor = false;
     private FirebaseUser currentUser;
     private TextView offlineIndicatorBar;
@@ -54,14 +57,17 @@ public class MainActivity extends AppCompatActivity {
 
         navButtonIdeias = findViewById(R.id.nav_button_ideias);
         navButtonMentores = findViewById(R.id.nav_button_mentores);
+        navButtonInvestidores = findViewById(R.id.nav_button_investidores);
         navButtonPerfil  = findViewById(R.id.nav_button_perfil);
 
         navIconIdeias = findViewById(R.id.nav_icon_ideias);
         navIconMentores = findViewById(R.id.nav_icon_mentores);
+        navIconInvestidores = findViewById(R.id.nav_icon_investidores);
         navIconPerfil = findViewById(R.id.nav_icon_perfil);
 
         navTextIdeias = findViewById(R.id.nav_text_ideias);
         navTextMentores = findViewById(R.id.nav_text_mentores);
+        navTextInvestidores = findViewById(R.id.nav_text_investidores);
         navTextPerfil = findViewById(R.id.nav_text_perfil);
 
         verificarSeUsuarioEhMentor();
@@ -147,6 +153,14 @@ public class MainActivity extends AppCompatActivity {
             verificarSeUsuarioEhMentor(); // decide visibilidade do fabAddMentor
         });
 
+        navButtonInvestidores.setOnClickListener(v -> {
+            loadFragment(new InvestidoresFragment());
+            updateButtonState(v);
+            // Esconder ambos os FABs na tela de investidores
+            fabAddIdea.setVisibility(View.GONE);
+            fabAddMentor.setVisibility(View.GONE);
+        });
+
         navButtonPerfil.setOnClickListener(v -> {
             loadFragment(new PerfilFragment());
             updateButtonState(v);
@@ -161,32 +175,32 @@ public class MainActivity extends AppCompatActivity {
                 .beginTransaction()
                 .replace(R.id.fragment_container, fragment)
                 .commit();
-        // Atualiza visibilidade do FAB mentor após trocar o fragment
         fabAddMentor.postDelayed(this::atualizarVisibilidadeFabMentor, 100);
     }
 
     private void updateButtonState(View selectedButton) {
-        // Reseta estados (seleção e textos)
         navButtonIdeias.setSelected(false);
         navButtonMentores.setSelected(false);
+        navButtonInvestidores.setSelected(false);
         navButtonPerfil.setSelected(false);
 
         navTextIdeias.setVisibility(View.GONE);
         navTextMentores.setVisibility(View.GONE);
+        navTextInvestidores.setVisibility(View.GONE);
         navTextPerfil.setVisibility(View.GONE);
 
-        // Seleciona o clicado
         selectedButton.setSelected(true);
 
         if (selectedButton.getId() == R.id.nav_button_ideias) {
             navTextIdeias.setVisibility(View.VISIBLE);
         } else if (selectedButton.getId() == R.id.nav_button_mentores) {
             navTextMentores.setVisibility(View.VISIBLE);
+        } else if (selectedButton.getId() == R.id.nav_button_investidores){
+            navTextInvestidores.setVisibility(View.VISIBLE);
         } else if (selectedButton.getId() == R.id.nav_button_perfil) {
             navTextPerfil.setVisibility(View.VISIBLE);
         }
 
-        // (opcional) tints nos ícones se você quiser realçar visualmente
         tintNavIcons();
     }
 
@@ -196,10 +210,12 @@ public class MainActivity extends AppCompatActivity {
 
         boolean ideiasSel   = navButtonIdeias.isSelected();
         boolean mentoresSel = navButtonMentores.isSelected();
+        boolean investidoresSel = navButtonInvestidores.isSelected();
         boolean perfilSel   = navButtonPerfil.isSelected();
 
         navIconIdeias.setImageTintList(ColorStateList.valueOf(ideiasSel ? selected : normal));
         navIconMentores.setImageTintList(ColorStateList.valueOf(mentoresSel ? selected : normal));
+        navIconInvestidores.setImageTintList(ColorStateList.valueOf(investidoresSel ? selected : normal));
         navIconPerfil.setImageTintList(ColorStateList.valueOf(perfilSel ? selected : normal));
     }
 }

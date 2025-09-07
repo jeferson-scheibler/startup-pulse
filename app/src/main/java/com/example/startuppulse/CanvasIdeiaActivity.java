@@ -1,6 +1,7 @@
 package com.example.startuppulse;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Address;
@@ -8,28 +9,23 @@ import android.location.Geocoder;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.widget.ImageView;
-import android.widget.ProgressBar;
-import android.widget.Toast;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.constraintlayout.widget.Group;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.viewpager2.widget.ViewPager2;
 
-import com.example.startuppulse.common.Result;
+import com.example.startuppulse.databinding.ActivityCanvasIdeiaBinding;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -41,177 +37,158 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
-public class CanvasIdeiaActivity extends AppCompatActivity
-        implements CanvasInicioFragment.InicioStateListener,
+/**
+ * Activity principal para criar, editar e visualizar uma Ideia.
+ * Utiliza um ViewPager2 para navegar entre as diferentes etapas do canvas.
+ */
+public class CanvasIdeiaActivity extends AppCompatActivity implements
+        CanvasInicioFragment.InicioStateListener,
         CanvasBlockFragment.CanvasBlockListener,
         AmbienteCheckFragment.AmbienteCheckListener {
 
-    private ViewPager2 viewPager;
-    private CanvasPagerAdapter adapter;
+    // --- Propriedades ---
+    private ActivityCanvasIdeiaBinding binding;
     private FirestoreHelper firestoreHelper;
     private Ideia ideia;
     private List<CanvasEtapa> etapas;
     private ListenerRegistration ideiaListener;
-
-    private ProgressBar loadingIndicator;
-    private Group contentGroup;
-    private MaterialButton btnProximo, btnAnterior, btnPublicar, btnDespublicar, btnAvaliar;
-    private ImageView btnVoltar;
+    private boolean isReadOnly = false;
 
     private AlertDialog loadingDialog;
     private ActivityResultLauncher<String> requestLocationPermissionLauncher;
     private ActivityResultLauncher<Intent> avaliacaoLauncher;
     private FusedLocationProviderClient fusedLocationClient;
-
-    private boolean isReadOnlyMode = false;
     private final Handler loadingHandler = new Handler(Looper.getMainLooper());
 
+
+    // --- Ciclo de Vida da Activity ---
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_canvas_ideia);
+        // Infla o layout usando ViewBinding, a forma profissional e segura
+        binding = ActivityCanvasIdeiaBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
+        // Inicializa componentes
+        initialize();
+
+        // Determina se a activity deve iniciar com uma nova ideia ou uma existente
+        handleIntent();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Remove o listener do Firestore para evitar memory leaks
+        if (ideiaListener != null) {
+            ideiaListener.remove();
+        }
+    }
+
+
+    // --- Configuração Inicial ---
+
+    /**
+     * Inicializa os componentes principais da Activity.
+     */
+    private void initialize() {
         firestoreHelper = new FirestoreHelper();
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-
-        loadingIndicator = findViewById(R.id.loading_indicator);
-        contentGroup     = findViewById(R.id.content_group);
-
+        isReadOnly = getIntent().getBooleanExtra("isReadOnly", false);
         setupLocationPermissionLauncher();
+        setupAvaliacaoLauncher();
+    }
 
+    /**
+     * Processa o Intent de entrada para carregar a ideia correta.
+     */
+    private void handleIntent() {
         ideia = (Ideia) getIntent().getSerializableExtra("ideia");
         String ideiaId = getIntent().getStringExtra("ideia_id");
-        boolean openAsReadOnly = getIntent().getBooleanExtra("isReadOnly", false);
 
         if (ideia != null && ideia.getId() == null) {
             setupForNewIdeia();
         } else if (ideiaId != null) {
-            setupForExistingIdeia(ideiaId, openAsReadOnly);
+            setupForExistingIdeia(ideiaId, isReadOnly);
         } else {
             Toast.makeText(this, "Erro: Nenhuma ideia ou ID fornecido.", Toast.LENGTH_SHORT).show();
             finish();
-            return;
         }
-
-        avaliacaoLauncher = registerForActivityResult(
-                new ActivityResultContracts.StartActivityForResult(),
-                result -> {
-                    if (result.getResultCode() == RESULT_OK && ideia != null && ideia.getId() != null) {
-                        Toast.makeText(this, "Status da ideia atualizado!", Toast.LENGTH_SHORT).show();
-                        attachIdeiaListener(ideia.getId(), isReadOnlyMode); // força refresh
-                    }
-                }
-        );
     }
 
+    /**
+     * Configura a UI para uma nova ideia (que é sempre editável).
+     */
     private void setupForNewIdeia() {
+        this.isReadOnly = false;
         showLoading(false);
-        this.isReadOnlyMode = false;
-        setupEtapas("RASCUNHO");
+        setupEtapas(ideia.getStatus());
         setupUI();
-        setupButtonClickListeners();
+        setupListeners();
     }
 
+    /**
+     * Inicia o listener do Firestore para carregar e observar uma ideia existente.
+     */
     private void setupForExistingIdeia(String ideiaId, boolean openAsReadOnly) {
         showLoading(true);
         attachIdeiaListener(ideiaId, openAsReadOnly);
     }
 
+
+    // --- Configuração da UI e Listeners ---
+
+    /**
+     * Configura o ViewPager, Adapter e Tabs.
+     */
     private void setupUI() {
-        viewPager       = findViewById(R.id.view_pager_canvas);
-        btnProximo      = findViewById(R.id.btn_proximo);
-        btnAnterior     = findViewById(R.id.btn_anterior);
-        btnVoltar       = findViewById(R.id.btn_voltar);
-        btnPublicar     = findViewById(R.id.btn_publicar_ideia);
-        btnDespublicar  = findViewById(R.id.btn_despublicar_ideia);
-        btnAvaliar      = findViewById(R.id.btn_avaliar_ideia);
-        btnAvaliar.setEnabled(false);
-
-        adapter = new CanvasPagerAdapter(this, ideia, etapas, isReadOnlyMode);
-        viewPager.setAdapter(adapter);
-
-        // Swipe do ViewPager habilitado (leitura e edição). O gate da etapa fica no botão "Próximo".
-        viewPager.setUserInputEnabled(true);
-
+        CanvasPagerAdapter adapter = new CanvasPagerAdapter(this, etapas, ideia, isReadOnly);
+        binding.viewPagerCanvas.setAdapter(adapter);
+        binding.viewPagerCanvas.setUserInputEnabled(true);
         setupTabs();
     }
 
+    /**
+     * Conecta o TabLayout ao ViewPager2 para exibir as abas de navegação.
+     */
     private void setupTabs() {
-        TabLayout tabLayout = findViewById(R.id.tab_layout);
-        new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {}).attach();
+        new TabLayoutMediator(binding.tabLayout, binding.viewPagerCanvas, (tab, position) -> {
+            // Configuração do ícone e texto da tab
+            tab.setText(etapas.get(position).getTitulo());
+            tab.setIcon(etapas.get(position).getIconeResId());
+        }).attach();
+    }
 
-        viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
-            @Override public void onPageSelected(int position) {
+    /**
+     * Configura todos os listeners de clique para os botões da Activity.
+     */
+    private void setupListeners() {
+        binding.viewPagerCanvas.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+            @Override
+            public void onPageSelected(int position) {
                 super.onPageSelected(position);
-                if (btnAnterior == null) return;
                 updateActionButtonsVisibility(position);
             }
         });
-    }
 
-    private void updateActionButtonsVisibility(int position) {
-        boolean isLastPage = (position == adapter.getItemCount() - 1);
-        FirebaseUser user  = FirebaseAuth.getInstance().getCurrentUser();
-        boolean isOwner  = user != null && ideia != null && user.getUid().equals(ideia.getOwnerId());
-        boolean isMentor = user != null && ideia != null && user.getUid().equals(ideia.getMentorId());
-
-        btnAnterior.setVisibility(position == 0 ? View.INVISIBLE : View.VISIBLE);
-
-        btnProximo.setVisibility(View.VISIBLE);
-        btnProximo.setEnabled(!isLastPage);
-        btnProximo.setAlpha(isLastPage ? 0.5f : 1.0f);
-
-        if (etapas != null && etapas.size() > position && !isReadOnlyMode) {
-            String etapaKey = etapas.get(position).getKey();
-            if ("AMBIENTE_CHECK".equals(etapaKey)) {
-                btnProximo.setEnabled(false);
-                btnProximo.setAlpha(0.5f);
-            }
-        }
-
-        if (isMentor && "PUBLICADA".equals(ideia.getStatus())) {
-            btnPublicar.setVisibility(View.GONE);
-            btnDespublicar.setVisibility(View.GONE);
-            btnAvaliar.setVisibility(View.VISIBLE);
-            btnAvaliar.setEnabled(true);
-        } else if (isOwner) {
-            if ("PUBLICADA".equals(ideia.getStatus())) {
-                btnPublicar.setVisibility(View.GONE);
-                btnDespublicar.setVisibility(View.VISIBLE);
-                btnAvaliar.setVisibility(View.GONE);
-            } else if (isLastPage) {
-                btnPublicar.setVisibility(View.VISIBLE);
-                btnDespublicar.setVisibility(View.GONE);
-                btnAvaliar.setVisibility(View.GONE);
-            } else {
-                btnPublicar.setVisibility(View.GONE);
-                btnDespublicar.setVisibility(View.GONE);
-                btnAvaliar.setVisibility(View.GONE);
-            }
-        } else {
-            btnPublicar.setVisibility(View.GONE);
-            btnDespublicar.setVisibility(View.GONE);
-            btnAvaliar.setVisibility(View.GONE);
-        }
-    }
-
-    private void setupButtonClickListeners() {
-        btnVoltar.setOnClickListener(v -> {
-            if (!isReadOnlyMode) saveAndFinish(true);
+        binding.btnVoltar.setOnClickListener(v -> {
+            if (!isReadOnly) saveAndFinish(true);
             else finish();
         });
 
-        btnAnterior.setOnClickListener(v -> {
-            if (!isReadOnlyMode) {
-                saveProgress(() -> viewPager.setCurrentItem(Math.max(0, viewPager.getCurrentItem() - 1)));
+        binding.btnAnterior.setOnClickListener(v -> {
+            int previousItem = Math.max(0, binding.viewPagerCanvas.getCurrentItem() - 1);
+            if (!isReadOnly) {
+                saveProgress(() -> binding.viewPagerCanvas.setCurrentItem(previousItem));
             } else {
-                viewPager.setCurrentItem(Math.max(0, viewPager.getCurrentItem() - 1));
+                binding.viewPagerCanvas.setCurrentItem(previousItem);
             }
         });
 
-        btnPublicar.setOnClickListener(v -> verificarPermissaoEPublicar());
+        binding.btnProximo.setOnClickListener(v -> handleNextButtonClick());
+        binding.btnPublicarIdeia.setOnClickListener(v -> verificarPermissaoEPublicar());
 
-        btnDespublicar.setOnClickListener(v ->
+        binding.btnDespublicarIdeia.setOnClickListener(v ->
                 new AlertDialog.Builder(this)
                         .setTitle("Despublicar Ideia")
                         .setMessage("A sua ideia voltará a ser um rascunho privado. Deseja continuar?")
@@ -220,162 +197,254 @@ public class CanvasIdeiaActivity extends AppCompatActivity
                         .show()
         );
 
-        btnAvaliar.setOnClickListener(v -> {
+        binding.btnAvaliarIdeia.setOnClickListener(v -> {
             if (ideia != null && ideia.getId() != null) {
                 Intent intent = new Intent(this, AvaliacaoActivity.class);
                 intent.putExtra("ideia_id", ideia.getId());
                 avaliacaoLauncher.launch(intent);
             } else {
-                Toast.makeText(this, "Erro: Não foi possível carregar os dados da ideia para avaliação.", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        btnProximo.setOnClickListener(v -> {
-            int currentItem = viewPager.getCurrentItem();
-            String etapaKey = etapas.get(currentItem).getKey();
-
-            Runnable advance = () -> viewPager.setCurrentItem(Math.min(adapter.getItemCount() - 1, currentItem + 1));
-
-            switch (etapaKey) {
-                case "INICIO":
-                    Fragment current = getSupportFragmentManager()
-                            .findFragmentByTag( "f" + viewPager.getCurrentItem());
-                    if (current instanceof CanvasInicioFragment) {
-                        CanvasInicioFragment inicio = (CanvasInicioFragment) current;
-                        if (!inicio.validateSelectionOrToast()) return;
-                        inicio.persistAreasToIdeia();
-                    }
-                    validateAndAdvanceFromFirstPage();
-                    break;
-                case "AMBIENTE_CHECK":
-                    if (btnProximo.isEnabled()) advance.run();
-                    break;
-                case "STATUS":
-                    advance.run();
-                    break;
-                default:
-                    if (validateAndAdvanceFromBlockPage(etapaKey)) {
-                        if (!isReadOnlyMode) saveProgress(advance);
-                        else advance.run();
-                    }
+                Toast.makeText(this, "Erro ao carregar dados da ideia.", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
+    /**
+     * Lógica centralizada para o clique no botão "Próximo".
+     */
+    private void handleNextButtonClick() {
+        int currentItem = binding.viewPagerCanvas.getCurrentItem();
+        CanvasPagerAdapter adapter = (CanvasPagerAdapter) binding.viewPagerCanvas.getAdapter();
+        if (adapter == null || etapas.size() <= currentItem) return;
+
+        String etapaKey = etapas.get(currentItem).getChave();
+        Runnable advancePage = () -> binding.viewPagerCanvas.setCurrentItem(Math.min(adapter.getItemCount() - 1, currentItem + 1));
+
+        switch (etapaKey) {
+            case CanvasEtapa.CHAVE_INICIO:
+                Fragment currentFragment = getSupportFragmentManager().findFragmentByTag("f" + currentItem);
+                if (currentFragment instanceof CanvasInicioFragment) {
+                    CanvasInicioFragment inicioFragment = (CanvasInicioFragment) currentFragment;
+                    if (inicioFragment.validateSelectionOrToast()) {
+                        inicioFragment.persistAreasToIdeia();
+                        validateAndAdvanceFromFirstPage();
+                    }
+                }
+                break;
+            case CanvasEtapa.CHAVE_AMBIENTE_CHECK:
+                if (binding.btnProximo.isEnabled()) {
+                    advancePage.run();
+                }
+                break;
+            case CanvasEtapa.CHAVE_STATUS:
+            case CanvasEtapa.CHAVE_EQUIPE:
+                advancePage.run();
+                break;
+            default:
+                if (validateAndAdvanceFromBlockPage(etapaKey)) {
+                    if (!isReadOnly) {
+                        saveProgress(advancePage);
+                    } else {
+                        advancePage.run();
+                    }
+                }
+        }
+    }
+    // --- Lógica de Negócio e de UI ---
+
+    /**
+     * Atualiza a visibilidade e o estado dos botões de ação com base na página atual.
+     */
+    private void updateActionButtonsVisibility(int position) {
+        CanvasPagerAdapter adapter = (CanvasPagerAdapter) binding.viewPagerCanvas.getAdapter();
+        if (adapter == null) return;
+
+        boolean isLastPage = (position == adapter.getItemCount() - 1);
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        boolean isOwner = user != null && ideia != null && user.getUid().equals(ideia.getOwnerId());
+        boolean isMentor = user != null && ideia != null && user.getUid().equals(ideia.getMentorId());
+
+        binding.btnAnterior.setVisibility(position == 0 ? View.INVISIBLE : View.VISIBLE);
+        binding.btnProximo.setVisibility(isLastPage ? View.INVISIBLE : View.VISIBLE);
+
+        if (etapas != null && etapas.size() > position && !isReadOnly) {
+            String etapaKey = etapas.get(position).getChave();
+            if (CanvasEtapa.CHAVE_AMBIENTE_CHECK.equals(etapaKey)) {
+                binding.btnProximo.setEnabled(false);
+                binding.btnProximo.setAlpha(0.5f);
+            } else {
+                binding.btnProximo.setEnabled(true);
+                binding.btnProximo.setAlpha(1.0f);
+            }
+        }
+
+        binding.btnPublicarIdeia.setVisibility(View.GONE);
+        binding.btnDespublicarIdeia.setVisibility(View.GONE);
+        binding.btnAvaliarIdeia.setVisibility(View.GONE);
+
+        if (isMentor && "PUBLICADA".equals(ideia.getStatus())) {
+            binding.btnAvaliarIdeia.setVisibility(View.VISIBLE);
+        } else if (isOwner && !isReadOnly) {
+            if ("PUBLICADA".equals(ideia.getStatus())) {
+                binding.btnDespublicarIdeia.setVisibility(View.VISIBLE);
+            } else if (isLastPage) {
+                binding.btnPublicarIdeia.setVisibility(View.VISIBLE);
+            }
+        }
+    }
+
+    /**
+     * Define as etapas (páginas) a serem exibidas com base no status da ideia.
+     */
+    private void setupEtapas(String status) {
+        etapas = new ArrayList<>();
+        if ("PUBLICADA".equals(status)) {
+            etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_STATUS, "Status da Jornada", "Acompanhe a avaliação da sua ideia.", R.drawable.ic_flag));
+        }
+        if ("RASCUNHO".equals(status)) {
+            etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_INICIO, "Capa da Ideia", "Dê um nome e uma breve descrição.", R.drawable.ic_lightbulb));
+            etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_AMBIENTE_CHECK, "Check-up de Ambiente", "Prepare o ambiente para a criatividade.", R.drawable.ic_ambient));
+        }
+
+        // Adiciona todos os blocos do Business Model Canvas
+        etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_PROPOSTA_VALOR, "Proposta de Valor", "O que torna sua ideia única?", R.drawable.ic_proposta_valor));
+        etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_SEGMENTO_CLIENTES, "Segmento de Clientes", "Para quem é esta ideia?", R.drawable.ic_segmento_clientes));
+        etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_CANAIS, "Canais", "Como você chegará até seus clientes?", R.drawable.ic_canais));
+        etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_RELACIONAMENTO_CLIENTES, "Relacionamento", "Como você vai interagir?", R.drawable.ic_relacionamento));
+        etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_FONTES_RENDA, "Fontes de Renda", "Como sua ideia vai gerar dinheiro?", R.drawable.ic_fontes_renda));
+        etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_RECURSOS_PRINCIPAIS, "Recursos Principais", "O que é essencial para funcionar?", R.drawable.ic_recursos));
+        etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_ATIVIDADES_CHAVE, "Atividades-Chave", "Quais são as ações mais importantes?", R.drawable.ic_atividades));
+        etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_PARCERIAS_PRINCIPAIS, "Parcerias Principais", "Quem pode te ajudar?", R.drawable.ic_parcerias));
+        etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_ESTRUTURA_CUSTOS, "Estrutura de Custos", "Quais serão seus principais custos?", R.drawable.ic_custos));
+
+        // Adiciona as novas etapas de preparação para investimento
+        etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_EQUIPE, "Equipe", "Apresente os membros da sua equipe.", R.drawable.ic_person));
+
+        // Adiciona a etapa final
+        if ("RASCUNHO".equals(status)) {
+            etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_FINAL, "Publicar", "A sua ideia está pronta para descolar.", R.drawable.ic_rocket_launch));
+        } else {
+            etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_FINAL, "Resumo", "Revise os detalhes da sua ideia publicada.", R.drawable.ic_rocket_launch));
+        }
+    }
+
+
+    private void showLoading(boolean isLoading) {
+        binding.loadingIndicator.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+        binding.contentGroup.setVisibility(isLoading ? View.GONE : View.VISIBLE);
+    }
+
+
+    // --- Firestore e Lógica de Dados ---
+
+    /**
+     * Anexa um listener ao documento da ideia no Firestore para atualizações em tempo real.
+     */
     private void attachIdeiaListener(String ideiaId, boolean openAsReadOnly) {
         if (ideiaListener != null) ideiaListener.remove();
         if (ideiaId == null) return;
 
         ideiaListener = firestoreHelper.listenToIdeia(ideiaId, r -> {
-            if (!r.isOk()) {
-                showLoading(false);
-                Toast.makeText(this, "Erro ao carregar ideia: " + r.error.getMessage(), Toast.LENGTH_SHORT).show();
-                finish();
-                return;
-            }
-            Ideia loaded = r.data; // pode ser null se removida
-            if (loaded == null) {
-                showLoading(false);
-                Toast.makeText(this, "Esta ideia não existe mais.", Toast.LENGTH_SHORT).show();
-                finish();
+            if (!r.isOk() || r.data == null) {
+                handleIdeiaLoadError((Exception) r.error);
                 return;
             }
 
-            boolean firstLoad = (CanvasIdeiaActivity.this.ideia == null);
-            FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-            boolean isOwner = user != null && user.getUid().equals(loaded.getOwnerId());
+            boolean isFirstLoad = (this.ideia == null);
+            this.ideia = r.data;
+            determineReadOnlyState(openAsReadOnly);
 
-            // read-only se veio assim OU se o dono abriu algo que não é rascunho
-            isReadOnlyMode = openAsReadOnly || (isOwner && !"RASCUNHO".equals(loaded.getStatus()));
-
-            CanvasIdeiaActivity.this.ideia = loaded;
-
-            if (firstLoad) {
-                setupEtapas(loaded.getStatus());
+            if (isFirstLoad) {
+                setupEtapas(this.ideia.getStatus());
                 setupUI();
-                setupButtonClickListeners();
+                setupListeners();
                 showLoading(false);
             } else {
                 notificarFragmentoAtual();
             }
-            updateActionButtonsVisibility(viewPager.getCurrentItem());
+            updateActionButtonsVisibility(binding.viewPagerCanvas.getCurrentItem());
         });
     }
 
-    private void setupLocationPermissionLauncher() {
-        requestLocationPermissionLauncher =
-                registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
-                    if (isGranted) iniciarProcessoDePublicacao();
-                    else Toast.makeText(this, "Permissão de localização negada.", Toast.LENGTH_LONG).show();
-                });
+    private void handleIdeiaLoadError(Exception error) {
+        showLoading(false);
+        String msg = (error != null) ? "Erro: " + error.getMessage() : "Esta ideia não existe mais.";
+        Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
+        finish();
     }
 
-    private void showLoading(boolean isLoading) {
-        loadingIndicator.setVisibility(isLoading ? View.VISIBLE : View.GONE);
-        contentGroup.setVisibility(isLoading ? View.GONE : View.VISIBLE);
+    /**
+     * Determina o estado final de `isReadOnly` com base na intenção de abertura e no status da ideia.
+     */
+    private void determineReadOnlyState(boolean openAsReadOnly) {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        boolean isOwner = user != null && user.getUid().equals(ideia.getOwnerId());
+        this.isReadOnly = openAsReadOnly || (isOwner && !"RASCUNHO".equals(ideia.getStatus()));
     }
 
-    private void setupEtapas(String status) {
-        etapas = new ArrayList<>();
-        if ("PUBLICADA".equals(status)) {
-            etapas.add(new CanvasEtapa("STATUS", "Status da Jornada", "Acompanhe a avaliação da sua ideia.", R.drawable.ic_flag));
-        }
-        if ("RASCUNHO".equals(status)) {
-            etapas.add(new CanvasEtapa("INICIO", "Capa da Ideia", "Dê um nome e uma breve descrição.", R.drawable.ic_lightbulb));
-            etapas.add(new CanvasEtapa("AMBIENTE_CHECK", "Check-up de Ambiente", "Prepare o ambiente para a criatividade.", R.drawable.ic_ambient));
-        }
-        etapas.add(new CanvasEtapa("PROPOSTA_VALOR", "Proposta de Valor", "O que torna sua ideia única?", R.drawable.ic_proposta_valor));
-        etapas.add(new CanvasEtapa("SEGMENTO_CLIENTES", "Segmento de Clientes", "Para quem é esta ideia?", R.drawable.ic_segmento_clientes));
-        etapas.add(new CanvasEtapa("CANAIS", "Canais", "Como você chegará até seus clientes?", R.drawable.ic_canais));
-        etapas.add(new CanvasEtapa("RELACIONAMENTO_CLIENTES", "Relacionamento", "Como você vai interagir?", R.drawable.ic_relacionamento));
-        etapas.add(new CanvasEtapa("FONTES_RENDA", "Fontes de Renda", "Como sua ideia vai gerar dinheiro?", R.drawable.ic_fontes_renda));
-        etapas.add(new CanvasEtapa("RECURSOS_PRINCIPAIS", "Recursos Principais", "O que é essencial para funcionar?", R.drawable.ic_recursos));
-        etapas.add(new CanvasEtapa("ATIVIDADES_CHAVE", "Atividades-Chave", "Quais são as ações mais importantes?", R.drawable.ic_atividades));
-        etapas.add(new CanvasEtapa("PARCERIAS_PRINCIPAIS", "Parcerias Principais", "Quem pode te ajudar?", R.drawable.ic_parcerias));
-        etapas.add(new CanvasEtapa("ESTRUTURA_CUSTOS", "Estrutura de Custos", "Quais serão seus principais custos?", R.drawable.ic_custos));
-        if ("RASCUNHO".equals(status)) {
-            etapas.add(new CanvasEtapa("FINAL", "Publicar", "A sua ideia está pronta para descolar.", R.drawable.ic_rocket_launch));
+    private void saveProgress(@Nullable Runnable onComplete) {
+        if (!isReadOnly && ideia != null && ideia.getId() != null) {
+            firestoreHelper.updateIdeia(ideia, r -> {
+                if (!r.isOk()) {
+                    Toast.makeText(this, "Erro ao salvar progresso.", Toast.LENGTH_SHORT).show();
+                }
+                if (onComplete != null) onComplete.run();
+            });
+        } else if (onComplete != null) {
+            onComplete.run();
         }
     }
+
+    private void saveAndFinish(boolean shouldFinish) {
+        if (!isReadOnly && ideia != null && ideia.getId() != null && "RASCUNHO".equals(ideia.getStatus())) {
+            firestoreHelper.updateIdeia(ideia, r -> {
+                if (r.isOk()) {
+                    Toast.makeText(this, "Rascunho salvo!", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "Erro ao salvar rascunho.", Toast.LENGTH_SHORT).show();
+                }
+                if (shouldFinish) finish();
+            });
+        } else if (shouldFinish) {
+            finish();
+        }
+    }
+
+    // --- Validações e Ações das Etapas ---
 
     private void validateAndAdvanceFromFirstPage() {
-        if (ideia == null ||
-                ideia.getNome() == null || ideia.getNome().trim().isEmpty() ||
+        if (ideia == null || ideia.getNome() == null || ideia.getNome().trim().isEmpty() ||
                 ideia.getDescricao() == null || ideia.getDescricao().trim().isEmpty()) {
             Toast.makeText(this, "Preencha o nome e a descrição da ideia.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        int currentItem = viewPager.getCurrentItem();
         if (ideia.getId() == null) {
             String novoId = firestoreHelper.getNewIdeiaId();
             ideia.setId(novoId);
             ideia.setOwnerId(Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser()).getUid());
-
-            saveProgress(null);            // deixa o Firestore sincronizar (offline-first)
-            attachIdeiaListener(novoId, false);
-            viewPager.setCurrentItem(currentItem + 1);
+            saveProgress(() -> {
+                attachIdeiaListener(novoId, false);
+                binding.viewPagerCanvas.setCurrentItem(binding.viewPagerCanvas.getCurrentItem() + 1, false);
+            });
         } else {
-            if (!isReadOnlyMode) saveProgress(() -> viewPager.setCurrentItem(currentItem + 1));
-            else viewPager.setCurrentItem(currentItem + 1);
+            if (!isReadOnly) saveProgress(() -> binding.viewPagerCanvas.setCurrentItem(binding.viewPagerCanvas.getCurrentItem() + 1));
+            else binding.viewPagerCanvas.setCurrentItem(binding.viewPagerCanvas.getCurrentItem() + 1);
         }
     }
 
     private boolean validateAndAdvanceFromBlockPage(String etapaChave) {
-        return !(ideia == null ||
-                ideia.getPostItsPorChave(etapaChave) == null ||
-                ideia.getPostItsPorChave(etapaChave).isEmpty())
-                || showAndReturnFalse("Adicione pelo menos um post-it para avançar.");
-    }
-
-    private boolean showAndReturnFalse(String msg) {
-        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+        if (isReadOnly || !ideia.getPostItsPorChave(etapaChave).isEmpty()) {
+            return true;
+        }
+        Toast.makeText(this, "Adicione pelo menos um post-it para avançar.", Toast.LENGTH_SHORT).show();
         return false;
     }
 
+
+    // --- Lógica de Publicação ---
+
     private void verificarPermissaoEPublicar() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             iniciarProcessoDePublicacao();
         } else {
             requestLocationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION);
@@ -383,44 +452,52 @@ public class CanvasIdeiaActivity extends AppCompatActivity
     }
 
     private void iniciarProcessoDePublicacao() {
-        showLoadingDialog("A obter a sua localização...");
+        showLoadingDialog("Obtendo sua localização...");
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
             hideLoadingDialog();
-            Toast.makeText(this, "Permissão de localização necessária.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Permissão de localização é necessária.", Toast.LENGTH_SHORT).show();
             return;
         }
 
         fusedLocationClient.getLastLocation().addOnSuccessListener(this, location -> {
-            loadingHandler.postDelayed(() -> {
-                if (location != null) {
-                    Geocoder geocoder = new Geocoder(this, Locale.getDefault());
-                    try {
-                        List<Address> addresses = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
-                        if (addresses != null && !addresses.isEmpty()) {
-                            String cidade = addresses.get(0).getLocality();
-                            String estado = addresses.get(0).getAdminArea();
+            // A lógica de atraso (postDelayed) foi removida para uma resposta mais rápida
+            if (location != null) {
+                Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+                try {
+                    List<Address> addresses = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
+                    if (addresses != null && !addresses.isEmpty()) {
+                        Address address = addresses.get(0);
+                        String cidade = address.getLocality(); // Pode ser nulo
+                        String estado = address.getAdminArea(); // Pode ser nulo
+
+                        // --- CORREÇÃO CRÍTICA ADICIONADA AQUI ---
+                        // Se não conseguirmos determinar a cidade, não podemos procurar um mentor local.
+                        if (cidade != null && !cidade.isEmpty()) {
                             procurarMentorComAreasOuProximidade(cidade, estado);
                         } else {
+                            // Fallback: se não há cidade, publicamos sem mentor.
                             publicarIdeiaSemMentor();
                         }
-                    } catch (IOException e) {
+
+                    } else {
                         publicarIdeiaSemMentor();
                     }
-                } else {
+                } catch (IOException e) {
+                    // Em caso de erro do Geocoder, também publicamos sem mentor.
                     publicarIdeiaSemMentor();
                 }
-            }, 2000);
+            } else {
+                // Se não conseguirmos obter a localização, publicamos sem mentor.
+                publicarIdeiaSemMentor();
+            }
         });
     }
 
     private void procurarMentorComAreasOuProximidade(String cidade, String estado) {
         List<String> areas = (ideia != null) ? ideia.getAreasNecessarias() : null;
         String ownerId = (ideia != null) ? ideia.getOwnerId() : null;
-
-        // Se não há áreas, mantém o fluxo legado (proximidade)
         if (areas == null || areas.isEmpty()) { procurarMentorNaCidade(cidade, estado); return; }
-
         updateLoadingDialog("A procurar mentores por área em " + cidade + "…");
         firestoreHelper.findMentoresByAreasInCity(areas, cidade, ownerId, rCity -> {
             if (!rCity.isOk()) { hideLoadingDialog(); Toast.makeText(this, "Erro ao procurar mentor.", Toast.LENGTH_SHORT).show(); return; }
@@ -430,7 +507,6 @@ public class CanvasIdeiaActivity extends AppCompatActivity
                 publicarIdeiaComMentor(ordenados.get(0).getId());
                 return;
             }
-            // Estado
             updateLoadingDialog("Sem mentor por área na cidade. A expandir para " + estado + "…");
             firestoreHelper.findMentoresByAreasInState(areas, estado, ownerId, rUf -> {
                 if (!rUf.isOk()) { hideLoadingDialog(); Toast.makeText(this, "Erro ao procurar mentor.", Toast.LENGTH_SHORT).show(); return; }
@@ -440,7 +516,6 @@ public class CanvasIdeiaActivity extends AppCompatActivity
                     publicarIdeiaComMentor(ordenados.get(0).getId());
                     return;
                 }
-                // Global por área
                 updateLoadingDialog("A procurar mentores por área em outras regiões…");
                 firestoreHelper.findMentoresByAreas(areas, ownerId, rAll -> {
                     if (!rAll.isOk()) { hideLoadingDialog(); Toast.makeText(this, "Erro ao procurar mentor.", Toast.LENGTH_SHORT).show(); return; }
@@ -449,7 +524,6 @@ public class CanvasIdeiaActivity extends AppCompatActivity
                         List<Mentor> ordenados = MentorMatchService.ordenarPorAfinidadeELocal(candidatos, areas, cidade, estado);
                         publicarIdeiaComMentor(ordenados.get(0).getId());
                     } else {
-                        // fallback final: fluxo antigo por proximidade
                         procurarMentorNaCidade(cidade, estado);
                     }
                 });
@@ -510,31 +584,94 @@ public class CanvasIdeiaActivity extends AppCompatActivity
     }
 
     private void publicarIdeiaSemMentor() {
-        updateLoadingDialog("Nenhum mentor na sua região. A publicar para avaliação geral...");
+        updateLoadingDialog("Mentor encontrado! A publicar a sua ideia...");
         loadingHandler.postDelayed(() ->
-                        firestoreHelper.publicarIdeia(ideia.getId(), null, r -> {
-                            hideLoadingDialog();
-                            if (r.isOk()) {
-                                Toast.makeText(this, "Ideia publicada para avaliação geral!", Toast.LENGTH_LONG).show();
-                                finish();
-                            } else {
-                                Toast.makeText(this, "Erro ao publicar ideia.", Toast.LENGTH_SHORT).show();
-                            }
-                        })
-                , 2000);
+                firestoreHelper.publicarIdeia(ideia.getId(), null, r -> {
+                    hideLoadingDialog();
+                    if (r.isOk()) {
+                        Toast.makeText(this, "Ideia publicada para avaliação geral!", Toast.LENGTH_LONG).show();
+                        finish();
+                    } else {
+                        Toast.makeText(this, "Erro ao publicar ideia.", Toast.LENGTH_SHORT).show();
+                    }
+                }), 2000);
     }
 
     private void despublicarIdeia() {
-        showLoadingDialog("A converter para rascunho...");
+        showLoadingDialog("Convertendo para rascunho...");
         firestoreHelper.unpublishIdeia(ideia.getId(), r -> {
             hideLoadingDialog();
             if (r.isOk()) {
-                Toast.makeText(this, "Ideia revertida para rascunho! Pode editá-la no seu perfil.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Ideia revertida para rascunho!", Toast.LENGTH_LONG).show();
                 finish();
             } else {
                 Toast.makeText(this, "Erro ao despublicar.", Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+
+    // --- Helpers e Callbacks ---
+
+    @Override
+    public void onDataChanged() {
+        // Quando um post-it é adicionado/removido, o fragmento notifica-nos.
+        // A UI já foi atualizada pelo Firestore listener, mas forçamos um save aqui.
+        saveProgress(null);
+    }
+
+    private void notificarFragmentoAtual() {
+        Fragment frag = getSupportFragmentManager().findFragmentByTag("f" + binding.viewPagerCanvas.getCurrentItem());
+        if (frag instanceof CanvasBlockFragment) {
+            ((CanvasBlockFragment) frag).atualizarDadosIdeia(this.ideia);
+        }
+    }
+
+    private void setupLocationPermissionLauncher() {
+        requestLocationPermissionLauncher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+            if (isGranted) iniciarProcessoDePublicacao();
+            else Toast.makeText(this, "Permissão de localização negada.", Toast.LENGTH_LONG).show();
+        });
+    }
+
+    private void setupAvaliacaoLauncher() {
+        avaliacaoLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == RESULT_OK) {
+                        Toast.makeText(this, "Status da ideia atualizado!", Toast.LENGTH_SHORT).show();
+                    }
+                }
+        );
+    }
+
+    @Override
+    public void onFieldsChanged(Ideia ideiaAtualizada) {
+        if (this.ideia != null && ideiaAtualizada != null) {
+            this.ideia.setNome(ideiaAtualizada.getNome());
+            this.ideia.setDescricao(ideiaAtualizada.getDescricao());
+            this.ideia.setAreasNecessarias(ideiaAtualizada.getAreasNecessarias());
+        }
+    }
+    /**
+     * Este metodo é exigido pela interface CanvasBlockListener.
+     * No nosso caso, ele pode ficar vazio, pois as atualizações da lista de post-its
+     * já são tratadas automaticamente pelo listener em tempo real do Firestore (attachIdeiaListener).
+     */
+
+    @Override
+    public void onAmbienteIdealDetectado(boolean isIdeal) {
+        if (etapas.get(binding.viewPagerCanvas.getCurrentItem()).getChave().equals(CanvasEtapa.CHAVE_AMBIENTE_CHECK)) {
+            binding.btnProximo.setEnabled(isIdeal);
+            binding.btnProximo.setAlpha(isIdeal ? 1.0f : 0.5f);
+        }
+    }
+
+    @Override
+    public void onPularCheck() {
+        if (etapas.get(binding.viewPagerCanvas.getCurrentItem()).getChave().equals(CanvasEtapa.CHAVE_AMBIENTE_CHECK)) {
+            binding.viewPagerCanvas.setCurrentItem(binding.viewPagerCanvas.getCurrentItem() + 1);
+        }
     }
 
     private void showLoadingDialog(String message) {
@@ -556,92 +693,15 @@ public class CanvasIdeiaActivity extends AppCompatActivity
         loadingDialog.show();
     }
 
-    private void updateLoadingDialog(String message) {
+    @SuppressLint("SetTextI18n")
+    private void updateLoadingDialog(String s) {
         if (loadingDialog != null && loadingDialog.isShowing()) {
             TextView loadingText = loadingDialog.findViewById(R.id.loading_text);
-            if (loadingText != null) loadingText.setText(message);
+            if (loadingText != null) loadingText.setText("Nenhum mentor na sua região. Publicando para avaliação geral...");
         }
     }
 
     private void hideLoadingDialog() {
         if (loadingDialog != null && loadingDialog.isShowing()) loadingDialog.dismiss();
-    }
-
-    @Override
-    public void onAmbienteIdealDetectado(boolean isIdeal) {
-        if (viewPager == null) return;
-        int currentItem = viewPager.getCurrentItem();
-        if (etapas.size() > currentItem) {
-            String etapaKey = etapas.get(currentItem).getKey();
-            if ("AMBIENTE_CHECK".equals(etapaKey)) {
-                btnProximo.setEnabled(isIdeal);
-                btnProximo.setAlpha(isIdeal ? 1.0f : 0.5f);
-            }
-        }
-    }
-
-    @Override
-    public void onPularCheck() {
-        if (viewPager == null) return;
-        int currentItem = viewPager.getCurrentItem();
-        if (etapas.size() > currentItem && "AMBIENTE_CHECK".equals(etapas.get(currentItem).getKey())) {
-            viewPager.setCurrentItem(currentItem + 1);
-        }
-    }
-
-    private void notificarFragmentoAtual() {
-        if (viewPager == null) return;
-        Fragment frag = getSupportFragmentManager().findFragmentByTag("f" + viewPager.getCurrentItem());
-        if (frag instanceof CanvasBlockFragment) {
-            ((CanvasBlockFragment) frag).atualizarDadosIdeia(this.ideia);
-        }
-    }
-
-    private void saveProgress(@Nullable Runnable onComplete) {
-        if (ideia != null && ideia.getId() != null) {
-            firestoreHelper.updateIdeia(ideia.getId(), ideia, r -> {
-                if (!r.isOk()) {
-                    Toast.makeText(this, "Erro ao salvar progresso.", Toast.LENGTH_SHORT).show();
-                }
-                if (onComplete != null) onComplete.run();
-            });
-        } else if (onComplete != null) {
-            onComplete.run();
-        }
-    }
-
-    private void saveAndFinish(boolean shouldFinish) {
-        if (ideia != null && ideia.getId() != null && "RASCUNHO".equals(ideia.getStatus())) {
-            firestoreHelper.updateIdeia(ideia.getId(), ideia, r -> {
-                if (r.isOk()) {
-                    Toast.makeText(this, "Rascunho salvo com sucesso!", Toast.LENGTH_LONG).show();
-                } else {
-                    Toast.makeText(this, "Erro ao salvar o rascunho.", Toast.LENGTH_SHORT).show();
-                }
-                if (shouldFinish) finish();
-            });
-        } else if (shouldFinish) {
-            finish();
-        }
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (ideiaListener != null) ideiaListener.remove();
-    }
-
-    @Override
-    public void onFieldsChanged(Ideia ideiaAtualizada) {
-        if (this.ideia != null && ideiaAtualizada != null) {
-            this.ideia.setNome(ideiaAtualizada.getNome());
-            this.ideia.setDescricao(ideiaAtualizada.getDescricao());
-            this.ideia.setAreasNecessarias(ideiaAtualizada.getAreasNecessarias());
-        }
-    }
-
-    @Override
-    public void onPostItAdded() {
-        // atualizações chegam pelo listener do Firestore
     }
 }

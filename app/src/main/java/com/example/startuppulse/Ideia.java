@@ -19,17 +19,22 @@ public class Ideia implements Serializable {
     private String status;
     private String mentorId;
     private String avaliacaoStatus;
-    private List<Avaliacao> avaliacoes;
+    private List<AvaliacaoCompleta> avaliacoes;
     private List<String> areasNecessarias;
 
-    @ServerTimestamp
     private Date timestamp;
     private Map<String, List<PostIt>> postIts;
+
+    private List<MembroEquipe> equipe;
+    private List<Metrica> metricas;
+    private String pitchDeckUrl;
 
     public Ideia() {
         postIts = new HashMap<>();
         avaliacoes = new ArrayList<>();
         areasNecessarias = new ArrayList<>();
+        this.equipe = new ArrayList<>();
+        this.metricas = new ArrayList<>();
         this.status = "RASCUNHO";
         this.avaliacaoStatus = "Pendente";
     }
@@ -53,18 +58,34 @@ public class Ideia implements Serializable {
     public void setMentorId(String mentorId) { this.mentorId = mentorId; }
     public String getAvaliacaoStatus() { return avaliacaoStatus; }
     public void setAvaliacaoStatus(String avaliacaoStatus) { this.avaliacaoStatus = avaliacaoStatus; }
-    public List<Avaliacao> getAvaliacoes() { return avaliacoes; }
-    public void setAvaliacoes(List<Avaliacao> avaliacoes) { this.avaliacoes = avaliacoes; }
+    public List<AvaliacaoCompleta> getAvaliacoes() { return avaliacoes; }
+    public void setAvaliacoes(List<AvaliacaoCompleta> avaliacoes) { this.avaliacoes = avaliacoes; }
     public Date getTimestamp() { return timestamp; }
     public void setTimestamp(Date timestamp) { this.timestamp = timestamp; }
     public Map<String, List<PostIt>> getPostIts() { return postIts; }
     public void setPostIts(Map<String, List<PostIt>> postIts) { this.postIts = postIts; }
-
     public List<String> getAreasNecessarias() { return areasNecessarias; }
+    public List<MembroEquipe> getEquipe() {
+        return equipe;
+    }
+    public void setEquipe(List<MembroEquipe> equipe) {
+        this.equipe = equipe;
+    }
+    public List<Metrica> getMetricas() {
+        return metricas;
+    }
+    public void setMetricas(List<Metrica> metricas) {
+        this.metricas = metricas;
+    }
+    public String getPitchDeckUrl() {
+        return pitchDeckUrl;
+    }
+    public void setPitchDeckUrl(String pitchDeckUrl) {
+        this.pitchDeckUrl = pitchDeckUrl;
+    }
     public void setAreasNecessarias(List<String> areasNecessarias) {
         this.areasNecessarias = areasNecessarias != null ? areasNecessarias : new ArrayList<>();
     }
-
     public List<PostIt> getPostItsPorChave(String etapaChave) {
         if (postIts == null) {
             return new ArrayList<>();

@@ -4,7 +4,7 @@ import java.io.Serializable;
 
 public class Avaliacao implements Serializable {
     private String criterio;
-    private double nota; // Usar double para compatibilidade com o Firestore
+    private double nota;
     private String feedback;
 
     // Construtor vazio necessário para o Firestore

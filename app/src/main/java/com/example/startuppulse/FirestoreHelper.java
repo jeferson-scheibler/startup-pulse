@@ -15,6 +15,8 @@ import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.SetOptions;
 
+import org.chromium.base.Callback;
+
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -59,28 +61,31 @@ public class FirestoreHelper {
             }
 
     /** Mentores por ÁREAS na CIDADE. */
-                public void findMentoresByAreasInCity(
+    public void findMentoresByAreasInCity(
                 @NonNull List<String> areas,
                 @NonNull String cidade,
                 @Nullable String excludeUserId,
                 @NonNull Callback<List<Mentor>> callback
         ) {
-                if (areas == null || areas.isEmpty() || cidade.isEmpty()) { callback.onComplete(Result.ok(new ArrayList<>())); return; }
-                Query q = db.collection(MENTORES_COLLECTION)
-                                .whereEqualTo("cidade", cidade)
-                                .whereArrayContainsAny("areas", areas);
-                if (excludeUserId != null && !excludeUserId.isEmpty()) {
-                        q = q.whereNotEqualTo(com.google.firebase.firestore.FieldPath.documentId(), excludeUserId);
-                    }
-                q.get().addOnSuccessListener(snap -> {
-                        List<Mentor> out = new ArrayList<>();
-                        for (DocumentSnapshot d : snap.getDocuments()) {
-                                Mentor m = d.toObject(Mentor.class);
-                                if (m != null) { m.setId(d.getId()); out.add(m); }
-                            }
-                        callback.onComplete(Result.ok(out));
-                    }).addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+        if (areas == null || areas.isEmpty() || cidade == null || cidade.isEmpty()) {
+            callback.onComplete(Result.ok(new ArrayList<>()));
+            return;
+        }
+        Query q = db.collection(MENTORES_COLLECTION)
+                .whereEqualTo("cidade", cidade)
+                .whereArrayContainsAny("areas", areas);
+        if (excludeUserId != null && !excludeUserId.isEmpty()) {
+            q = q.whereNotEqualTo(com.google.firebase.firestore.FieldPath.documentId(), excludeUserId);
+        }
+        q.get().addOnSuccessListener(snap -> {
+            List<Mentor> out = new ArrayList<>();
+            for (DocumentSnapshot d : snap.getDocuments()) {
+                Mentor m = d.toObject(Mentor.class);
+                if (m != null) { m.setId(d.getId()); out.add(m); }
             }
+            callback.onComplete(Result.ok(out));
+        }).addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+    }
 
     /** Mentores por ÁREAS no ESTADO. */
                 public void findMentoresByAreasInState(
@@ -89,7 +94,10 @@ public class FirestoreHelper {
                 @Nullable String excludeUserId,
                 @NonNull Callback<List<Mentor>> callback
         ) {
-                if (areas == null || areas.isEmpty() || estado.isEmpty()) { callback.onComplete(Result.ok(new ArrayList<>())); return; }
+                    if (areas == null || areas.isEmpty() || estado == null || estado.isEmpty()) {
+                        callback.onComplete(Result.ok(new ArrayList<>()));
+                        return;
+                    }
                 Query q = db.collection(MENTORES_COLLECTION)
                                 .whereEqualTo("estado", estado)
                                 .whereArrayContainsAny("areas", areas);
@@ -184,8 +192,43 @@ public class FirestoreHelper {
     // ======================== IDEIAS =========================
     // =========================================================
 
+    public void getIdeiasForOwner(String ownerId, com.example.startuppulse.common.Callback<Result<List<Ideia>>> callback) {
+        if (ownerId == null) {
+            callback.onComplete(Result.err(new IllegalArgumentException("Owner ID não pode ser nulo.")));
+            return;
+        }
+
+        db.collection("ideias")
+                .whereEqualTo("ownerId", ownerId)
+                // .orderBy("dataCriacao", Query.Direction.DESCENDING) // Opcional: para pegar a mais recente
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<Ideia> ideias = queryDocumentSnapshots.toObjects(Ideia.class);
+                    callback.onComplete(Result.ok(ideias));
+                })
+                .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+    }
+    public void getInvestidores(com.example.startuppulse.common.Callback<Result<List<Investor>>> callback) {
+        db.collection("investidores")
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<Investor> investidores = queryDocumentSnapshots.toObjects(Investor.class);
+                    callback.onComplete(Result.ok(investidores));
+                })
+                .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+    }
     public String getNewIdeiaId() {
         return db.collection(IDEIAS_COLLECTION).document().getId();
+    }
+
+    /**
+     * Gera um ID único para um novo Post-it.
+     * Como os Post-its são parte de um mapa dentro de uma Ideia,
+     * não precisamos de um caminho real, apenas de um ID aleatório.
+     */
+    public String getNewPostItId() {
+        // Esta é a forma padrão do Firestore para gerar um ID único sem criar um documento.
+        return db.collection("dummy_path").document().getId();
     }
 
     /** Adiciona uma ideia usando o ID já presente em ideia.getId(). */
@@ -300,12 +343,12 @@ public class FirestoreHelper {
     }
 
     /** Atualiza o documento completo da ideia (ex.: salvar rascunho). */
-    public void updateIdeia(
-            @NonNull String ideiaId,
-            @NonNull Ideia ideia,
-            @NonNull Callback<Void> callback
-    ) {
-        db.collection(IDEIAS_COLLECTION).document(ideiaId)
+    public void updateIdeia(Ideia ideia, Callback<Result<Void>> callback) {
+        if (ideia == null || ideia.getId() == null) {
+            callback.onComplete(Result.err(new IllegalArgumentException("ID da ideia não pode ser nulo.")));
+            return;
+        }
+        db.collection("ideias").document(ideia.getId())
                 .set(ideia)
                 .addOnSuccessListener(aVoid -> callback.onComplete(Result.ok(null)))
                 .addOnFailureListener(e -> callback.onComplete(Result.err(e)));

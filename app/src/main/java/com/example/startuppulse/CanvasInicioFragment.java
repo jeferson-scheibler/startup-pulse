@@ -49,13 +49,11 @@ public class CanvasInicioFragment extends Fragment {
     }
     private InicioStateListener listener;
 
-    public static CanvasInicioFragment newInstance(Ideia ideia, CanvasEtapa etapa, boolean isReadOnly) {
+    public static CanvasInicioFragment newInstance(Ideia ideia, boolean isReadOnly) {
         Bundle args = new Bundle();
-        args.putSerializable(ARG_IDEIA, ideia);
-        args.putSerializable(ARG_ETAPA, etapa);
-        args.putBoolean(ARG_READ_ONLY, isReadOnly);
-
         CanvasInicioFragment f = new CanvasInicioFragment();
+        args.putSerializable("ideia", ideia);
+        args.putBoolean("isReadOnly", isReadOnly);
         f.setArguments(args);
         return f;
     }
