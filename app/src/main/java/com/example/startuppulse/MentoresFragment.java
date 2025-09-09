@@ -363,24 +363,36 @@ public class MentoresFragment extends Fragment implements MentoresAdapter.OnMent
         adicionarClustersNoMapa(mentores);
     }
 
-    private void updateStats(@NonNull List<Mentor> list) {
+    // Em MentoresFragment.java
+
+    private void updateStats(@NonNull List<Mentor> mentoresVisiveis) {
         if (binding == null) return;
 
-        int total = list.size();
-        binding.statCountMentores.setText(String.valueOf(total)); // <- camelCase
+        // 1. Atualizar contagem de mentores (isto já estava correto)
+        int totalMentores = mentoresVisiveis.size();
+        binding.statCountMentores.setText(String.valueOf(totalMentores));
 
-        java.util.HashSet<String> areas = new java.util.HashSet<>();
-        for (Mentor m : list) {
-            List<String> a = m.getAreas();
-            if (a == null) continue;
-            for (String s : a) {
-                if (s != null) {
-                    String t = s.trim();
-                    if (!t.isEmpty()) areas.add(t);
+        // 2. Lógica corrigida para contar as áreas
+        int totalAreas;
+        if ("Todas as áreas".equals(selectedArea)) {
+            // Se o filtro for "Todas as áreas", conta todas as áreas únicas dos mentores visíveis
+            java.util.HashSet<String> areasUnicas = new java.util.HashSet<>();
+            for (Mentor m : mentoresVisiveis) {
+                if (m.getAreas() != null) {
+                    for (String area : m.getAreas()) {
+                        if (area != null && !area.trim().isEmpty()) {
+                            areasUnicas.add(area.trim());
+                        }
+                    }
                 }
             }
+            totalAreas = areasUnicas.size();
+        } else {
+            // Se uma área específica estiver selecionada, o número de áreas é 1
+            // (a menos que a lista de mentores esteja vazia, nesse caso é 0).
+            totalAreas = mentoresVisiveis.isEmpty() ? 0 : 1;
         }
-        binding.statCountAreas.setText(String.valueOf(areas.size())); // <- camelCase
+        binding.statCountAreas.setText(String.valueOf(totalAreas));
     }
 
     @SuppressLint("ClickableViewAccessibility")

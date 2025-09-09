@@ -8,30 +8,30 @@ import android.text.style.StyleSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
-import android.widget.TextView;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import com.example.startuppulse.databinding.FragmentIdeiaStatusBinding; // Importar o ViewBinding
 
-import com.airbnb.lottie.LottieAnimationView;
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.card.MaterialCardView;
+import java.util.Locale;
 
-import java.util.List;
-import java.util.Map;
-
+/**
+ * Fragmento para exibir o status de uma ideia publicada, incluindo o mentor
+ * associado e o estado da avaliação.
+ */
 public class IdeiaStatusFragment extends Fragment {
 
+    private FragmentIdeiaStatusBinding binding; // Objeto de ViewBinding
     private Ideia ideia;
+    private FirestoreHelper firestoreHelper;
 
-    public static IdeiaStatusFragment newInstance(String ideiaId) {
+    // Factory method atualizado para receber o objeto Ideia completo
+    public static IdeiaStatusFragment newInstance(Ideia ideia) {
         IdeiaStatusFragment fragment = new IdeiaStatusFragment();
         Bundle args = new Bundle();
-        args.putString("ideia_id", ideiaId);
+        args.putSerializable("ideia", ideia); // Passa o objeto inteiro
         fragment.setArguments(args);
         return fragment;
     }
@@ -39,6 +39,7 @@ public class IdeiaStatusFragment extends Fragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        firestoreHelper = new FirestoreHelper();
         if (getArguments() != null) {
             ideia = (Ideia) getArguments().getSerializable("ideia");
         }
@@ -47,128 +48,110 @@ public class IdeiaStatusFragment extends Fragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_ideia_status, container, false);
+        binding = FragmentIdeiaStatusBinding.inflate(inflater, container, false);
+        return binding.getRoot();
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        if (ideia == null || !isAdded()) return;
+        if (ideia == null || !isAdded()) {
+            // Se não houver dados, mostra um estado de erro ou simplesmente não faz nada.
+            return;
+        }
+        updateUI();
+    }
 
-        // Views
-        TextView textIdeiaTitle = view.findViewById(R.id.text_ideia_title);
-        TextView textIdeiaDescription = view.findViewById(R.id.text_ideia_description);
-        LottieAnimationView lottieAnimation = view.findViewById(R.id.lottie_status_animation);
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        binding = null; // Previne memory leaks
+    }
 
-        MaterialCardView cardMentor = view.findViewById(R.id.card_mentor);
-        ImageView iconMentor = view.findViewById(R.id.icon_mentor);
-        TextView textMentorName = view.findViewById(R.id.text_mentor_name);
+    /**
+     * Centraliza toda a lógica de atualização da UI.
+     */
+    private void updateUI() {
+        // --- Dados Básicos da Ideia ---
+        binding.textIdeiaTitle.setText(ideia.getNome());
+        binding.textIdeiaDescription.setText(ideia.getDescricao());
 
-        MaterialCardView cardAvaliacao = view.findViewById(R.id.card_avaliacao);
-        ImageView iconAvaliacao = view.findViewById(R.id.icon_avaliacao);
-        TextView textAvaliacaoStatus = view.findViewById(R.id.text_avaliacao_status);
-        MaterialButton btnVerFeedback = view.findViewById(R.id.btn_ver_feedback);
-
-        // Dados básicos
-        textIdeiaTitle.setText(ideia.getNome());
-        textIdeiaDescription.setText(ideia.getDescricao());
-
-        // Status do Mentor
+        // --- Status do Mentor ---
         boolean hasMentor = ideia.getMentorId() != null && !ideia.getMentorId().isEmpty();
         if (hasMentor) {
             int colorActive = ContextCompat.getColor(requireContext(), R.color.primary_color);
-            cardMentor.setStrokeColor(colorActive);
-            iconMentor.setImageTintList(ColorStateList.valueOf(colorActive));
+            binding.cardMentor.setStrokeColor(colorActive);
+            binding.iconMentor.setImageTintList(ColorStateList.valueOf(colorActive));
 
-            new FirestoreHelper().findMentorById(ideia.getMentorId(), r -> {
-                if (!isAdded()) return;
-                if (r.isOk() && r.data != null) {
-                    textMentorName.setText(r.data.getNome());
-                } else if (r.isOk()) {
-                    textMentorName.setText("Mentor não encontrado");
+            // Busca o nome do mentor
+            firestoreHelper.findMentorById(ideia.getMentorId(), r -> {
+                if (isAdded() && r.isOk() && r.data != null) {
+                    binding.textMentorName.setText(r.data.getNome());
                 } else {
-                    textMentorName.setText("Erro de conexão");
+                    binding.textMentorName.setText("Mentor não encontrado");
                 }
             });
-
         } else {
-            textMentorName.setText("A procurar o mentor ideal...");
+            binding.textMentorName.setText("A procurar o mentor ideal...");
         }
 
-        // Status da Avaliação
+        // --- Status da Avaliação ---
         boolean isAvaliada = "Avaliada".equals(ideia.getAvaliacaoStatus());
         if (isAvaliada) {
-            int colorActive = ContextCompat.getColor(requireContext(), R.color.green_success);
-            cardAvaliacao.setStrokeColor(colorActive);
-            iconAvaliacao.setImageTintList(ColorStateList.valueOf(colorActive));
-            textAvaliacaoStatus.setText("Ideia Avaliada!");
+            int colorSuccess = ContextCompat.getColor(requireContext(), R.color.green_success);
+            binding.cardAvaliacao.setStrokeColor(colorSuccess);
+            binding.iconAvaliacao.setImageTintList(ColorStateList.valueOf(colorSuccess));
+            binding.textAvaliacaoStatus.setText("Ideia Avaliada!");
 
-            List<?> avals = ideia.getAvaliacoes();
-            if (avals != null && !avals.isEmpty()) {
-                btnVerFeedback.setVisibility(View.VISIBLE);
-                btnVerFeedback.setOnClickListener(v -> showFeedbackDialog());
+            if (ideia.getAvaliacoes() != null && !ideia.getAvaliacoes().isEmpty()) {
+                binding.btnVerFeedback.setVisibility(View.VISIBLE);
+                binding.btnVerFeedback.setOnClickListener(v -> showFeedbackDialog());
             } else {
-                btnVerFeedback.setVisibility(View.GONE);
+                binding.btnVerFeedback.setVisibility(View.GONE);
             }
         } else {
-            textAvaliacaoStatus.setText("Aguardando avaliação");
-            btnVerFeedback.setVisibility(View.GONE);
+            binding.textAvaliacaoStatus.setText("Aguardando avaliação do mentor");
+            binding.btnVerFeedback.setVisibility(View.GONE);
         }
 
-        // Animação
+        // --- Animação Lottie ---
         if (isAvaliada) {
-            lottieAnimation.setAnimation(R.raw.anim_sucess);
+            binding.lottieStatusAnimation.setAnimation(R.raw.anim_sucess);
         } else if (hasMentor) {
-            lottieAnimation.setAnimation(R.raw.anim_analise_mentor);
+            binding.lottieStatusAnimation.setAnimation(R.raw.anim_analise_mentor);
         } else {
-            lottieAnimation.setAnimation(R.raw.anim_mapa_procurando);
+            binding.lottieStatusAnimation.setAnimation(R.raw.anim_mapa_procurando);
         }
-        lottieAnimation.playAnimation();
+        binding.lottieStatusAnimation.playAnimation();
     }
 
+    /**
+     * Mostra o dialog com o feedback formatado.
+     * Esta lógica foi simplificada para usar o modelo AvaliacaoCompleta.
+     */
     private void showFeedbackDialog() {
         if (!isAdded() || ideia.getAvaliacoes() == null || ideia.getAvaliacoes().isEmpty()) return;
 
-        SpannableStringBuilder formatted = new SpannableStringBuilder();
+        // Assumindo que a lista contém objetos AvaliacaoCompleta
+        AvaliacaoCompleta ultimaAvaliacao = ideia.getAvaliacoes().get(ideia.getAvaliacoes().size() - 1);
+        SpannableStringBuilder formattedFeedback = new SpannableStringBuilder();
 
-        for (Object item : ideia.getAvaliacoes()) {
-            String criterio = null;
-            String feedback = null;
-            double nota = -1;
+        for (Avaliacao criterio : ultimaAvaliacao.getCriteriosAvaliados()) {
+            String header = criterio.getCriterio() + String.format(Locale.getDefault(), ": %.1f/10\n", criterio.getNota());
+            int start = formattedFeedback.length();
+            formattedFeedback.append(header);
+            formattedFeedback.setSpan(new StyleSpan(android.graphics.Typeface.BOLD), start, formattedFeedback.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
-            // Aceita tanto Avaliacao (objeto) quanto Map (persistido pelo Firestore)
-            if (item instanceof Avaliacao) {
-                Avaliacao av = (Avaliacao) item;
-                criterio = av.getCriterio();
-                feedback = av.getFeedback();
-                nota = av.getNota();
-            } else if (item instanceof Map) {
-                Map<?, ?> m = (Map<?, ?>) item;
-                Object c = m.get("criterio");
-                Object f = m.get("feedback");
-                Object n = m.get("nota");
-                if (c instanceof String) criterio = (String) c;
-                if (f instanceof String) feedback = (String) f;
-                if (n instanceof Number) nota = ((Number) n).doubleValue();
-            }
-
-            if (criterio == null) continue;
-
-            String header = criterio + (nota >= 0 ? (": " + nota + "/10") : "") + "\n";
-            int start = formatted.length();
-            formatted.append(header);
-            formatted.setSpan(new StyleSpan(android.graphics.Typeface.BOLD), start, formatted.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-
-            if (feedback != null && !feedback.trim().isEmpty()) {
-                formatted.append(feedback).append("\n\n");
+            if (criterio.getFeedback() != null && !criterio.getFeedback().trim().isEmpty()) {
+                formattedFeedback.append(criterio.getFeedback()).append("\n\n");
             } else {
-                formatted.append("Nenhum feedback específico.\n\n");
+                formattedFeedback.append("Nenhum feedback adicional.\n\n");
             }
         }
 
         new AlertDialog.Builder(requireContext())
-                .setTitle("Feedback do Mentor")
-                .setMessage(formatted)
+                .setTitle("Feedback de " + ultimaAvaliacao.getMentorNome())
+                .setMessage(formattedFeedback)
                 .setPositiveButton("Entendi", null)
                 .show();
     }

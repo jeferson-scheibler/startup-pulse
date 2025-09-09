@@ -12,11 +12,18 @@ import java.util.List;
 
 public class EquipeAdapter extends RecyclerView.Adapter<EquipeAdapter.MembroViewHolder> {
 
-    private final List<MembroEquipe> membros;
-
-    public EquipeAdapter(List<MembroEquipe> membros) {
-        this.membros = membros;
+    public interface OnMembroClickListener {
+        void onMembroClick(MembroEquipe membro);
     }
+    private final List<MembroEquipe> membros;
+    private final OnMembroClickListener listener;
+
+    public EquipeAdapter(List<MembroEquipe> membros, OnMembroClickListener listener) {
+        this.membros = membros;
+        this.listener = listener;
+    }
+
+
 
     @NonNull
     @Override
@@ -27,7 +34,7 @@ public class EquipeAdapter extends RecyclerView.Adapter<EquipeAdapter.MembroView
 
     @Override
     public void onBindViewHolder(@NonNull MembroViewHolder holder, int position) {
-        holder.bind(membros.get(position));
+        holder.bind(membros.get(position), listener);
     }
 
     @Override
@@ -47,7 +54,7 @@ public class EquipeAdapter extends RecyclerView.Adapter<EquipeAdapter.MembroView
             role = itemView.findViewById(R.id.text_view_membro_funcao);
         }
 
-        public void bind(MembroEquipe membro) {
+        public void bind(MembroEquipe membro, final OnMembroClickListener clickListener) {
             name.setText(membro.getNome());
             role.setText(membro.getFuncao());
 
@@ -56,6 +63,12 @@ public class EquipeAdapter extends RecyclerView.Adapter<EquipeAdapter.MembroView
                     .placeholder(R.drawable.ic_person)
                     .error(R.drawable.ic_person)
                     .into(photo);
+
+            itemView.setOnClickListener(v -> {
+                if (clickListener != null) {
+                    clickListener.onMembroClick(membro);
+                }
+            });
         }
     }
 }

@@ -39,87 +39,70 @@ public class FirestoreHelper {
     private static final String IDEIAS_COLLECTION   = "ideias";
     private static final String MENTORES_COLLECTION = "mentores";
 
-    public void findMentoresByAreas(
-                @NonNull List<String> areas,
-                @Nullable String excludeUserId,
-                @NonNull Callback<List<Mentor>> callback
-        ) {
-                if (areas == null || areas.isEmpty()) { callback.onComplete(Result.ok(new ArrayList<>())); return; }
-                Query q = db.collection(MENTORES_COLLECTION)
-                                .whereArrayContainsAny("areas", areas);
-                if (excludeUserId != null && !excludeUserId.isEmpty()) {
-                        q = q.whereNotEqualTo(com.google.firebase.firestore.FieldPath.documentId(), excludeUserId);
-                    }
-                q.get().addOnSuccessListener(snap -> {
-                        List<Mentor> out = new ArrayList<>();
-                        for (DocumentSnapshot d : snap.getDocuments()) {
-                                Mentor m = d.toObject(Mentor.class);
-                                if (m != null) { m.setId(d.getId()); out.add(m); }
-                            }
-                        callback.onComplete(Result.ok(out));
-                    }).addOnFailureListener(e -> callback.onComplete(Result.err(e)));
-            }
-
-    /** Mentores por ÁREAS na CIDADE. */
-    public void findMentoresByAreasInCity(
-                @NonNull List<String> areas,
-                @NonNull String cidade,
-                @Nullable String excludeUserId,
-                @NonNull Callback<List<Mentor>> callback
-        ) {
-        if (areas == null || areas.isEmpty() || cidade == null || cidade.isEmpty()) {
-            callback.onComplete(Result.ok(new ArrayList<>()));
-            return;
-        }
-        Query q = db.collection(MENTORES_COLLECTION)
-                .whereEqualTo("cidade", cidade)
-                .whereArrayContainsAny("areas", areas);
-        if (excludeUserId != null && !excludeUserId.isEmpty()) {
-            q = q.whereNotEqualTo(com.google.firebase.firestore.FieldPath.documentId(), excludeUserId);
-        }
-        q.get().addOnSuccessListener(snap -> {
-            List<Mentor> out = new ArrayList<>();
-            for (DocumentSnapshot d : snap.getDocuments()) {
-                Mentor m = d.toObject(Mentor.class);
-                if (m != null) { m.setId(d.getId()); out.add(m); }
-            }
-            callback.onComplete(Result.ok(out));
-        }).addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+    public interface Callback<T> {
+        void onComplete(Result<T> r);
     }
-
-    /** Mentores por ÁREAS no ESTADO. */
-                public void findMentoresByAreasInState(
-                @NonNull List<String> areas,
-                @NonNull String estado,
-                @Nullable String excludeUserId,
-                @NonNull Callback<List<Mentor>> callback
-        ) {
-                    if (areas == null || areas.isEmpty() || estado == null || estado.isEmpty()) {
-                        callback.onComplete(Result.ok(new ArrayList<>()));
-                        return;
-                    }
-                Query q = db.collection(MENTORES_COLLECTION)
-                                .whereEqualTo("estado", estado)
-                                .whereArrayContainsAny("areas", areas);
-                if (excludeUserId != null && !excludeUserId.isEmpty()) {
-                        q = q.whereNotEqualTo(com.google.firebase.firestore.FieldPath.documentId(), excludeUserId);
-                    }
-                q.get().addOnSuccessListener(snap -> {
-                        List<Mentor> out = new ArrayList<>();
-                        for (DocumentSnapshot d : snap.getDocuments()) {
-                                Mentor m = d.toObject(Mentor.class);
-                                if (m != null) { m.setId(d.getId()); out.add(m); }
-                            }
-                        callback.onComplete(Result.ok(out));
-                    }).addOnFailureListener(e -> callback.onComplete(Result.err(e)));
-            }
-
-    public interface Callback<T> { void onComplete(Result<T> r); }
 
     private final FirebaseFirestore db;
 
     public FirestoreHelper() {
         db = FirebaseFirestore.getInstance();
+    }
+
+    // --- MÉTODOS DE BUSCA DE MENTORES (CORRIGIDOS) ---
+
+    public void findMentoresByAreasInCity(
+            @NonNull List<String> areas, @NonNull String cidade, @Nullable String excludeUserId,
+            @NonNull Callback<List<Mentor>> callback
+    ) {
+        if (areas.isEmpty() || cidade.isEmpty()) {
+            callback.onComplete(Result.ok(new ArrayList<>()));
+            return;
+        }
+        Query q = db.collection("mentores").whereEqualTo("cidade", cidade).whereArrayContainsAny("areas", areas);
+        if (excludeUserId != null && !excludeUserId.isEmpty()) {
+            q = q.whereNotEqualTo(com.google.firebase.firestore.FieldPath.documentId(), excludeUserId);
+        }
+        q.get().addOnSuccessListener(snap -> {
+            List<Mentor> out = snap.toObjects(Mentor.class);
+            callback.onComplete(Result.ok(out));
+        }).addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+    }
+
+    public void findMentoresByAreasInState(
+            @NonNull List<String> areas, @NonNull String estado, @Nullable String excludeUserId,
+            @NonNull Callback<List<Mentor>> callback
+    ) {
+        if (areas.isEmpty() || estado.isEmpty()) {
+            callback.onComplete(Result.ok(new ArrayList<>()));
+            return;
+        }
+        Query q = db.collection("mentores").whereEqualTo("estado", estado).whereArrayContainsAny("areas", areas);
+        if (excludeUserId != null && !excludeUserId.isEmpty()) {
+            q = q.whereNotEqualTo(com.google.firebase.firestore.FieldPath.documentId(), excludeUserId);
+        }
+        q.get().addOnSuccessListener(snap -> {
+            List<Mentor> out = snap.toObjects(Mentor.class);
+            callback.onComplete(Result.ok(out));
+        }).addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+    }
+
+    public void findMentoresByAreas(
+            @NonNull List<String> areas, @Nullable String excludeUserId,
+            @NonNull Callback<List<Mentor>> callback
+    ) {
+        if (areas.isEmpty()) {
+            callback.onComplete(Result.ok(new ArrayList<>()));
+            return;
+        }
+        Query q = db.collection("mentores").whereArrayContainsAny("areas", areas);
+        if (excludeUserId != null && !excludeUserId.isEmpty()) {
+            q = q.whereNotEqualTo(com.google.firebase.firestore.FieldPath.documentId(), excludeUserId);
+        }
+        q.get().addOnSuccessListener(snap -> {
+            List<Mentor> out = snap.toObjects(Mentor.class);
+            callback.onComplete(Result.ok(out));
+        }).addOnFailureListener(e -> callback.onComplete(Result.err(e)));
     }
 
     // =========================================================

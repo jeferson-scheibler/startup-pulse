@@ -4,8 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true"
-    android:background="@color/colorSurface">
+    android:fillViewport="true">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
@@ -44,6 +43,7 @@
             android:layout_marginTop="24dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
+            android:textColor="@color/colorSurface"
             app:layout_constraintTop_toBottomOf="@id/text_ideia_description" />
 
         <com.airbnb.lottie.LottieAnimationView
@@ -81,7 +81,7 @@
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:src="@drawable/ic_rocket_launch"
-                    android:textColor="@color/colorSurface" />
+                    app:tint="@color/colorSurface" />
 
                 <TextView
                     android:id="@+id/label_publicada"
@@ -90,7 +90,7 @@
                     android:layout_marginStart="16dp"
                     android:layout_weight="1"
                     android:text="Ideia publicada"
-                    android:textAppearance="@style/Text.BodyMedium"
+                    android:textAppearance="@style/Text.TitleMedium"
                     android:textColor="@color/colorSurface" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -171,16 +171,16 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_ver_feedback"
-                    style="@style/Widget.Material3.Button.TonalButton"
+                    style="@style/App.Button.Outlined.LessRounded"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="end"
                     android:layout_marginTop="16dp"
                     android:text="Ver Feedback"
-                    android:textColor="@color/colorSurface"
+                    android:textColor="@color/colorOnSurface"
                     android:visibility="gone"
                     tools:visibility="visible"
-                    android:textAppearance="@style/Text.BodyMedium"/>
+                    android:textAppearance="@style/Text.TitleMedium"/>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

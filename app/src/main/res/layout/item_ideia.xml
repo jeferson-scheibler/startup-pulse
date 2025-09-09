@@ -28,7 +28,7 @@
         <View
             android:id="@+id/mentor_highlight_view"
             android:layout_width="6dp"
-            android:layout_height="0dp"
+            android:layout_height="60dp"
             android:background="@color/colorSecondary"
             android:visibility="gone"
             app:layout_constraintTop_toTopOf="parent"
@@ -51,10 +51,10 @@
             <!-- Título da ideia -->
             <TextView
                 android:id="@+id/textViewTituloIdeia"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textAppearance="@style/Text.TitleMedium"
                 android:textColor="@color/colorOnSurface"
                 android:textStyle="bold"
                 android:maxLines="2"
@@ -75,7 +75,7 @@
                     android:id="@+id/textViewAutorIdeia"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textAppearance="@style/Text.BodySmall.Muted"
                     android:textColor="@color/colorOnSurface"
                     android:maxLines="1"
                     android:ellipsize="end"

@@ -39,7 +39,7 @@ public class CanvasPagerAdapter extends FragmentStateAdapter {
 
             // Etapas que precisam de um ID específico
             case CanvasEtapa.CHAVE_STATUS:
-                return IdeiaStatusFragment.newInstance(ideia.getId());
+                return IdeiaStatusFragment.newInstance(ideia);
 
             // Etapas independentes que não precisam de dados
             case CanvasEtapa.CHAVE_AMBIENTE_CHECK:

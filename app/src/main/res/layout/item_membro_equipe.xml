@@ -6,9 +6,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginVertical="6dp"
-    app:cardCornerRadius="12dp"
-    app:strokeWidth="1dp"
-    app:strokeColor="@color/strokeSoft">
+    android:layout_marginHorizontal="4dp"
+    android:background="@drawable/glass_fume_background">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
@@ -23,7 +22,8 @@
             app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            tools:src="@drawable/ic_person" />
+            tools:src="@drawable/ic_person"
+            app:tint="@color/colorSecondary"/>
 
         <TextView
             android:id="@+id/text_view_membro_nome"
