@@ -1,11 +1,13 @@
 package com.example.startuppulse;
 
 import android.text.TextUtils;
-
 import java.util.List;
 import java.util.Map;
 
-// Classe utilitária para calcular o Readiness Score de uma Ideia.
+/**
+ * Classe utilitária para calcular o Readiness Score de uma Ideia,
+ * indicando o seu nível de prontidão para ser apresentada a investidores.
+ */
 public class ReadinessCalculator {
 
     // Define os pesos de cada critério para o cálculo do score.
@@ -15,29 +17,23 @@ public class ReadinessCalculator {
     private static final int PESO_MENTOR = 15;
     private static final int PESO_PITCH_DECK = 5;
 
+    // --- NOVO: Define a nota mínima para a validação do mentor ---
+    private static final double NOTA_MINIMA_MENTOR = 7.5;
+
     public static ReadinessData calculate(Ideia ideia) {
         if (ideia == null) {
-            // Retorna dados zerados se não houver ideia.
             return new ReadinessData(0, false, false, false, false, false);
         }
 
-        // 1. Verifica o preenchimento do Canvas
         boolean canvasCompleto = isCanvasPreenchido(ideia);
+        boolean equipeDefinida = ideia.getEquipe() != null && !ideia.getEquipe().isEmpty();
+        boolean metricasIniciais = ideia.getMetricas() != null && !ideia.getMetricas().isEmpty();
 
-        // 2. Verifica se a equipe está definida (lógica a ser implementada)
-        // Por agora, vamos assumir 'false' até adicionarmos o campo.
-        boolean equipeDefinida = false; // TODO: Implementar lógica real
+        // --- LÓGICA DE VALIDAÇÃO DO MENTOR CORRIGIDA ---
+        boolean validadoPorMentor = isIdeiaValidadaPorMentor(ideia);
 
-        // 3. Verifica se as métricas iniciais foram inseridas (lógica a ser implementada)
-        boolean metricasIniciais = false; // TODO: Implementar lógica real
+        boolean hasPitchDeck = !TextUtils.isEmpty(ideia.getPitchDeckUrl());
 
-        // 4. Verifica se um mentor foi associado à ideia
-        boolean validadoPorMentor = !TextUtils.isEmpty(ideia.getMentorId());
-
-        // 5. Verifica se um pitch deck foi anexado (lógica a ser implementada)
-        boolean hasPitchDeck = false; // TODO: Implementar lógica real
-
-        // Calcula o score final somando os pesos dos critérios completos.
         int score = 0;
         if (canvasCompleto) score += PESO_CANVAS;
         if (equipeDefinida) score += PESO_EQUIPE;
@@ -49,24 +45,49 @@ public class ReadinessCalculator {
     }
 
     /**
-     * Verifica se os campos essenciais do Canvas da Ideia estão preenchidos.
-     * Um campo é considerado preenchido se a lista de post-its não estiver vazia.
+     * NOVA LÓGICA: Verifica se uma ideia foi validada por um mentor.
+     * A validação requer que a ideia tenha sido avaliada e que a média das notas
+     * seja igual ou superior à nota mínima definida.
      */
-    private static boolean isCanvasPreenchido(Ideia ideia) {
-        // --- CORREÇÃO APLICADA AQUI ---
-        Map<String, List<PostIt>> canvas = ideia.getPostIts(); // Usando o método correto
-        if (canvas == null) return false;
+    private static boolean isIdeiaValidadaPorMentor(Ideia ideia) {
+        if (ideia == null || !"Avaliada".equals(ideia.getAvaliacaoStatus())) {
+            return false;
+        }
 
-        // Verifica os 9 blocos do Business Model Canvas
-        return !isPostItListEmpty(canvas.get("propostaValor")) &&
-                !isPostItListEmpty(canvas.get("segmentoClientes")) &&
-                !isPostItListEmpty(canvas.get("canais")) &&
-                !isPostItListEmpty(canvas.get("relacionamentoClientes")) &&
-                !isPostItListEmpty(canvas.get("fontesRenda")) &&
-                !isPostItListEmpty(canvas.get("recursosPrincipais")) &&
-                !isPostItListEmpty(canvas.get("atividadesChave")) &&
-                !isPostItListEmpty(canvas.get("parceriasPrincipais")) &&
-                !isPostItListEmpty(canvas.get("estruturaCustos"));
+        List<AvaliacaoCompleta> avaliacoes = ideia.getAvaliacoes();
+        if (avaliacoes == null || avaliacoes.isEmpty()) {
+            return false;
+        }
+
+        // Pega a avaliação mais recente
+        AvaliacaoCompleta ultimaAvaliacao = avaliacoes.get(avaliacoes.size() - 1);
+        if (ultimaAvaliacao.getCriteriosAvaliados() == null || ultimaAvaliacao.getCriteriosAvaliados().isEmpty()) {
+            return false;
+        }
+
+        double somaNotas = 0;
+        for (Avaliacao criterio : ultimaAvaliacao.getCriteriosAvaliados()) {
+            somaNotas += criterio.getNota();
+        }
+
+        double media = somaNotas / ultimaAvaliacao.getCriteriosAvaliados().size();
+
+        return media >= NOTA_MINIMA_MENTOR;
+    }
+
+    private static boolean isCanvasPreenchido(Ideia ideia) {
+        // ... (resto do método continua igual)
+        Map<String, List<PostIt>> canvas = ideia.getPostIts();
+        if (canvas == null) return false;
+        return !isPostItListEmpty(canvas.get(CanvasEtapa.CHAVE_PROPOSTA_VALOR)) &&
+                !isPostItListEmpty(canvas.get(CanvasEtapa.CHAVE_SEGMENTO_CLIENTES)) &&
+                !isPostItListEmpty(canvas.get(CanvasEtapa.CHAVE_CANAIS)) &&
+                !isPostItListEmpty(canvas.get(CanvasEtapa.CHAVE_RELACIONAMENTO_CLIENTES)) &&
+                !isPostItListEmpty(canvas.get(CanvasEtapa.CHAVE_FONTES_RENDA)) &&
+                !isPostItListEmpty(canvas.get(CanvasEtapa.CHAVE_RECURSOS_PRINCIPAIS)) &&
+                !isPostItListEmpty(canvas.get(CanvasEtapa.CHAVE_ATIVIDADES_CHAVE)) &&
+                !isPostItListEmpty(canvas.get(CanvasEtapa.CHAVE_PARCERIAS_PRINCIPAIS)) &&
+                !isPostItListEmpty(canvas.get(CanvasEtapa.CHAVE_ESTRUTURA_CUSTOS));
     }
 
     private static boolean isPostItListEmpty(List<PostIt> postIts) {
