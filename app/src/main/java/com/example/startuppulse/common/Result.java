@@ -5,6 +5,7 @@ import androidx.annotation.Nullable;
 public final class Result<T> {
     @Nullable public final T data;
     @Nullable public final Throwable error;
+    public Throwable err;
 
     private Result(@Nullable T data, @Nullable Throwable error) {
         this.data = data; this.error = error;

@@ -96,6 +96,12 @@ dependencies {
     // implementation(libs.credentials.play.services.auth)
     // implementation(libs.googleid)
 
+    val navigationVersion = "2.7.7"
+    implementation("androidx.navigation:navigation-fragment:$navigationVersion")
+    implementation("androidx.navigation:navigation-ui:$navigationVersion")
+
+    implementation("com.google.firebase:firebase-storage")
+
     // Desugaring (java.time, etc.)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.2")
 

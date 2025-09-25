@@ -39,6 +39,7 @@ public class Ideia implements Serializable {
     private List<Metrica> metricas;
     private String pitchDeckUrl;
     private Status status;
+    private boolean prontaParaInvestidores = false;
 
     public Ideia() {
         this.postIts = new HashMap<>();
@@ -88,6 +89,12 @@ public class Ideia implements Serializable {
     public void setMetricas(List<Metrica> metricas) { this.metricas = metricas; }
     public String getPitchDeckUrl() { return pitchDeckUrl; }
     public void setPitchDeckUrl(String pitchDeckUrl) { this.pitchDeckUrl = pitchDeckUrl; }
+    public boolean isProntaParaInvestidores() {
+        return prontaParaInvestidores;
+    }
+    public void setProntaParaInvestidores(boolean prontaParaInvestidores) {
+        this.prontaParaInvestidores = prontaParaInvestidores;
+    }
     public List<PostIt> getPostItsPorChave(String etapaChave) {
         if (postIts == null) {
             return new ArrayList<>();

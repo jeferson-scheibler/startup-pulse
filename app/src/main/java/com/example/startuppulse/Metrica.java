@@ -19,6 +19,9 @@ public class Metrica implements Serializable {
         // Construtor vazio obrigatório para o Firestore
     }
 
+    public Metrica(String nome, String valor) {
+    }
+
     // --- Getters e Setters ---
     public String getNome() { return nome; }
     public void setNome(String nome) { this.nome = nome; }

@@ -17,6 +17,9 @@ public class MembroEquipe implements Serializable {
         // Construtor vazio obrigatório para o Firestore
     }
 
+    public MembroEquipe(String nome, String funcao, String s) {
+    }
+
     // --- Getters e Setters ---
     public String getNome() { return nome; }
     public void setNome(String nome) { this.nome = nome; }

@@ -1,6 +1,10 @@
 package com.example.startuppulse;
 
+import android.Manifest;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
@@ -8,12 +12,18 @@ import android.text.style.StyleSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.Toast;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import com.example.startuppulse.databinding.FragmentIdeiaStatusBinding; // Importar o ViewBinding
+import com.example.startuppulse.util.PdfGenerator;
 
 import java.util.Locale;
 
@@ -27,11 +37,20 @@ public class IdeiaStatusFragment extends Fragment {
     private Ideia ideia;
     private FirestoreHelper firestoreHelper;
 
-    // Factory method atualizado para receber o objeto Ideia completo
+    private final ActivityResultLauncher<String> requestPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+                if (isGranted) {
+                    if (ideia != null) {
+                        gerarPdf();
+                    }
+                } else {
+                    Toast.makeText(getContext(), "Permissão para salvar arquivos é necessária.", Toast.LENGTH_LONG).show();
+                }
+            });
     public static IdeiaStatusFragment newInstance(Ideia ideia) {
         IdeiaStatusFragment fragment = new IdeiaStatusFragment();
         Bundle args = new Bundle();
-        args.putSerializable("ideia", ideia); // Passa o objeto inteiro
+        args.putSerializable("ideia", ideia);
         fragment.setArguments(args);
         return fragment;
     }
@@ -56,21 +75,30 @@ public class IdeiaStatusFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         if (ideia == null || !isAdded()) {
-            // Se não houver dados, mostra um estado de erro ou simplesmente não faz nada.
             return;
         }
+
+        binding.btnDownloadPdf.setOnClickListener(v -> verificarPermissaoEGerarPdf());
+
+        binding.btnPrepararInvestidores.setOnClickListener(v -> {
+            if (ideia != null && ideia.getId() != null) {
+                Intent intent = new Intent(getActivity(), PreparacaoInvestidorActivity.class);
+                intent.putExtra("IDEIA_ID", ideia.getId());
+                startActivity(intent);
+            } else {
+                Toast.makeText(getContext(), "Erro: ID da ideia não encontrado.", Toast.LENGTH_SHORT).show();
+            }
+        });
+
         updateUI();
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        binding = null; // Previne memory leaks
+        binding = null;
     }
 
-    /**
-     * Centraliza toda a lógica de atualização da UI.
-     */
     private void updateUI() {
         // --- Dados Básicos da Ideia ---
         binding.textIdeiaTitle.setText(ideia.getNome());
@@ -95,8 +123,29 @@ public class IdeiaStatusFragment extends Fragment {
             binding.textMentorName.setText("A procurar o mentor ideal...");
         }
 
-        // --- Status da Avaliação ---
-        boolean isAvaliada = "Avaliada".equals(ideia.getAvaliacaoStatus());
+        String statusAvaliacao = ideia.getAvaliacaoStatus();
+        boolean isAvaliada = "Avaliada".equals(statusAvaliacao);
+        boolean isEmAvaliacao = "Pendente".equals(statusAvaliacao);
+
+        if (isAvaliada || isEmAvaliacao) {
+            binding.btnDownloadPdf.setVisibility(View.VISIBLE);
+        } else {
+            binding.btnDownloadPdf.setVisibility(View.GONE);
+        }
+
+        if (isAvaliada && !ideia.isProntaParaInvestidores()) {
+            // Só mostra o botão se a ideia foi avaliada E AINDA NÃO está pronta para investidores
+            binding.btnPrepararInvestidores.setVisibility(View.VISIBLE);
+        } else {
+            binding.btnPrepararInvestidores.setVisibility(View.GONE);
+        }
+
+        // Se a ideia já estiver pronta, podemos mostrar uma mensagem de sucesso
+        if (ideia.isProntaParaInvestidores()) {
+            binding.textAvaliacaoStatus.setText("Ideia Pronta para Investidores!");
+            binding.textAvaliacaoStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.green_success));
+        }
+
         if (isAvaliada) {
             int colorSuccess = ContextCompat.getColor(requireContext(), R.color.green_success);
             binding.cardAvaliacao.setStrokeColor(colorSuccess);
@@ -125,10 +174,6 @@ public class IdeiaStatusFragment extends Fragment {
         binding.lottieStatusAnimation.playAnimation();
     }
 
-    /**
-     * Mostra o dialog com o feedback formatado.
-     * Esta lógica foi simplificada para usar o modelo AvaliacaoCompleta.
-     */
     private void showFeedbackDialog() {
         if (!isAdded() || ideia.getAvaliacoes() == null || ideia.getAvaliacoes().isEmpty()) return;
 
@@ -154,5 +199,39 @@ public class IdeiaStatusFragment extends Fragment {
                 .setMessage(formattedFeedback)
                 .setPositiveButton("Entendi", null)
                 .show();
+    }
+
+    private void verificarPermissaoEGerarPdf() {
+        if (getContext() == null) return; // Checagem de segurança
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            if (ContextCompat.checkSelfPermission(
+                    getContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
+                    PackageManager.PERMISSION_GRANTED) {
+                gerarPdf();
+            } else {
+                requestPermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+            }
+        } else {
+            gerarPdf();
+        }
+    }
+
+    private void gerarPdf() {
+        if (getContext() == null) return; // Checagem de segurança
+
+        // Exibe um feedback para o usuário
+        Toast.makeText(getContext(), "Gerando PDF...", Toast.LENGTH_SHORT).show();
+
+        PdfGenerator.gerarCanvas(getContext(), ideia, (success, message) -> {
+            if (getActivity() != null) {
+                getActivity().runOnUiThread(() -> {
+                    if (!success) {
+                        Toast.makeText(getContext(), "Erro: " + message, Toast.LENGTH_LONG).show();
+                    }
+                    // A mensagem de sucesso já é mostrada dentro do PdfGenerator.
+                });
+            }
+        });
     }
 }

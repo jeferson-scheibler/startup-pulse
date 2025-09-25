@@ -326,14 +326,42 @@ public class FirestoreHelper {
     }
 
     /** Atualiza o documento completo da ideia (ex.: salvar rascunho). */
-    public void updateIdeia(Ideia ideia, Callback<Result<Void>> callback) {
-        if (ideia == null || ideia.getId() == null) {
+    public void updateIdeia(
+            @NonNull Ideia ideia,
+            @NonNull Callback<Result<Void>> callback
+    ) {
+        if (ideia.getId() == null || ideia.getId().isEmpty()) {
             callback.onComplete(Result.err(new IllegalArgumentException("ID da ideia não pode ser nulo.")));
             return;
         }
-        db.collection("ideias").document(ideia.getId())
+
+        db.collection(IDEIAS_COLLECTION).document(ideia.getId())
                 .set(ideia)
                 .addOnSuccessListener(aVoid -> callback.onComplete(Result.ok(null)))
+                .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+    }
+
+    public void findIdeiaById(
+            @NonNull String ideiaId,
+            @NonNull Callback<Ideia> callback
+    ) {
+        if (ideiaId.isEmpty()) {
+            callback.onComplete(Result.err(new IllegalArgumentException("ID da ideia vazio.")));
+            return;
+        }
+
+        db.collection(IDEIAS_COLLECTION).document(ideiaId).get()
+                .addOnSuccessListener(snap -> {
+                    if (snap.exists()) {
+                        Ideia ideia = snap.toObject(Ideia.class);
+                        if (ideia != null) {
+                            ideia.setId(snap.getId());
+                        }
+                        callback.onComplete(Result.ok(ideia)); // Passa a ideia ou null se a conversão falhar
+                    } else {
+                        callback.onComplete(Result.ok(null)); // Documento não existe
+                    }
+                })
                 .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
     }
 

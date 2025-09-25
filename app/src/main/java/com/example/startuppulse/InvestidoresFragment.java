@@ -5,18 +5,14 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.LinearLayout;
-import android.widget.ProgressBar;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.startuppulse.databinding.FragmentInvestidoresBinding; // Importação correta
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
@@ -26,36 +22,35 @@ import java.util.Locale;
 
 public class InvestidoresFragment extends Fragment implements InvestorAdapter.OnInvestorClickListener {
 
-    private static final int SCORE_MINIMO_PARA_INVESTIDORES = 75;
-
-    // UI Components
-    private ConstraintLayout readinessContainer;
-    private LinearLayout investorListContainer;
-    private ProgressBar progressBarScore, progressBarLoadingInvestors;
-    private TextView textViewScore;
-    private RecyclerView recyclerViewTasks, recyclerViewInvestors;
+    private FragmentInvestidoresBinding binding; // Usando View Binding
 
     // Adapters
     private ReadinessTaskAdapter readinessAdapter;
     private InvestorAdapter investorAdapter;
 
-    // Firebase
+    // Firebase e Dados
     private FirestoreHelper firestoreHelper;
     private FirebaseUser currentUser;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_investidores, container, false);
+        binding = FragmentInvestidoresBinding.inflate(inflater, container, false);
+        return binding.getRoot();
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         initializeFirebase();
-        initializeViews(view);
         setupRecyclerViews();
         loadUserReadinessData();
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        binding = null; // Prevenir memory leaks
     }
 
     private void initializeFirebase() {
@@ -63,67 +58,66 @@ public class InvestidoresFragment extends Fragment implements InvestorAdapter.On
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
     }
 
-    private void initializeViews(View view) {
-        readinessContainer = view.findViewById(R.id.readiness_container);
-        investorListContainer = view.findViewById(R.id.container_investor_list);
-
-        // O resto das views está dentro do readinessContainer
-        progressBarScore = readinessContainer.findViewById(R.id.progress_bar_score);
-        textViewScore = readinessContainer.findViewById(R.id.text_view_score);
-        progressBarLoadingInvestors = readinessContainer.findViewById(R.id.progress_bar_loading_investors);
-    }
-
     private void setupRecyclerViews() {
-        recyclerViewTasks = readinessContainer.findViewById(R.id.recycler_view_tasks);
-        recyclerViewTasks.setLayoutManager(new LinearLayoutManager(requireContext()));
-
-        recyclerViewInvestors = investorListContainer.findViewById(R.id.recycler_view_investors);
-        recyclerViewInvestors.setLayoutManager(new LinearLayoutManager(requireContext()));
+        binding.recyclerViewTasks.setLayoutManager(new LinearLayoutManager(requireContext()));
+        binding.recyclerViewInvestors.setLayoutManager(new LinearLayoutManager(requireContext()));
     }
 
+    /**
+     * Ponto de entrada: Carrega a ideia principal do usuário e decide qual tela mostrar.
+     */
     private void loadUserReadinessData() {
         if (currentUser == null) {
             Toast.makeText(getContext(), "Usuário não autenticado.", Toast.LENGTH_SHORT).show();
+            // Mostra o painel de prontidão com dados nulos (score 0%)
             updateReadinessUI(ReadinessCalculator.calculate(null));
             return;
         }
 
         firestoreHelper.getIdeiasForOwner(currentUser.getUid(), result -> {
-            if (!isAdded()) return;
+            if (!isAdded() || binding == null) return;
 
             Ideia ideiaPrincipal = (result.isOk() && result.data != null && !result.data.isEmpty())
                     ? result.data.get(0) : null;
 
-            ReadinessData readinessData = ReadinessCalculator.calculate(ideiaPrincipal);
-
-            if (readinessData.getScore() >= SCORE_MINIMO_PARA_INVESTIDORES) {
+            // **NOVA LÓGICA INTEGRADA**
+            // Se a ideia já estiver marcada como pronta, vai direto para a lista de investidores.
+            if (ideiaPrincipal != null && ideiaPrincipal.isProntaParaInvestidores()) {
                 showInvestorListView();
                 loadInvestors();
             } else {
+                // Caso contrário, mostra o painel de prontidão com o score atual.
+                ReadinessData readinessData = ReadinessCalculator.calculate(ideiaPrincipal);
                 showReadinessView();
                 updateReadinessUI(readinessData);
             }
         });
     }
 
+    /**
+     * Carrega os dados dos investidores do Firestore.
+     */
     private void loadInvestors() {
         firestoreHelper.getInvestidores(result -> {
-            if (!isAdded()) return;
+            if (!isAdded() || binding == null) return;
 
-            progressBarLoadingInvestors.setVisibility(View.GONE);
+            binding.progressBarLoadingInvestors.setVisibility(View.GONE);
 
             if (result.isOk() && result.data != null) {
                 investorAdapter = new InvestorAdapter(result.data, this);
-                recyclerViewInvestors.setAdapter(investorAdapter);
+                binding.recyclerViewInvestors.setAdapter(investorAdapter);
             } else {
                 Toast.makeText(getContext(), "Falha ao carregar investidores.", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
+    /**
+     * Atualiza a UI do Painel de Prontidão com os dados calculados.
+     */
     private void updateReadinessUI(ReadinessData data) {
-        progressBarScore.setProgress(data.getScore());
-        textViewScore.setText(String.format(Locale.getDefault(), "%d%%", data.getScore()));
+        binding.progressBarScore.setProgress(data.getScore());
+        binding.textViewScore.setText(String.format(Locale.getDefault(), "%d%%", data.getScore()));
 
         List<ReadinessTask> tasks = new ArrayList<>();
         tasks.add(new ReadinessTask("Preencha todos os blocos do seu Canvas da Ideia.", data.isCanvasCompleto()));
@@ -133,29 +127,27 @@ public class InvestidoresFragment extends Fragment implements InvestorAdapter.On
         tasks.add(new ReadinessTask("Anexe seu Pitch Deck.", data.hasPitchDeck()));
 
         readinessAdapter = new ReadinessTaskAdapter(tasks, requireContext());
-        recyclerViewTasks.setAdapter(readinessAdapter);
+        binding.recyclerViewTasks.setAdapter(readinessAdapter);
     }
 
+    /**
+     * Configura a visibilidade para mostrar o Painel de Prontidão.
+     */
     private void showReadinessView() {
-        readinessContainer.findViewById(R.id.text_view_titulo).setVisibility(View.VISIBLE);
-        // ... mostrar todas as views do readiness
-        investorListContainer.setVisibility(View.GONE);
-        progressBarLoadingInvestors.setVisibility(View.GONE);
+        binding.readinessContainer.setVisibility(View.VISIBLE);
+        binding.containerInvestorList.setVisibility(View.GONE);
+        binding.progressBarLoadingInvestors.setVisibility(View.GONE);
     }
 
+    /**
+     * Configura a visibilidade para mostrar a Lista de Investidores.
+     */
     private void showInvestorListView() {
-        // Esconde todas as views do painel de prontidão
-        readinessContainer.findViewById(R.id.text_view_titulo).setVisibility(View.GONE);
-        readinessContainer.findViewById(R.id.text_view_subtitulo).setVisibility(View.GONE);
-        readinessContainer.findViewById(R.id.progress_bar_score).setVisibility(View.GONE);
-        readinessContainer.findViewById(R.id.text_view_score).setVisibility(View.GONE);
-        readinessContainer.findViewById(R.id.text_view_proximos_passos_titulo).setVisibility(View.GONE);
-        readinessContainer.findViewById(R.id.recycler_view_tasks).setVisibility(View.GONE);
-
-        // Mostra o contêiner da lista de investidores e o progresso
-        investorListContainer.setVisibility(View.VISIBLE);
-        progressBarLoadingInvestors.setVisibility(View.VISIBLE);
+        binding.readinessContainer.setVisibility(View.GONE);
+        binding.containerInvestorList.setVisibility(View.VISIBLE);
+        binding.progressBarLoadingInvestors.setVisibility(View.VISIBLE);
     }
+
     @Override
     public void onInvestorClick(Investor investor) {
         if (getContext() == null) return;
