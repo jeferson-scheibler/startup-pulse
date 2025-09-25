@@ -47,69 +47,37 @@ public class IdeiasFragment extends Fragment implements IdeiasAdapter.OnIdeiaCli
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater,
-                             @Nullable ViewGroup container,
-                             @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         binding = FragmentIdeiasBinding.inflate(inflater, container, false);
         return binding.getRoot();
     }
 
     @Override
-    public void onViewCreated(@NonNull View view,
-                              @Nullable Bundle savedInstanceState) {
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
         firestoreHelper = new FirestoreHelper();
 
-        // RecyclerView
         binding.recyclerViewIdeias.setLayoutManager(new LinearLayoutManager(requireContext()));
-        ideiasAdapter = new IdeiasAdapter(new ArrayList<>(), this, this);
+        // Corrigido para a nova assinatura do construtor
+        ideiasAdapter = new IdeiasAdapter(this, this);
         binding.recyclerViewIdeias.setAdapter(ideiasAdapter);
 
         attachSwipeToDelete();
 
-        ItemTouchHelper.SimpleCallback swipeCallback = new ItemTouchHelper.SimpleCallback(0,
-                ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
-
-            @Override
-            public boolean onMove(@NonNull RecyclerView rv,
-                                  @NonNull RecyclerView.ViewHolder vh,
-                                  @NonNull RecyclerView.ViewHolder target) {
-                return false; // não movemos itens
-            }
-
-            // Permite swipe só para o DONO da ideia (evita exclusão indevida)
-            @Override
-            public int getSwipeDirs(@NonNull RecyclerView rv, @NonNull RecyclerView.ViewHolder vh) {
-                int position = vh.getBindingAdapterPosition();
-                if (position == RecyclerView.NO_POSITION) return 0;
-
-                Ideia ideia = ideiasAdapter.getCurrentList().get(position);
-                String uid = com.google.firebase.auth.FirebaseAuth.getInstance().getUid();
-                boolean souDono = uid != null && uid.equals(ideia.getOwnerId());
-
-                return souDono ? super.getSwipeDirs(rv, vh) : 0; // 0 = bloqueia swipe
-            }
-
-            @Override
-            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
-                int position = viewHolder.getBindingAdapterPosition();
-                // chama o fluxo de confirmação+exclusão que está no adapter
-                ideiasAdapter.iniciarExclusao(position);
-            }
-        };
-
-        new ItemTouchHelper(swipeCallback).attachToRecyclerView(binding.recyclerViewIdeias);
-
-        // pull-to-refresh e carga inicial
         binding.swipeRefreshLayout.setOnRefreshListener(this::startRealtimeIdeias);
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
         startRealtimeIdeias();
     }
 
     @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        binding = null; // evita vazamento
+    public void onStop() {
+        super.onStop();
+        stopRealtimeIdeias();
     }
 
     private void mostrarDialogLimite(String proximoAcesso) {
@@ -126,8 +94,14 @@ public class IdeiasFragment extends Fragment implements IdeiasAdapter.OnIdeiaCli
                 .show();
     }
 
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        binding = null;
+    }
+
     private void startRealtimeIdeias() {
-        if (ideiasRegistration != null) return; // já ativo
+        if (ideiasRegistration != null) return;
         binding.swipeRefreshLayout.setRefreshing(true);
 
         ideiasRegistration = firestoreHelper.listenToIdeiasPublicadas(r -> {
@@ -135,23 +109,16 @@ public class IdeiasFragment extends Fragment implements IdeiasAdapter.OnIdeiaCli
             binding.swipeRefreshLayout.setRefreshing(false);
 
             if (!r.isOk()) {
-                com.google.android.material.snackbar.Snackbar.make(
-                        binding.getRoot(),
-                        "Erro ao atualizar ideias: " + r.error.getMessage(),
-                        com.google.android.material.snackbar.Snackbar.LENGTH_LONG
-                ).show();
+                Snackbar.make(binding.getRoot(), "Erro ao atualizar ideias: " + r.error.getMessage(), Snackbar.LENGTH_LONG).show();
                 return;
             }
 
-            java.util.List<Ideia> ideias = r.data != null ? r.data : new java.util.ArrayList<>();
-            if (ideias.isEmpty()) {
-                binding.viewEmptyStateIdeias.setVisibility(View.VISIBLE);
-                binding.recyclerViewIdeias.setVisibility(View.GONE);
-            } else {
-                binding.viewEmptyStateIdeias.setVisibility(View.GONE);
-                binding.recyclerViewIdeias.setVisibility(View.VISIBLE);
-                ideiasAdapter.submitList(ideias);
-            }
+            List<Ideia> ideias = r.data != null ? r.data : new ArrayList<>();
+            ideiasAdapter.submitList(ideias); // Usa submitList para atualizar a UI
+
+            // Atualiza o estado vazio
+            binding.viewEmptyStateIdeias.setVisibility(ideias.isEmpty() ? View.VISIBLE : View.GONE);
+            binding.recyclerViewIdeias.setVisibility(ideias.isEmpty() ? View.GONE : View.VISIBLE);
         });
     }
 
@@ -160,18 +127,6 @@ public class IdeiasFragment extends Fragment implements IdeiasAdapter.OnIdeiaCli
             ideiasRegistration.remove();
             ideiasRegistration = null;
         }
-    }
-
-    @Override
-    public void onStart() {
-        super.onStart();
-        startRealtimeIdeias(); // garante ativo ao voltar pra tela
-    }
-
-    @Override
-    public void onStop() {
-        super.onStop();
-        stopRealtimeIdeias(); // evita vazamento/listener ativo fora da tela
     }
 
     /**
@@ -219,54 +174,60 @@ public class IdeiasFragment extends Fragment implements IdeiasAdapter.OnIdeiaCli
         });
     }
     private void attachSwipeToDelete() {
-        ItemTouchHelper.SimpleCallback cb = new ItemTouchHelper.SimpleCallback(0,
-                ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
-            @Override public boolean onMove(@NonNull RecyclerView rv, @NonNull RecyclerView.ViewHolder vh, @NonNull RecyclerView.ViewHolder target) { return false; }
+        new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
+            @Override
+            public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) {
+                return false;
+            }
 
-            @Override public void onSwiped(@NonNull RecyclerView.ViewHolder vh, int direction) {
-                int pos = vh.getBindingAdapterPosition();
-                if (pos == RecyclerView.NO_POSITION) return;
+            // Verifica se o utilizador é o dono da ideia antes de permitir o swipe
+            @Override
+            public int getSwipeDirs(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder) {
+                int position = viewHolder.getAdapterPosition();
+                if (position == RecyclerView.NO_POSITION) return 0;
 
-                Ideia ideia = ideiasAdapter.getItemAt(pos);
-                ideiasAdapter.removeAt(pos); // remove visualmente
+                Ideia ideia = ideiasAdapter.getCurrentList().get(position);
+                String uid = FirebaseAuth.getInstance().getUid();
+                boolean isOwner = uid != null && uid.equals(ideia.getOwnerId());
 
-                Snackbar sb = Snackbar.make(binding.getRoot(),
-                        "Ideia excluída", Snackbar.LENGTH_LONG);
+                return isOwner ? super.getSwipeDirs(recyclerView, viewHolder) : 0;
+            }
 
-                // A11y: anuncia o Snackbar
-                sb.addCallback(new Snackbar.Callback() {
-                    @Override public void onShown(Snackbar transientBottomBar) {
-                        transientBottomBar.getView().announceForAccessibility("Ideia excluída. Toque em desfazer para cancelar.");
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+                int position = viewHolder.getAdapterPosition();
+                // O ListAdapter já remove o item da lista visualmente quando o submitList é chamado.
+                // A nossa estratégia será submeter uma lista sem o item e depois restaurá-la se for desfeito.
+                final Ideia ideiaParaExcluir = ideiasAdapter.getCurrentList().get(position);
+                final List<Ideia> listaAtual = new ArrayList<>(ideiasAdapter.getCurrentList());
+                listaAtual.remove(ideiaParaExcluir);
+                ideiasAdapter.submitList(listaAtual);
+
+                Snackbar snackbar = Snackbar.make(binding.getRoot(), "Ideia excluída", Snackbar.LENGTH_LONG);
+                snackbar.setAction("Desfazer", v -> {
+                    // Cancela a exclusão pendente
+                    Runnable pendingDelete = pendingDeletes.remove(ideiaParaExcluir.getId());
+                    if (pendingDelete != null) {
+                        handler.removeCallbacks(pendingDelete);
                     }
+                    // Restaura a lista original
+                    ideiasAdapter.submitList(new ArrayList<>(ideiasAdapter.getCurrentList()));
                 });
+                snackbar.show();
 
-                sb.setAction("Desfazer", v -> {
-                    // Cancela o delete pendente e restaura na posição
-                    Runnable r = pendingDeletes.remove(ideia.getId());
-                    if (r != null) handler.removeCallbacks(r);
-                    ideiasAdapter.restore(ideia, pos);
-                });
-
-                sb.show();
-
-                // Agenda exclusão real após o timeout do Snackbar
-                Runnable r = () -> {
-                    pendingDeletes.remove(ideia.getId());
-                    new FirestoreHelper().excluirIdeia(ideia.getId(), res -> {
+                // Agenda a exclusão real do Firestore
+                Runnable deleteRunnable = () -> {
+                    pendingDeletes.remove(ideiaParaExcluir.getId());
+                    firestoreHelper.excluirIdeia(ideiaParaExcluir.getId(), res -> {
                         if (!res.isOk() && binding != null) {
-                            Snackbar err = Snackbar.make(binding.getRoot(),
-                                    "Falha ao excluir. Tente novamente.",
-                                    Snackbar.LENGTH_LONG);
-                            err.show();
-                            // Restaura visualmente se o delete falhar
-                            ideiasAdapter.restore(ideia, Math.min(pos, ideiasAdapter.getItemCount()));
+                            Snackbar.make(binding.getRoot(), "Falha ao excluir. Tente novamente.", Snackbar.LENGTH_LONG).show();
+                            // Se a exclusão falhar, a UI será corrigida na próxima atualização do listener do Firestore
                         }
                     });
                 };
-                pendingDeletes.put(ideia.getId(), r);
-                handler.postDelayed(r, DELETE_DELAY_MS);
+                pendingDeletes.put(ideiaParaExcluir.getId(), deleteRunnable);
+                handler.postDelayed(deleteRunnable, DELETE_DELAY_MS);
             }
-        };
-        new ItemTouchHelper(cb).attachToRecyclerView(binding.recyclerViewIdeias);
+        }).attachToRecyclerView(binding.recyclerViewIdeias);
     }
 }

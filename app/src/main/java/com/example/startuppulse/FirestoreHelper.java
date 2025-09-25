@@ -409,20 +409,33 @@ public class FirestoreHelper {
                 });
     }
 
-    /** Escuta a lista de ideias PUBLICADAS em tempo real. */
+    /**
+     * Escuta a lista de ideias públicas (qualquer status que não seja RASCUNHO) em tempo real.
+     */
     public ListenerRegistration listenToIdeiasPublicadas(
             @NonNull Callback<List<Ideia>> callback
     ) {
+        List<String> statusPublicos = new ArrayList<>();
+        statusPublicos.add(Ideia.Status.EM_AVALIACAO.name());
+        statusPublicos.add(Ideia.Status.AVALIADA_APROVADA.name());
+        statusPublicos.add(Ideia.Status.AVALIADA_REPROVADA.name());
+
         return db.collection(IDEIAS_COLLECTION)
-                .whereEqualTo("status", "PUBLICADA")
+                .whereIn("status", statusPublicos)
                 .orderBy("timestamp", Query.Direction.DESCENDING)
                 .addSnapshotListener((snap, e) -> {
-                    if (e != null) { callback.onComplete(Result.err(e)); return; }
+                    if (e != null) {
+                        callback.onComplete(Result.err(e));
+                        return;
+                    }
                     List<Ideia> ideias = new ArrayList<>();
                     if (snap != null) {
                         for (DocumentSnapshot doc : snap.getDocuments()) {
                             Ideia ideia = doc.toObject(Ideia.class);
-                            if (ideia != null) { ideia.setId(doc.getId()); ideias.add(ideia); }
+                            if (ideia != null) {
+                                ideia.setId(doc.getId());
+                                ideias.add(ideia);
+                            }
                         }
                     }
                     callback.onComplete(Result.ok(ideias));
@@ -493,7 +506,7 @@ public class FirestoreHelper {
             @NonNull Callback<Void> callback
     ) {
         Map<String, Object> updates = new HashMap<>();
-        updates.put("status", "PUBLICADA");
+        updates.put("status", Ideia.Status.EM_AVALIACAO.name());
         updates.put("timestamp", FieldValue.serverTimestamp());
         if (mentorId != null) updates.put("mentorId", mentorId);
 

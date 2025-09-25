@@ -38,7 +38,7 @@ public class MeusRascunhosFragment extends Fragment implements IdeiasAdapter.OnI
 
         // Recycler
         binding.recyclerViewIdeias.setLayoutManager(new LinearLayoutManager(requireContext()));
-        ideiasAdapter = new IdeiasAdapter(new ArrayList<>(), this, this); // usa construtor com Fragment
+        ideiasAdapter = new IdeiasAdapter(this, this);
         binding.recyclerViewIdeias.setAdapter(ideiasAdapter);
 
         // Swipe-to-delete apenas para o dono (essa aba já é do dono por definição)

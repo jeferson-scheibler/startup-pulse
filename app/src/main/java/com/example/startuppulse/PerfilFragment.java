@@ -225,8 +225,8 @@ public class PerfilFragment extends Fragment {
         // Collection "ideias" com campos: autorId (string) e status (ex: "PUBLICADA")
         FirebaseFirestore.getInstance()
                 .collection("ideias")
-                .whereEqualTo("autorId", currentUser.getUid())
-                .whereIn("status", java.util.Arrays.asList("PUBLICADA", "publicada"))
+                .whereEqualTo("ownerId", currentUser.getUid())
+                .whereIn("status", java.util.Arrays.asList("EM_AVALIACAO", "AVALIADA_APROVADA", "AVALIADA_REPROVADA"))
                 .get()
                 .addOnSuccessListener(snap -> {
                     if (!isAdded()) return;

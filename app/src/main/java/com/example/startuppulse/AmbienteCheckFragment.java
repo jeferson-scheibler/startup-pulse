@@ -25,6 +25,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 
 import com.airbnb.lottie.LottieAnimationView;
@@ -36,11 +37,21 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AmbienteCheckFragment extends Fragment implements SensorEventListener {
+public class AmbienteCheckFragment extends DialogFragment implements SensorEventListener {
 
     public interface AmbienteCheckListener {
         void onAmbienteIdealDetectado(boolean isIdeal);
         void onPularCheck();
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        if (getDialog() != null && getDialog().getWindow() != null) {
+            getDialog().getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+            // Opcional: remove o fundo padrão para que o seu layout brilhe
+            getDialog().getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
     }
 
     private enum State { INSTRUCTIONS, CALIBRATING, RESULTS }

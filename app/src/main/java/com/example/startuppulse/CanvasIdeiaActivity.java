@@ -4,6 +4,7 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
@@ -66,6 +67,8 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements
     private final Handler loadingHandler = new Handler(Looper.getMainLooper());
 
     private static final String TAG_MATCHMAKING = "MentorMatchmaking";
+    private static final String PREFS_NAME = "StartupPulsePrefs";
+    private static final String KEY_AMBIENTE_CHECK_CONCLUIDO = "ambienteCheckConcluido";
 
     public Ideia getIdeiaAtual() {
         return this.ideia;
@@ -132,6 +135,7 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements
     private void setupForNewIdeia() {
         this.isReadOnly = false;
         showLoading(false);
+        verificarEExecutarAmbienteCheck();
         setupEtapas(ideia.getStatus());
         setupUI();
         setupListeners();
@@ -300,35 +304,79 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements
 
         // Agora, mostramos o botão correto com base no contexto
         if (isOwner) {
-            if (etapaKey.equals(CanvasEtapa.CHAVE_STATUS) && "PUBLICADA".equals(ideia.getStatus())) {
-                // Se o dono está na tela de status de uma ideia publicada, ele pode despublicar.
-                binding.btnDespublicarIdeia.setVisibility(View.VISIBLE);
-            } else if (isLastPage && "RASCUNHO".equals(ideia.getStatus()) && !isReadOnly) {
-                // Se o dono está na última página de um rascunho, ele pode publicar.
+            if (isLastPage && ideia.getStatus() == Ideia.Status.RASCUNHO && !isReadOnly) {
+                // Se for a última página de um RASCUNHO e editável, mostra o botão "Publicar".
                 binding.btnPublicarIdeia.setVisibility(View.VISIBLE);
+            } else if (ideia.getStatus() == Ideia.Status.EM_AVALIACAO){
+                binding.btnPublicarIdeia.setVisibility(View.INVISIBLE);
+                binding.btnDespublicarIdeia.setVisibility(View.VISIBLE);
             }
         } else if (isMentor) {
-            if (etapaKey.equals(CanvasEtapa.CHAVE_STATUS) && "PUBLICADA".equals(ideia.getStatus())) {
-                // Se o mentor está na tela de status de uma ideia publicada, ele pode avaliar.
+            if (etapaKey.equals(CanvasEtapa.CHAVE_STATUS) && ideia.getStatus() != Ideia.Status.RASCUNHO) {
                 binding.btnAvaliarIdeia.setVisibility(View.VISIBLE);
             }
         }
     }
 
-    /**
-     * Define as etapas (páginas) a serem exibidas com base no status da ideia.
-     */
-    private void setupEtapas(String status) {
-        etapas = new ArrayList<>();
-        if ("PUBLICADA".equals(status)) {
-            etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_STATUS, "Status da Jornada", "Acompanhe a avaliação da sua ideia.", R.drawable.ic_flag));
-        }
-        if ("RASCUNHO".equals(status)) {
-            etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_INICIO, "Capa da Ideia", "Dê um nome e uma breve descrição.", R.drawable.ic_lightbulb));
-            etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_AMBIENTE_CHECK, "Check-up de Ambiente", "Prepare o ambiente para a criatividade.", R.drawable.ic_ambient));
-        }
+    // --- LÓGICA DE DESACOPLAMENTO DO AMBIENTE CHECK ---
+    private void verificarEExecutarAmbienteCheck() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        boolean ambienteCheckConcluido = prefs.getBoolean(KEY_AMBIENTE_CHECK_CONCLUIDO, false);
 
-        // Adiciona todos os blocos do Business Model Canvas
+        if (!ambienteCheckConcluido) {
+            // Se nunca foi feito, mostra o fragmento como um diálogo
+            AmbienteCheckFragment ambienteCheckFragment = AmbienteCheckFragment.newInstance();
+            ambienteCheckFragment.show(getSupportFragmentManager(), "AmbienteCheckFragmentDialog");
+
+            // Marca como concluído para não mostrar novamente
+            prefs.edit().putBoolean(KEY_AMBIENTE_CHECK_CONCLUIDO, true).apply();
+        }
+    }
+
+    // --- LÓGICA DO NOVO FLUXO EM FASES ---
+
+    private void setupEtapas(Ideia.Status status) {
+        etapas = new ArrayList<>();
+
+        switch (status) {
+            case RASCUNHO:
+                // Fase 1: Ideação
+                etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_INICIO, "Capa", R.drawable.ic_lightbulb));
+                // Adiciona os 9 blocos do canvas
+                adicionarBlocosCanvas();
+                etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_FINAL, "Publicar", R.drawable.ic_rocket_launch));
+                break;
+
+            case EM_AVALIACAO:
+                // Fase 2: Validação
+                etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_STATUS, "Status", R.drawable.ic_flag));
+                break;
+
+            case AVALIADA_APROVADA:
+                // Fase 3: Tração e Crescimento (Aprovada)
+                etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_STATUS, "Status", R.drawable.ic_flag));
+                // Adiciona os 9 blocos do canvas para consulta/edição
+                adicionarBlocosCanvas();
+                // DESBLOQUEIA AS NOVAS ETAPAS
+                etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_EQUIPE, "Equipa", R.drawable.ic_person));
+                // TODO: Adicionar etapa de Métricas e Pitch Deck aqui no futuro
+                etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_FINAL, "Reavaliar", R.drawable.ic_rocket_launch));
+                break;
+
+            case AVALIADA_REPROVADA:
+                // Fase 3: Tração e Crescimento (Reprovada)
+                etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_STATUS, "Status", R.drawable.ic_flag));
+                // Adiciona os 9 blocos para que o utilizador possa corrigir
+                adicionarBlocosCanvas();
+                etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_FINAL, "Reavaliar", R.drawable.ic_rocket_launch));
+                break;
+        }
+    }
+
+    /**
+     * Metodo auxiliar para adicionar os 9 blocos do Business Model Canvas à lista de etapas.
+     */
+    private void adicionarBlocosCanvas() {
         etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_PROPOSTA_VALOR, "Proposta de Valor", "O que torna sua ideia única?", R.drawable.ic_proposta_valor));
         etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_SEGMENTO_CLIENTES, "Segmento de Clientes", "Para quem é esta ideia?", R.drawable.ic_segmento_clientes));
         etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_CANAIS, "Canais", "Como você chegará até seus clientes?", R.drawable.ic_canais));
@@ -338,27 +386,13 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements
         etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_ATIVIDADES_CHAVE, "Atividades-Chave", "Quais são as ações mais importantes?", R.drawable.ic_atividades));
         etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_PARCERIAS_PRINCIPAIS, "Parcerias Principais", "Quem pode te ajudar?", R.drawable.ic_parcerias));
         etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_ESTRUTURA_CUSTOS, "Estrutura de Custos", "Quais serão seus principais custos?", R.drawable.ic_custos));
-
-        // Adiciona as novas etapas de preparação para investimento
-        etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_EQUIPE, "Equipe", "Apresente os membros da sua equipe.", R.drawable.ic_person));
-
-        // Adiciona a etapa final
-        if ("RASCUNHO".equals(status)) {
-            etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_FINAL, "Publicar", "A sua ideia está pronta para descolar.", R.drawable.ic_rocket_launch));
-        } else {
-            etapas.add(new CanvasEtapa(CanvasEtapa.CHAVE_FINAL, "Resumo", "Revise os detalhes da sua ideia publicada.", R.drawable.ic_rocket_launch));
-        }
     }
-
-
     private void showLoading(boolean isLoading) {
         binding.loadingIndicator.setVisibility(isLoading ? View.VISIBLE : View.GONE);
         binding.contentGroup.setVisibility(isLoading ? View.GONE : View.VISIBLE);
     }
 
-
     // --- Firestore e Lógica de Dados ---
-
     /**
      * Anexa um listener ao documento da ideia no Firestore para atualizações em tempo real.
      */
@@ -406,9 +440,21 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements
      * Determina o estado final de `isReadOnly` com base na intenção de abertura e no status da ideia.
      */
     private void determineReadOnlyState(boolean openAsReadOnly) {
+        if (openAsReadOnly) {
+            this.isReadOnly = true;
+            return;
+        }
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         boolean isOwner = user != null && user.getUid().equals(ideia.getOwnerId());
-        this.isReadOnly = openAsReadOnly || (isOwner && !"RASCUNHO".equals(ideia.getStatus()));
+
+        // Se o utilizador for o dono, a ideia só é editável se for um RASCUNHO.
+        // Qualquer outro estado (EM_AVALIACAO, etc.) é apenas para leitura.
+        if (isOwner) {
+            this.isReadOnly = (ideia.getStatus() != Ideia.Status.RASCUNHO);
+        } else {
+            // Se não for o dono, é sempre apenas para leitura.
+            this.isReadOnly = true;
+        }
     }
 
     private void saveProgress(@Nullable Runnable onComplete) {

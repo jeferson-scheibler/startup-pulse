@@ -10,36 +10,54 @@ import java.util.Map;
 
 public class Ideia implements Serializable {
 
+    /**
+     * Enum para representar os diferentes estágios do ciclo de vida de uma ideia.
+     * Usar um Enum em vez de Strings previne erros e torna o código mais claro.
+     */
+    public enum Status {
+        RASCUNHO,         // Apenas o dono pode ver e editar
+        EM_AVALIACAO,     // Publicada e aguardando o feedback do mentor
+        AVALIADA_APROVADA,// Avaliada com nota positiva, desbloqueia a fase de tração
+        AVALIADA_REPROVADA // Avaliada com nota baixa, necessita de revisão
+    }
+
     private String id;
     private String nome;
     private String descricao;
     private String ownerId;
     private String autorNome;
     private boolean autorIsPremium;
-    private String status;
     private String mentorId;
     private String avaliacaoStatus;
     private List<AvaliacaoCompleta> avaliacoes;
     private List<String> areasNecessarias;
 
+    @ServerTimestamp
     private Date timestamp;
     private Map<String, List<PostIt>> postIts;
-
     private List<MembroEquipe> equipe;
     private List<Metrica> metricas;
     private String pitchDeckUrl;
+    private Status status;
 
     public Ideia() {
-        postIts = new HashMap<>();
-        avaliacoes = new ArrayList<>();
-        areasNecessarias = new ArrayList<>();
+        this.postIts = new HashMap<>();
+        this.avaliacoes = new ArrayList<>();
+        this.areasNecessarias = new ArrayList<>();
         this.equipe = new ArrayList<>();
         this.metricas = new ArrayList<>();
-        this.status = "RASCUNHO";
+
+        this.status = Status.RASCUNHO;
+
         this.avaliacaoStatus = "Pendente";
     }
 
     // --- Getters e Setters ---
+
+    // Getter e Setter para o novo Enum de Status
+    public Status getStatus() { return status; }
+    public void setStatus(Status status) { this.status = status; }
+
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
     public String getNome() { return nome; }
@@ -52,8 +70,6 @@ public class Ideia implements Serializable {
     public void setAutorNome(String autorNome) { this.autorNome = autorNome; }
     public boolean isAutorIsPremium() { return autorIsPremium; }
     public void setAutorIsPremium(boolean autorIsPremium) { this.autorIsPremium = autorIsPremium; }
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
     public String getMentorId() { return mentorId; }
     public void setMentorId(String mentorId) { this.mentorId = mentorId; }
     public String getAvaliacaoStatus() { return avaliacaoStatus; }
@@ -65,27 +81,13 @@ public class Ideia implements Serializable {
     public Map<String, List<PostIt>> getPostIts() { return postIts; }
     public void setPostIts(Map<String, List<PostIt>> postIts) { this.postIts = postIts; }
     public List<String> getAreasNecessarias() { return areasNecessarias; }
-    public List<MembroEquipe> getEquipe() {
-        return equipe;
-    }
-    public void setEquipe(List<MembroEquipe> equipe) {
-        this.equipe = equipe;
-    }
-    public List<Metrica> getMetricas() {
-        return metricas;
-    }
-    public void setMetricas(List<Metrica> metricas) {
-        this.metricas = metricas;
-    }
-    public String getPitchDeckUrl() {
-        return pitchDeckUrl;
-    }
-    public void setPitchDeckUrl(String pitchDeckUrl) {
-        this.pitchDeckUrl = pitchDeckUrl;
-    }
-    public void setAreasNecessarias(List<String> areasNecessarias) {
-        this.areasNecessarias = areasNecessarias != null ? areasNecessarias : new ArrayList<>();
-    }
+    public void setAreasNecessarias(List<String> areasNecessarias) { this.areasNecessarias = areasNecessarias; }
+    public List<MembroEquipe> getEquipe() { return equipe; }
+    public void setEquipe(List<MembroEquipe> equipe) { this.equipe = equipe; }
+    public List<Metrica> getMetricas() { return metricas; }
+    public void setMetricas(List<Metrica> metricas) { this.metricas = metricas; }
+    public String getPitchDeckUrl() { return pitchDeckUrl; }
+    public void setPitchDeckUrl(String pitchDeckUrl) { this.pitchDeckUrl = pitchDeckUrl; }
     public List<PostIt> getPostItsPorChave(String etapaChave) {
         if (postIts == null) {
             return new ArrayList<>();
