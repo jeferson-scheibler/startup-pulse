@@ -1,54 +1,75 @@
 package com.example.startuppulse;
 
-import java.util.*;
+import android.location.Location;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 
 public class MentorMatchService {
 
-    public static List<Mentor> ordenarPorAfinidadeELocal(
-            List<Mentor> mentores,
-            List<String> areasNecessarias,
-            String cidadeAutor,
-            String estadoAutor
+    /**
+     * Ordena uma lista de mentores com base em dois critérios principais:
+     * 1. Afinidade de Área: Mentores que correspondem a mais áreas da ideia vêm primeiro.
+     * 2. Proximidade Geográfica: Para mentores com a mesma afinidade, o mais próximo fisicamente vem primeiro.
+     *
+     * @param mentores A lista de mentores candidatos.
+     * @param areasDaIdeia As áreas de especialização que a ideia necessita.
+     * @param localizacaoUsuario A localização atual do utilizador.
+     * @return Uma nova lista de mentores ordenada do melhor para o pior candidato.
+     */
+    public static List<Mentor> ordenarPorAfinidadeEProximidade(
+            @NonNull List<Mentor> mentores,
+            @NonNull List<String> areasDaIdeia,
+            @Nullable Location localizacaoUsuario
     ) {
-        if (mentores == null) mentores = Collections.emptyList();
-        Set<String> alvo = new HashSet<>();
-        if (areasNecessarias != null) {
-            for (String a : areasNecessarias) if (a != null) alvo.add(a.trim().toLowerCase(Locale.ROOT));
-        }
+        // Usa o comparador do Java 8+ para uma ordenação complexa e profissional
+        Comparator<Mentor> comparador = Comparator
+                // Primeiro critério: ordenar por número de áreas em comum (do maior para o menor)
+                .comparingInt((Mentor m) -> calcularPontosDeAfinidade(m, areasDaIdeia))
+                .reversed()
+                // Segundo critério (desempate): ordenar por distância (do menor para o maior)
+                .thenComparingDouble((Mentor m) -> calcularDistancia(m, localizacaoUsuario));
 
-        // score por interseção de áreas
-        Map<String, Integer> score = new HashMap<>();
-        for (Mentor m : mentores) {
-            int s = 0;
-            List<String> areas = m.getAreas();
-            if (areas != null) {
-                for (String a : areas) {
-                    if (a != null && alvo.contains(a.trim().toLowerCase(Locale.ROOT))) s++;
-                }
-            }
-            score.put(m.getId(), s);
-        }
-        Comparator<Mentor> cmpScore = (a,b) -> Integer.compare(score.getOrDefault(b.getId(),0), score.getOrDefault(a.getId(),0));
-
-        // partições por local (prioridade: cidade > estado > outros)
-        List<Mentor> cidade = new ArrayList<>(), estado = new ArrayList<>(), outros = new ArrayList<>();
-        for (Mentor m : mentores) {
-            boolean mesmaCidade = eq(m.getCidade(), cidadeAutor);
-            boolean mesmoEstado = eq(m.getEstado(), estadoAutor);
-            if (mesmaCidade) cidade.add(m);
-            else if (mesmoEstado) estado.add(m);
-            else outros.add(m);
-        }
-        cidade.sort(cmpScore);
-        estado.sort(cmpScore);
-        outros.sort(cmpScore);
-
-        List<Mentor> out = new ArrayList<>(cidade.size() + estado.size() + outros.size());
-        out.addAll(cidade); out.addAll(estado); out.addAll(outros);
-        return out;
+        mentores.sort(comparador);
+        return mentores;
     }
 
-    private static boolean eq(String a, String b) {
-        return (a == null && b == null) || (a != null && b != null && a.equalsIgnoreCase(b));
+    /**
+     * Calcula a "pontuação" de afinidade de um mentor com base nas áreas da ideia.
+     * @return O número de áreas que o mentor e a ideia têm em comum.
+     */
+    private static int calcularPontosDeAfinidade(Mentor mentor, List<String> areasDaIdeia) {
+        if (mentor.getAreas() == null || areasDaIdeia == null || areasDaIdeia.isEmpty()) {
+            return 0;
+        }
+        int pontos = 0;
+        for (String areaMentor : mentor.getAreas()) {
+            if (areasDaIdeia.contains(areaMentor)) {
+                pontos++;
+            }
+        }
+        return pontos;
+    }
+
+    /**
+     * Calcula a distância em metros entre um mentor e a localização do utilizador.
+     * @return A distância em metros, ou um valor muito alto se a localização for desconhecida.
+     */
+    private static double calcularDistancia(Mentor mentor, @Nullable Location localizacaoUsuario) {
+        if (localizacaoUsuario == null || mentor.getLatitude() == 0 || mentor.getLongitude() == 0) {
+            // Se não tivermos a localização de um dos dois, coloca este mentor no fim da lista
+            return Double.MAX_VALUE;
+        }
+        float[] resultados = new float[1];
+        Location.distanceBetween(
+                localizacaoUsuario.getLatitude(),
+                localizacaoUsuario.getLongitude(),
+                mentor.getLatitude(),
+                mentor.getLongitude(),
+                resultados
+        );
+        return resultados[0]; // Distância em metros
     }
 }

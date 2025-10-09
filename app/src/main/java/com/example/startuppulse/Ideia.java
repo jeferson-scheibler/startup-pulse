@@ -31,6 +31,7 @@ public class Ideia implements Serializable {
     private String avaliacaoStatus;
     private List<AvaliacaoCompleta> avaliacoes;
     private List<String> areasNecessarias;
+    private String matchmakingLog;
 
     @ServerTimestamp
     private Date timestamp;
@@ -40,6 +41,7 @@ public class Ideia implements Serializable {
     private String pitchDeckUrl;
     private Status status;
     private boolean prontaParaInvestidores = false;
+    private Date ultimaBuscaMentorTimestamp;
 
     public Ideia() {
         this.postIts = new HashMap<>();
@@ -92,6 +94,13 @@ public class Ideia implements Serializable {
     public boolean isProntaParaInvestidores() {
         return prontaParaInvestidores;
     }
+    public Date getUltimaBuscaMentorTimestamp() {
+        return ultimaBuscaMentorTimestamp;
+    }
+
+    public void setUltimaBuscaMentorTimestamp(Date ultimaBuscaMentorTimestamp) {
+        this.ultimaBuscaMentorTimestamp = ultimaBuscaMentorTimestamp;
+    }
     public void setProntaParaInvestidores(boolean prontaParaInvestidores) {
         this.prontaParaInvestidores = prontaParaInvestidores;
     }
@@ -102,4 +111,7 @@ public class Ideia implements Serializable {
         List<PostIt> result = postIts.get(etapaChave);
         return result != null ? result : new ArrayList<>();
     }
+
+    public String getMatchmakingLog() { return matchmakingLog; }
+    public void setMatchmakingLog(String matchmakingLog) { this.matchmakingLog = matchmakingLog; }
 }

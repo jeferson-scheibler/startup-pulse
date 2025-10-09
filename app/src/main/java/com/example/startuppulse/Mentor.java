@@ -17,6 +17,8 @@ public class Mentor implements Serializable {
     private boolean verificado;                 // badge
     private java.util.List<String> areas;       // áreas de atuação
 
+    private boolean ativoPublico;
+
     public boolean isVerificado() { return verificado; }
     public void setVerificado(boolean v) { this.verificado = v; }
 
@@ -52,4 +54,12 @@ public class Mentor implements Serializable {
 
     public double getLongitude() { return longitude; }
     public void setLongitude(double longitude) { this.longitude = longitude; }
+
+    public boolean isAtivoPublico() {
+        return ativoPublico;
+    }
+
+    public void setAtivoPublico(boolean ativoPublico) {
+        this.ativoPublico = ativoPublico;
+    }
 }

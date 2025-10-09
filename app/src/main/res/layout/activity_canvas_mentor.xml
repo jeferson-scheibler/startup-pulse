@@ -65,40 +65,35 @@
                     android:imeOptions="actionNext" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Estado -->
             <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:id="@+id/layout_estado"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:hint="Estado (ex.: São Paulo)"
-                app:helperText="Nome por extenso ajuda na geolocalização">
+                android:hint="Estado">
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/edit_text_estado"
+                <AutoCompleteTextView
+                    android:id="@+id/auto_complete_estado"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textCapWords"
-                    android:imeOptions="actionNext"
-                    android:autofillHints="addressRegion" />
+                    android:inputType="none" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Cidade -->
             <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:id="@+id/layout_cidade"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:hint="Cidade (ex.: Campinas)"
-                app:helperText="Use um nome oficial para melhor precisão">
+                android:enabled="false"
+                android:hint="Cidade">
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/edit_text_cidade"
+                <AutoCompleteTextView
+                    android:id="@+id/auto_complete_cidade"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textCapWords"
-                    android:imeOptions="actionDone"
-                    android:autofillHints="addressLocality" />
+                    android:inputType="none" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Áreas de atuação -->

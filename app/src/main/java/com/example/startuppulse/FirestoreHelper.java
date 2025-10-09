@@ -51,6 +51,47 @@ public class FirestoreHelper {
 
     // --- MÉTODOS DE BUSCA DE MENTORES (CORRIGIDOS) ---
 
+    /**
+     * Encontra TODOS os mentores disponíveis numa cidade (exclui o autor).
+     */
+    public void findMentoresByCity(
+            @NonNull String cidade,
+            @NonNull String authorId,
+            @NonNull Callback<List<Mentor>> callback
+    ) {
+        db.collection(MENTORES_COLLECTION)
+                .whereEqualTo("cidade", cidade)
+                .whereNotEqualTo(com.google.firebase.firestore.FieldPath.documentId(), authorId)
+                // .limit(1) // REMOVIDO: Agora busca todos os mentores da cidade
+                .get()
+                .addOnSuccessListener(q -> {
+                    // Converte a lista de documentos para uma lista de mentores
+                    List<Mentor> mentores = q.toObjects(Mentor.class);
+                    callback.onComplete(Result.ok(mentores));
+                })
+                .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+    }
+
+    /**
+     * Encontra TODOS os mentores disponíveis num estado (exclui o autor).
+     */
+    public void findMentoresByState(
+            @NonNull String estado,
+            @NonNull String authorId,
+            @NonNull Callback<List<Mentor>> callback
+    ) {
+        db.collection(MENTORES_COLLECTION)
+                .whereEqualTo("estado", estado)
+                .whereNotEqualTo(com.google.firebase.firestore.FieldPath.documentId(), authorId)
+                // .limit(1) // REMOVIDO: Agora busca todos os mentores do estado
+                .get()
+                .addOnSuccessListener(q -> {
+                    List<Mentor> mentores = q.toObjects(Mentor.class);
+                    callback.onComplete(Result.ok(mentores));
+                })
+                .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+    }
+
     public void findMentoresByAreasInCity(
             @NonNull List<String> areas, @NonNull String cidade, @Nullable String excludeUserId,
             @NonNull Callback<List<Mentor>> callback
@@ -102,6 +143,17 @@ public class FirestoreHelper {
         q.get().addOnSuccessListener(snap -> {
             List<Mentor> out = snap.toObjects(Mentor.class);
             callback.onComplete(Result.ok(out));
+        }).addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+    }
+
+    public void findAllMentores(@Nullable String excludeUserId, @NonNull Callback<List<Mentor>> callback) {
+        Query q = db.collection(MENTORES_COLLECTION);
+        if (excludeUserId != null && !excludeUserId.isEmpty()) {
+            q = q.whereNotEqualTo(com.google.firebase.firestore.FieldPath.documentId(), excludeUserId);
+        }
+        q.get().addOnSuccessListener(snap -> {
+            List<Mentor> mentores = snap.toObjects(Mentor.class);
+            callback.onComplete(Result.ok(mentores));
         }).addOnFailureListener(e -> callback.onComplete(Result.err(e)));
     }
 
@@ -536,7 +588,11 @@ public class FirestoreHelper {
         Map<String, Object> updates = new HashMap<>();
         updates.put("status", Ideia.Status.EM_AVALIACAO.name());
         updates.put("timestamp", FieldValue.serverTimestamp());
-        if (mentorId != null) updates.put("mentorId", mentorId);
+        if (mentorId != null) {
+            updates.put("mentorId", mentorId);
+        } else {
+            updates.put("ultimaBuscaMentorTimestamp", FieldValue.serverTimestamp());
+        }
 
         db.collection(IDEIAS_COLLECTION).document(ideiaId)
                 .update(updates)
@@ -694,6 +750,11 @@ public class FirestoreHelper {
                     }
                 })
                 .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+    }
+
+    public void atualizarTimestampBuscaMentor(String ideiaId) {
+        db.collection(IDEIAS_COLLECTION).document(ideiaId)
+                .update("ultimaBuscaMentorTimestamp", FieldValue.serverTimestamp());
     }
 }
 

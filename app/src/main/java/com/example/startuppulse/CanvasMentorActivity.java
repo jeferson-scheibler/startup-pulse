@@ -5,6 +5,7 @@ import android.location.Geocoder;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.widget.ArrayAdapter;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
@@ -23,6 +24,12 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import retrofit2.Call;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.Callback;
+import retrofit2.converter.gson.GsonConverterFactory;
+
 /**
  * Activity para o utilizador se registar ou editar o seu perfil de Mentor.
  */
@@ -30,6 +37,10 @@ public class CanvasMentorActivity extends AppCompatActivity {
 
     private ActivityCanvasMentorBinding binding;
     private FirestoreHelper firestoreHelper;
+    private IBGEService ibgeService;
+
+    private List<Estado> listaDeEstados = new ArrayList<>();
+    private Estado estadoSelecionado;
 
     // Lista simples de áreas para seleção (pode mover para strings.xml depois)
     private static final List<String> AREAS_PREDEFINIDAS = Arrays.asList(
@@ -44,16 +55,61 @@ public class CanvasMentorActivity extends AppCompatActivity {
         setContentView(binding.getRoot());
 
         firestoreHelper = new FirestoreHelper();
-
+        setupRetrofit();
         // Preenche dados iniciais
         preencherDadosIniciais();
 
         // Monta chips de áreas
         montarChipsAreas();
+        buscarEstados();
+        setupDropdownListeners();
 
         // Listeners
         binding.buttonSalvar.setOnClickListener(v -> validarEProcessarMentor());
         binding.buttonCancelar.setOnClickListener(v -> finish());
+    }
+    private void setupRetrofit() {
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl("https://servicodados.ibge.gov.br/")
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        ibgeService = retrofit.create(IBGEService.class);
+    }
+
+    private void buscarEstados() {
+        ibgeService.getEstados().enqueue(new Callback<List<Estado>>() {
+            @Override
+            public void onResponse(Call<List<Estado>> call, Response<List<Estado>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    listaDeEstados = response.body();
+                    ArrayAdapter<Estado> adapter = new ArrayAdapter<>(CanvasMentorActivity.this, android.R.layout.simple_dropdown_item_1line, listaDeEstados);
+                    binding.autoCompleteEstado.setAdapter(adapter);
+                }
+            }
+            @Override public void onFailure(Call<List<Estado>> call, Throwable t) { /* Lidar com erro de rede */ }
+        });
+    }
+
+    private void setupDropdownListeners() {
+        binding.autoCompleteEstado.setOnItemClickListener((parent, view, position, id) -> {
+            estadoSelecionado = (Estado) parent.getItemAtPosition(position);
+            binding.autoCompleteCidade.setText(""); // Limpa a cidade anterior
+            buscarCidades(estadoSelecionado.getSigla());
+        });
+    }
+
+    private void buscarCidades(String siglaEstado) {
+        binding.layoutCidade.setEnabled(true);
+        ibgeService.getCidadesPorEstado(siglaEstado).enqueue(new Callback<List<Cidade>>() {
+            @Override
+            public void onResponse(Call<List<Cidade>> call, Response<List<Cidade>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    ArrayAdapter<Cidade> adapter = new ArrayAdapter<>(CanvasMentorActivity.this, android.R.layout.simple_dropdown_item_1line, response.body());
+                    binding.autoCompleteCidade.setAdapter(adapter);
+                }
+            }
+            @Override public void onFailure(Call<List<Cidade>> call, Throwable t) { /* Lidar com erro de rede */ }
+        });
     }
 
     private void preencherDadosIniciais() {
@@ -95,8 +151,8 @@ public class CanvasMentorActivity extends AppCompatActivity {
     private void validarEProcessarMentor() {
         String nome = binding.editTextNome.getText().toString().trim();
         String profissao = binding.editTextProfissao.getText().toString().trim();
-        String cidade = binding.editTextCidade.getText().toString().trim();
-        String estado = binding.editTextEstado.getText().toString().trim();
+        String cidade = binding.autoCompleteCidade.getText().toString().trim();
+        String estado = (estadoSelecionado != null) ? estadoSelecionado.getNome() : "";
 
         if (nome.isEmpty() || profissao.isEmpty() || cidade.isEmpty() || estado.isEmpty()) {
             Toast.makeText(this, "Por favor, preencha todos os campos.", Toast.LENGTH_SHORT).show();

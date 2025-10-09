@@ -91,6 +91,10 @@ dependencies {
     // Mapas
     implementation(libs.osmdroid.android)
 
+    // Networking
+    implementation(libs.retrofit.core)
+    implementation(libs.retrofit.converter.gson)
+
     // (Opcional) Credentials/GoogleID se usar login mais moderno
     // implementation(libs.credentials)
     // implementation(libs.credentials.play.services.auth)

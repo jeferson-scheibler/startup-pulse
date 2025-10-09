@@ -1,5 +1,5 @@
 [versions]
-agp = "8.12.2"
+agp = "8.12.3"
 firebaseBom = "33.15.0"
 glide = "4.16.0"
 junit = "4.13.2"
@@ -23,6 +23,7 @@ playServicesLocation = "21.3.0"
 firebaseConfig = "23.0.0"
 preference = "1.2.1"
 cronetEmbedded = "119.6045.31"
+retrofit = "2.9.0"
 
 [libraries]
 compiler = { module = "com.github.bumptech.glide:compiler", version.ref = "glide" }
@@ -50,6 +51,8 @@ play-services-location = { group = "com.google.android.gms", name = "play-servic
 firebase-config = { group = "com.google.firebase", name = "firebase-config", version.ref = "firebaseConfig" }
 androidx-preference = { group = "androidx.preference", name = "preference", version.ref = "preference" }
 cronet-embedded = { group = "org.chromium.net", name = "cronet-embedded", version.ref = "cronetEmbedded" }
+retrofit-core = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
+retrofit-converter-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

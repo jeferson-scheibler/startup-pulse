@@ -130,6 +130,17 @@
                     android:layout_weight="1"
                     android:textAppearance="@style/Text.BodyMedium"
                     tools:text="A procurar mentor..." />
+
+                <ImageButton
+                    android:id="@+id/btn_procurar_mentor"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:src="@drawable/ic_search"
+                    app:tint="@color/colorPrimary"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Procurar novo mentor"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

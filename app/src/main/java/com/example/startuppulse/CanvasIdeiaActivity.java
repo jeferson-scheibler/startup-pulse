@@ -8,6 +8,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
+import android.location.Location;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Handler;
@@ -544,75 +545,65 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements
         }
 
         showLoadingDialog("A obter a sua localização precisa...");
-
+        // O 'location' pode ser nulo se não conseguir obter, mesmo com tudo ligado.
+        // O nosso novo MentorMatchService já está preparado para lidar com isso.
         fusedLocationClient.getCurrentLocation(com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, null)
-                .addOnSuccessListener(this, location -> {
-                    if (location != null) {
-                        // SUCESSO! Obtivemos uma localização.
-                        Geocoder geocoder = new Geocoder(this, Locale.getDefault());
-                        try {
-                            List<Address> addresses = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
-                            String cidade = null;
-                            String estado = null;
-                            if (addresses != null && !addresses.isEmpty()) {
-                                Address address = addresses.get(0);
-                                cidade = address.getLocality();
-                                estado = address.getAdminArea();
-                            }
-                            // CHAMAMOS O MATCHMAKING MESMO QUE A CIDADE OU ESTADO SEJAM NULOS
-                            iniciarMatchmakingDeMentor(cidade, estado);
-
-                        } catch (IOException e) {
-                            // Se o geocoder falhar, ainda tentamos o matchmaking sem cidade/estado
-                            iniciarMatchmakingDeMentor(null, null);
-                        }
-                    } else {
-                        hideLoadingDialog();
-                        Toast.makeText(this, "Não foi possível obter a sua localização. Tente novamente num local com melhor sinal.", Toast.LENGTH_LONG).show();
-                    }
-                })
+                .addOnSuccessListener(this, this::iniciarMatchmakingDeMentor)
                 .addOnFailureListener(this, e -> {
-                    hideLoadingDialog();
-                    Toast.makeText(this, "Erro ao obter localização: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    // Se houver um erro, ainda tentamos o matchmaking, mas sem dados de localização.
+                    iniciarMatchmakingDeMentor(null);
                 });
     }
 
-    private void iniciarMatchmakingDeMentor(@Nullable String cidade, @Nullable String estado) {
+    private void iniciarMatchmakingDeMentor(@Nullable Location localizacaoUsuario) {
         updateLoadingDialog("A procurar o mentor ideal...");
         Log.d(TAG_MATCHMAKING, "--- INICIANDO MATCHMAKING ---");
 
         final List<String> areasDaIdeia = (ideia != null) ? ideia.getAreasNecessarias() : new ArrayList<>();
         final String ownerId = (ideia != null) ? ideia.getOwnerId() : null;
 
-        Log.d(TAG_MATCHMAKING, "Ideia precisa das áreas: " + areasDaIdeia.toString());
-        Log.d(TAG_MATCHMAKING, "Localização: Cidade=" + cidade + ", Estado=" + estado);
-
-        if (areasDaIdeia == null || areasDaIdeia.isEmpty()) {
-            Log.d(TAG_MATCHMAKING, "Nenhuma área de especialização definida. A saltar diretamente para a busca por proximidade.");
-            procurarMentorApenasPorProximidade(cidade, estado);
-            return;
+        Log.d(TAG_MATCHMAKING, "Ideia precisa das áreas: " + areasDaIdeia);
+        if (localizacaoUsuario != null) {
+            Log.d(TAG_MATCHMAKING, "Localização do Utilizador: Lat=" + localizacaoUsuario.getLatitude() + ", Lng=" + localizacaoUsuario.getLongitude());
+        } else {
+            Log.w(TAG_MATCHMAKING, "Não foi possível obter a localização do utilizador.");
         }
 
-        Log.d(TAG_MATCHMAKING, "Etapa 1: A procurar mentores por ÁREA...");
-        firestoreHelper.findMentoresByAreas(areasDaIdeia, ownerId, r -> {
-            if (!r.isOk()) {
-                Log.e(TAG_MATCHMAKING, "Erro na busca por área: " + r.error.getMessage());
-                procurarMentorApenasPorProximidade(cidade, estado);
-                return;
-            }
+        // Etapa 1: Tenta encontrar por área
+        if (areasDaIdeia != null && !areasDaIdeia.isEmpty()) {
+            firestoreHelper.findMentoresByAreas(areasDaIdeia, ownerId, r -> {
+                if (r.isOk() && r.data != null && !r.data.isEmpty()) {
+                    Log.d(TAG_MATCHMAKING, "Encontrados " + r.data.size() + " mentores por área. A ordenar por proximidade...");
+                    List<Mentor> ordenados = MentorMatchService.ordenarPorAfinidadeEProximidade(r.data, areasDaIdeia, localizacaoUsuario);
+                    String mentorId = ordenados.get(0).getId();
+                    ideia.setMatchmakingLog("Mentor encontrado por afinidade de área e proximidade.");
+                    publicarIdeiaComMentor(mentorId);
+                } else {
+                    // Se não encontrar por área, vai para o fallback
+                    procurarQualquerMentorPorProximidade(localizacaoUsuario);
+                }
+            });
+        } else {
+            // Se a ideia não tem áreas, vai direto para o fallback
+            procurarQualquerMentorPorProximidade(localizacaoUsuario);
+        }
+    }
 
-            List<Mentor> mentoresPorArea = r.data != null ? r.data : new ArrayList<>();
-            Log.d(TAG_MATCHMAKING, "Encontrados " + mentoresPorArea.size() + " mentores com as áreas correspondentes.");
+    private void procurarQualquerMentorPorProximidade(@Nullable Location localizacaoUsuario) {
+        Log.d(TAG_MATCHMAKING, "Fallback: A procurar qualquer mentor por proximidade.");
+        final String ownerId = (ideia != null) ? ideia.getOwnerId() : null;
 
-            if (!mentoresPorArea.isEmpty()) {
-                updateLoadingDialog("A otimizar a seleção do mentor...");
-                List<Mentor> ordenados = MentorMatchService.ordenarPorAfinidadeELocal(mentoresPorArea, areasDaIdeia, cidade, estado);
-                String mentorEscolhidoId = ordenados.get(0).getId();
-                Log.d(TAG_MATCHMAKING, "DECISÃO: Mentor escolhido por área e proximidade. ID: " + mentorEscolhidoId);
-                publicarIdeiaComMentor(mentorEscolhidoId);
+        firestoreHelper.findAllMentores(ownerId, r -> {
+            if (r.isOk() && r.data != null && !r.data.isEmpty()) {
+                Log.d(TAG_MATCHMAKING, "Encontrados " + r.data.size() + " mentores no total. A ordenar apenas por proximidade...");
+                // Como não temos áreas, passamos uma lista vazia para a ordenação
+                List<Mentor> ordenados = MentorMatchService.ordenarPorAfinidadeEProximidade(r.data, new ArrayList<>(), localizacaoUsuario);
+                String mentorId = ordenados.get(0).getId();
+                ideia.setMatchmakingLog("Mentor encontrado por proximidade.");
+                publicarIdeiaComMentor(mentorId);
             } else {
-                Log.d(TAG_MATCHMAKING, "Nenhum mentor encontrado por área. A iniciar fallback por proximidade.");
-                procurarMentorApenasPorProximidade(cidade, estado);
+                // Último recurso
+                publicarIdeiaSemMentor();
             }
         });
     }
