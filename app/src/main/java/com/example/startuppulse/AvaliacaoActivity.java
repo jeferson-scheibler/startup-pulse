@@ -20,6 +20,7 @@ import com.google.android.material.slider.Slider;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -114,13 +115,18 @@ public class AvaliacaoActivity extends AppCompatActivity {
         binding.btnEnviarAvaliacao.setEnabled(false);
         binding.btnEnviarAvaliacao.setText("Enviando...");
 
-        // Converte a lista interna em uma lista de objetos Avaliacao (seu modelo original)
         List<Avaliacao> criteriosAvaliados = adapter.getAvaliacoesAsList();
+        List<Map<String, Object>> avaliacoesParaSalvar = new ArrayList<>();
+        for (Avaliacao aval : criteriosAvaliados) {
+            Map<String, Object> avalMap = new HashMap<>();
+            avalMap.put("nome", aval.getCriterio());
+            avalMap.put("nota", aval.getNota());
+            avalMap.put("feedback", aval.getFeedback());
+            avaliacoesParaSalvar.add(avalMap);
+        }
 
-        // Cria o objeto de avaliação completo
-        AvaliacaoCompleta avaliacaoCompleta = new AvaliacaoCompleta(currentUser, criteriosAvaliados);
 
-        firestoreHelper.salvarAvaliacao(ideiaId, (List<Map<String, Object>>) avaliacaoCompleta, r -> {
+        firestoreHelper.salvarAvaliacao(ideiaId, avaliacoesParaSalvar, r -> {
             if (r.isOk()) {
                 Toast.makeText(this, "Avaliação enviada com sucesso!", Toast.LENGTH_LONG).show();
                 setResult(RESULT_OK);

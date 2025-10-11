@@ -1,26 +1,39 @@
 package com.example.startuppulse;
 
+import android.Manifest;
+import android.content.Context;
+import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 
 import com.example.startuppulse.common.Result;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FieldPath;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.SetOptions;
 
 import org.chromium.base.Callback;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -54,105 +67,181 @@ public class FirestoreHelper {
     /**
      * Encontra TODOS os mentores disponíveis numa cidade (exclui o autor).
      */
+
+    public void realizarMatchmakingParaIdeia(Context context, Ideia ideia, Callback<Mentor> callback) {
+        FusedLocationProviderClient fusedLocationClient = LocationServices.getFusedLocationProviderClient(context);
+
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            callback.onComplete(Result.err(new SecurityException("Permissão de localização negada.")));
+            return;
+        }
+
+        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+                .addOnSuccessListener(location -> {
+                    String cidade = null;
+                    String estado = null;
+                    if (location != null) {
+                        Geocoder geocoder = new Geocoder(context, Locale.getDefault());
+                        try {
+                            List<Address> addresses = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
+                            if (addresses != null && !addresses.isEmpty()) {
+                                cidade = addresses.get(0).getLocality();
+                                estado = addresses.get(0).getAdminArea();
+                            }
+                        } catch (IOException e) { /* Ignora, continua com localização nula */ }
+                    }
+
+                    // Inicia a busca com a localização que tivermos
+                    final String finalCidade = cidade;
+                    final String finalEstado = estado;
+                    final List<String> areasDaIdeia = ideia.getAreasNecessarias() != null ? ideia.getAreasNecessarias() : new ArrayList<>();
+                    final String ownerId = ideia.getOwnerId();
+
+                    findMentoresByAreas(areasDaIdeia, ownerId, rAreas -> {
+                        if (rAreas.isOk() && rAreas.data != null && !rAreas.data.isEmpty()) {
+                            List<Mentor> ordenados = MentorMatchService.ordenarPorAfinidadeEProximidade(rAreas.data, areasDaIdeia, location);
+                            Mentor mentorEscolhido = ordenados.get(0);
+                            vincularMentorAideia(ideia.getId(), mentorEscolhido.getId(), "Mentor encontrado por área.", callback, mentorEscolhido);
+                        } else {
+                            findMentoresByCity(finalCidade, ownerId, rCity -> {
+                                if (rCity.isOk() && rCity.data != null && !rCity.data.isEmpty()) {
+                                    List<Mentor> ordenados = MentorMatchService.ordenarPorAfinidadeEProximidade(rCity.data, areasDaIdeia, location);
+                                    Mentor mentorEscolhido = ordenados.get(0);
+                                    vincularMentorAideia(ideia.getId(), mentorEscolhido.getId(), "Mentor encontrado por proximidade na cidade.", callback, mentorEscolhido);
+                                } else {
+                                    // Continue com a lógica de fallback para o estado, se desejar...
+                                    callback.onComplete(Result.ok(null)); // Nenhum mentor encontrado
+                                }
+                            });
+                        }
+                    });
+                })
+                .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+    }
+
+    private void vincularMentorAideia(String ideiaId, String mentorId, String log, Callback<Mentor> callback, Mentor mentor) {
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("mentorId", mentorId);
+        updates.put("matchmakingLog", log);
+        updates.put("ultimaBuscaMentorTimestamp", FieldValue.serverTimestamp());
+
+        db.collection("ideias").document(ideiaId).update(updates)
+                .addOnSuccessListener(aVoid -> callback.onComplete(Result.ok(mentor)))
+                .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+    }
+
+    /** Busca todos os mentores disponíveis por cidade (exclui autor). */
     public void findMentoresByCity(
-            @NonNull String cidade,
-            @NonNull String authorId,
-            @NonNull Callback<List<Mentor>> callback
+                                    @NonNull String cidade,
+                                    @Nullable String ownerId,
+                                    @NonNull Callback<List<Mentor>> callback
     ) {
-        db.collection(MENTORES_COLLECTION)
-                .whereEqualTo("cidade", cidade)
-                .whereNotEqualTo(com.google.firebase.firestore.FieldPath.documentId(), authorId)
-                // .limit(1) // REMOVIDO: Agora busca todos os mentores da cidade
-                .get()
-                .addOnSuccessListener(q -> {
-                    // Converte a lista de documentos para uma lista de mentores
-                    List<Mentor> mentores = q.toObjects(Mentor.class);
+        Query query = db.collection(MENTORES_COLLECTION)
+                .whereEqualTo("cidade", cidade);
+
+        if (ownerId != null && !ownerId.isEmpty()) {
+            query = query.whereNotEqualTo(FieldPath.documentId(), ownerId);
+        }
+
+        query.get().addOnSuccessListener(q -> {
+                    List<Mentor> mentores = new ArrayList<>();
+                    for (DocumentSnapshot doc : q) {
+                        Mentor mentor = doc.toObject(Mentor.class);
+                        if (mentor != null) {
+                            mentor.setId(doc.getId());
+                            mentores.add(mentor);
+                        }
+                    }
+                    callback.onComplete(Result.ok(mentores));
+                })
+                .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+    }
+
+    /** Busca todos os mentores disponíveis por estado (exclui autor). */
+    public void findMentoresByState( // Renomeado para 'Mentores' (plural)
+                                     @NonNull String estado,
+                                     @Nullable String ownerId,
+                                     @NonNull Callback<List<Mentor>> callback
+    ) {
+        Query query = db.collection(MENTORES_COLLECTION)
+                .whereEqualTo("estado", estado);
+
+        if (ownerId != null && !ownerId.isEmpty()) {
+            query = query.whereNotEqualTo(FieldPath.documentId(), ownerId);
+        }
+
+        query.get().addOnSuccessListener(q -> {
+                    List<Mentor> mentores = new ArrayList<>();
+                    for (DocumentSnapshot doc : q) {
+                        Mentor mentor = doc.toObject(Mentor.class);
+                        if (mentor != null) {
+                            mentor.setId(doc.getId());
+                            mentores.add(mentor);
+                        }
+                    }
                     callback.onComplete(Result.ok(mentores));
                 })
                 .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
     }
 
     /**
-     * Encontra TODOS os mentores disponíveis num estado (exclui o autor).
+     * Busca todos os mentores que possuem pelo menos uma das áreas de especialidade.
+     * Exclui o dono da ideia da lista de resultados.
      */
-    public void findMentoresByState(
-            @NonNull String estado,
-            @NonNull String authorId,
-            @NonNull Callback<List<Mentor>> callback
-    ) {
-        db.collection(MENTORES_COLLECTION)
-                .whereEqualTo("estado", estado)
-                .whereNotEqualTo(com.google.firebase.firestore.FieldPath.documentId(), authorId)
-                // .limit(1) // REMOVIDO: Agora busca todos os mentores do estado
-                .get()
-                .addOnSuccessListener(q -> {
-                    List<Mentor> mentores = q.toObjects(Mentor.class);
-                    callback.onComplete(Result.ok(mentores));
-                })
-                .addOnFailureListener(e -> callback.onComplete(Result.err(e)));
-    }
-
-    public void findMentoresByAreasInCity(
-            @NonNull List<String> areas, @NonNull String cidade, @Nullable String excludeUserId,
-            @NonNull Callback<List<Mentor>> callback
-    ) {
-        if (areas.isEmpty() || cidade.isEmpty()) {
-            callback.onComplete(Result.ok(new ArrayList<>()));
-            return;
-        }
-        Query q = db.collection("mentores").whereEqualTo("cidade", cidade).whereArrayContainsAny("areas", areas);
-        if (excludeUserId != null && !excludeUserId.isEmpty()) {
-            q = q.whereNotEqualTo(com.google.firebase.firestore.FieldPath.documentId(), excludeUserId);
-        }
-        q.get().addOnSuccessListener(snap -> {
-            List<Mentor> out = snap.toObjects(Mentor.class);
-            callback.onComplete(Result.ok(out));
-        }).addOnFailureListener(e -> callback.onComplete(Result.err(e)));
-    }
-
-    public void findMentoresByAreasInState(
-            @NonNull List<String> areas, @NonNull String estado, @Nullable String excludeUserId,
-            @NonNull Callback<List<Mentor>> callback
-    ) {
-        if (areas.isEmpty() || estado.isEmpty()) {
-            callback.onComplete(Result.ok(new ArrayList<>()));
-            return;
-        }
-        Query q = db.collection("mentores").whereEqualTo("estado", estado).whereArrayContainsAny("areas", areas);
-        if (excludeUserId != null && !excludeUserId.isEmpty()) {
-            q = q.whereNotEqualTo(com.google.firebase.firestore.FieldPath.documentId(), excludeUserId);
-        }
-        q.get().addOnSuccessListener(snap -> {
-            List<Mentor> out = snap.toObjects(Mentor.class);
-            callback.onComplete(Result.ok(out));
-        }).addOnFailureListener(e -> callback.onComplete(Result.err(e)));
-    }
-
     public void findMentoresByAreas(
-            @NonNull List<String> areas, @Nullable String excludeUserId,
-            @NonNull Callback<List<Mentor>> callback
+            @NonNull List<String> areas,
+            @Nullable String ownerId, // ID do dono da ideia para ser excluído da busca
+            @NonNull final Callback<List<Mentor>> callback
     ) {
         if (areas.isEmpty()) {
             callback.onComplete(Result.ok(new ArrayList<>()));
             return;
         }
-        Query q = db.collection("mentores").whereArrayContainsAny("areas", areas);
-        if (excludeUserId != null && !excludeUserId.isEmpty()) {
-            q = q.whereNotEqualTo(com.google.firebase.firestore.FieldPath.documentId(), excludeUserId);
+
+        // A query base busca mentores que tenham qualquer uma das áreas na sua lista
+        Query query = db.collection(MENTORES_COLLECTION)
+                .whereArrayContainsAny("areas", areas);
+
+        // [CORREÇÃO CRÍTICA 1] - Exclui o dono da ideia dos resultados
+        if (ownerId != null && !ownerId.isEmpty()) {
+            query = query.whereNotEqualTo(FieldPath.documentId(), ownerId);
         }
-        q.get().addOnSuccessListener(snap -> {
-            List<Mentor> out = snap.toObjects(Mentor.class);
-            callback.onComplete(Result.ok(out));
-        }).addOnFailureListener(e -> callback.onComplete(Result.err(e)));
+
+        query.get().addOnCompleteListener(task -> {
+            if (task.isSuccessful() && task.getResult() != null) {
+                List<Mentor> mentores = new ArrayList<>();
+                for (QueryDocumentSnapshot document : task.getResult()) {
+                    Mentor mentor = document.toObject(Mentor.class);
+                    if (mentor != null) {
+                        // [CORREÇÃO CRÍTICA 2] - Atribui o ID do documento ao objeto
+                        mentor.setId(document.getId());
+                        mentores.add(mentor);
+                    }
+                }
+                callback.onComplete(Result.ok(mentores));
+            } else {
+                Log.e(TAG, "Erro ao buscar mentores por área", task.getException());
+                callback.onComplete(Result.err(task.getException()));
+            }
+        });
     }
 
     public void findAllMentores(@Nullable String excludeUserId, @NonNull Callback<List<Mentor>> callback) {
-        Query q = db.collection(MENTORES_COLLECTION);
+        Query q = db.collection("mentores");
         if (excludeUserId != null && !excludeUserId.isEmpty()) {
             q = q.whereNotEqualTo(com.google.firebase.firestore.FieldPath.documentId(), excludeUserId);
         }
-        q.get().addOnSuccessListener(snap -> {
-            List<Mentor> mentores = snap.toObjects(Mentor.class);
+        q.get().addOnSuccessListener(querySnapshot -> {
+            List<Mentor> mentores = new ArrayList<>();
+            if (querySnapshot != null) {
+                for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
+                    Mentor mentor = doc.toObject(Mentor.class);
+                    if (mentor != null) {
+                        mentor.setId(doc.getId());
+                        mentores.add(mentor);
+                    }
+                }
+            }
             callback.onComplete(Result.ok(mentores));
         }).addOnFailureListener(e -> callback.onComplete(Result.err(e)));
     }
@@ -624,16 +713,14 @@ public class FirestoreHelper {
             if (mentor.getImagem() != null) data.put("imagem", mentor.getImagem());
             if (mentor.getCidade() != null) data.put("cidade", mentor.getCidade());
             if (mentor.getEstado() != null) data.put("estado", mentor.getEstado());
+            if (mentor.getLongitude() != 0.0) data.put("longitude", mentor.getLongitude());
+            if (mentor.getLatitude() != 0.0) data.put("latitude", mentor.getLatitude());
             if (mentor.getAreas() != null)  data.put("areas", mentor.getAreas());
             if (mentor.getProfissao() != null) data.put("profissao", mentor.getProfissao());
             data.put("verificado", mentor.isVerificado());     // se nulo no POJO, ajuste
 
-            // (Opcional) publicado: defina conforme seu fluxo
-            // data.put("publicado", false);
-
             FirebaseFirestore db = FirebaseFirestore.getInstance();
             db.collection("mentores").document(mentorId)
-                    // MERGE garante que ownerId do doc nunca "some" em updates futuros
                     .set(data, SetOptions.merge())
                     .addOnSuccessListener(aVoid -> callback.onComplete(Result.ok(mentorId)))
                     .addOnFailureListener(e -> callback.onComplete(Result.err(e)));

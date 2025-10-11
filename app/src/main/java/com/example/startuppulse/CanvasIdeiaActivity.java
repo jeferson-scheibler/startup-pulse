@@ -521,18 +521,18 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements
     // --- Lógica de Publicação ---
 
     private void verificarPermissaoEPublicar() {
-        // Agora verificamos por FINE_LOCATION, que é mais precisa e necessária para getCurrentLocation()
+        // Verifica se a permissão de localização fina já foi concedida
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             iniciarProcessoDePublicacao();
         } else {
-            // Se não tivermos a permissão, pedimo-la. O resultado será tratado no launcher.
+            // Se não, solicita a permissão. O resultado é tratado pelo launcher.
             requestLocationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
         }
     }
 
     @SuppressLint("MissingPermission")
     private void iniciarProcessoDePublicacao() {
-        // A verificação do GPS continua a ser o primeiro passo crucial
+        // 1. Verifica se o GPS está ativo
         LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             new AlertDialog.Builder(this)
@@ -544,13 +544,13 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements
             return;
         }
 
-        showLoadingDialog("A obter a sua localização precisa...");
-        // O 'location' pode ser nulo se não conseguir obter, mesmo com tudo ligado.
-        // O nosso novo MentorMatchService já está preparado para lidar com isso.
+        // 2. Tenta obter a localização atual
+        showLoadingDialog("A obter a sua localização...");
         fusedLocationClient.getCurrentLocation(com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, null)
                 .addOnSuccessListener(this, this::iniciarMatchmakingDeMentor)
                 .addOnFailureListener(this, e -> {
-                    // Se houver um erro, ainda tentamos o matchmaking, mas sem dados de localização.
+                    Log.w(TAG_MATCHMAKING, "Falha ao obter localização. Tentando matchmaking sem ela.", e);
+                    // Mesmo com falha, continua o processo. O matchmaking saberá lidar com a localização nula.
                     iniciarMatchmakingDeMentor(null);
                 });
     }
@@ -562,88 +562,159 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements
         final List<String> areasDaIdeia = (ideia != null) ? ideia.getAreasNecessarias() : new ArrayList<>();
         final String ownerId = (ideia != null) ? ideia.getOwnerId() : null;
 
-        Log.d(TAG_MATCHMAKING, "Ideia precisa das áreas: " + areasDaIdeia);
+        Log.d(TAG_MATCHMAKING, "Áreas da ideia: " + areasDaIdeia);
         if (localizacaoUsuario != null) {
-            Log.d(TAG_MATCHMAKING, "Localização do Utilizador: Lat=" + localizacaoUsuario.getLatitude() + ", Lng=" + localizacaoUsuario.getLongitude());
+            Log.d(TAG_MATCHMAKING, "Localização: Lat=" + localizacaoUsuario.getLatitude() + ", Lng=" + localizacaoUsuario.getLongitude());
         } else {
-            Log.w(TAG_MATCHMAKING, "Não foi possível obter a localização do utilizador.");
+            Log.w(TAG_MATCHMAKING, "Localização não disponível para este matchmaking.");
         }
 
-        // Etapa 1: Tenta encontrar por área
+        // --- ETAPA 1: BUSCA COMBINADA (ÁREA + PROXIMIDADE) ---
         if (areasDaIdeia != null && !areasDaIdeia.isEmpty()) {
+            Log.d(TAG_MATCHMAKING, "Etapa 1: Buscando mentores por área de afinidade.");
             firestoreHelper.findMentoresByAreas(areasDaIdeia, ownerId, r -> {
                 if (r.isOk() && r.data != null && !r.data.isEmpty()) {
-                    Log.d(TAG_MATCHMAKING, "Encontrados " + r.data.size() + " mentores por área. A ordenar por proximidade...");
+                    Log.d(TAG_MATCHMAKING, "Sucesso Etapa 1: " + r.data.size() + " mentores encontrados. Ordenando...");
                     List<Mentor> ordenados = MentorMatchService.ordenarPorAfinidadeEProximidade(r.data, areasDaIdeia, localizacaoUsuario);
-                    String mentorId = ordenados.get(0).getId();
-                    ideia.setMatchmakingLog("Mentor encontrado por afinidade de área e proximidade.");
-                    publicarIdeiaComMentor(mentorId);
+
+                    // --- DIAGNÓSTICO E CORREÇÃO ---
+                    if (ordenados != null && !ordenados.isEmpty()) {
+                        Mentor mentorEscolhido = ordenados.get(0);
+                        String mentorId = (mentorEscolhido != null) ? mentorEscolhido.getId() : null;
+
+                        Log.d(TAG_MATCHMAKING, "Mentor no topo da lista: " + ((mentorEscolhido != null) ? mentorEscolhido.toString() : "objeto nulo"));
+
+                        if (mentorId != null && !mentorId.isEmpty()) {
+                            Log.i(TAG_MATCHMAKING, "MENTOR ESCOLHIDO COM SUCESSO. ID: " + mentorId);
+                            if (this.ideia != null) {
+                                this.ideia.setMatchmakingLog("Mentor encontrado por afinidade de área e proximidade.");
+                            }
+                            publicarIdeiaComMentor(mentorId);
+                        } else {
+                            // O mentor existe mas o ID é nulo. Isso indica um problema no modelo Mentor ou na deserialização.
+                            Log.e(TAG_MATCHMAKING, "FALHA CRÍTICA: O mentor escolhido está com ID nulo. Verifique o modelo 'Mentor.java' e o Firestore.");
+                            // Como fallback, tentamos o próximo da lista antes de desistir.
+                            if (ordenados.size() > 1) {
+                                Log.d(TAG_MATCHMAKING, "Tentando o segundo mentor da lista como fallback...");
+                                Mentor segundoMentor = ordenados.get(1);
+                                String segundoMentorId = (segundoMentor != null) ? segundoMentor.getId() : null;
+                                if (segundoMentorId != null && !segundoMentorId.isEmpty()) {
+                                    Log.i(TAG_MATCHMAKING, "MENTOR (fallback da lista) ESCOLHIDO COM SUCESSO. ID: " + segundoMentorId);
+                                    if (this.ideia != null) {
+                                        this.ideia.setMatchmakingLog("Mentor encontrado por afinidade de área e proximidade (fallback da lista).");
+                                    }
+                                    publicarIdeiaComMentor(segundoMentorId);
+                                    return; // Evita continuar
+                                }
+                            }
+                            // Se mesmo o segundo falhar, ou não houver segundo, publica sem mentor.
+                            publicarIdeiaSemMentor();
+                        }
+                    } else {
+                        Log.w(TAG_MATCHMAKING, "A ordenação retornou uma lista nula ou vazia. Indo para fallback.");
+                        procurarMentorApenasPorProximidade(localizacaoUsuario, ownerId);
+                    }
+
                 } else {
-                    // Se não encontrar por área, vai para o fallback
-                    procurarQualquerMentorPorProximidade(localizacaoUsuario);
+                    // Se falhar, vai para o fallback (Etapa 2)
+                    Log.d(TAG_MATCHMAKING, "Nenhum mentor encontrado por área. Indo para fallback de proximidade.");
+                    procurarMentorApenasPorProximidade(localizacaoUsuario, ownerId);
                 }
             });
         } else {
-            // Se a ideia não tem áreas, vai direto para o fallback
-            procurarQualquerMentorPorProximidade(localizacaoUsuario);
+            // Se a ideia não tem áreas, vai direto para o fallback (Etapa 2)
+            Log.d(TAG_MATCHMAKING, "Nenhuma área definida na ideia. Indo direto para fallback de proximidade.");
+            procurarMentorApenasPorProximidade(localizacaoUsuario, ownerId);
         }
     }
 
-    private void procurarQualquerMentorPorProximidade(@Nullable Location localizacaoUsuario) {
-        Log.d(TAG_MATCHMAKING, "Fallback: A procurar qualquer mentor por proximidade.");
-        final String ownerId = (ideia != null) ? ideia.getOwnerId() : null;
-
-        firestoreHelper.findAllMentores(ownerId, r -> {
-            if (r.isOk() && r.data != null && !r.data.isEmpty()) {
-                Log.d(TAG_MATCHMAKING, "Encontrados " + r.data.size() + " mentores no total. A ordenar apenas por proximidade...");
-                // Como não temos áreas, passamos uma lista vazia para a ordenação
-                List<Mentor> ordenados = MentorMatchService.ordenarPorAfinidadeEProximidade(r.data, new ArrayList<>(), localizacaoUsuario);
-                String mentorId = ordenados.get(0).getId();
-                ideia.setMatchmakingLog("Mentor encontrado por proximidade.");
-                publicarIdeiaComMentor(mentorId);
-            } else {
-                // Último recurso
-                publicarIdeiaSemMentor();
-            }
-        });
-    }
 
     /**
-     * Metodo de fallback que procura um mentor apenas por localização (cidade e depois estado).
+     * ETAPA 2 (FALLBACK): Busca um mentor apenas por proximidade (cidade, depois estado).
      */
-    private void procurarMentorApenasPorProximidade(@Nullable String cidade, @Nullable String estado) {
-        updateLoadingDialog("A procurar por proximidade...");
-        Log.d(TAG_MATCHMAKING, "Etapa 2 (Fallback): A procurar o mentor mais próximo.");
-        final String ownerId = (ideia != null) ? ideia.getOwnerId() : null;
+    private void procurarMentorApenasPorProximidade(@Nullable Location localizacaoUsuario, @Nullable String ownerId) {
+        updateLoadingDialog("Nenhum mentor por área... procurando por proximidade...");
+        Log.d(TAG_MATCHMAKING, "Etapa 2 (Fallback): Buscando por proximidade.");
+
+        if (localizacaoUsuario == null) {
+            Log.w(TAG_MATCHMAKING, "Localização nula. Impossível buscar por proximidade. Publicando sem mentor.");
+            publicarIdeiaSemMentor();
+            return;
+        }
+
+        final String cidade = getCidadeFromLocation(localizacaoUsuario);
 
         if (cidade != null && !cidade.isEmpty()) {
-            Log.d(TAG_MATCHMAKING, "A tentar encontrar na cidade: " + cidade);
-            firestoreHelper.findMentorByCity(cidade, ownerId, rCity -> {
-                if (rCity.isOk() && rCity.data != null) {
-                    publicarIdeiaComMentor(rCity.data.getId());
+            Log.d(TAG_MATCHMAKING, "Fallback: Tentando encontrar na cidade: " + cidade);
+            firestoreHelper.findMentoresByCity(cidade, ownerId, rCity -> {
+                if (rCity.isOk() && rCity.data != null && !rCity.data.isEmpty()) {
+                    Log.d(TAG_MATCHMAKING, "Sucesso Fallback: " + rCity.data.size() + " mentores na cidade. Ordenando...");
+                    List<Mentor> ordenados = MentorMatchService.ordenarPorAfinidadeEProximidade(rCity.data, new ArrayList<>(), localizacaoUsuario);
+
+                    // --- CORREÇÃO AQUI ---
+                    if (this.ideia != null) {
+                        this.ideia.setMatchmakingLog("Mentor encontrado por proximidade na cidade (fallback).");
+                    }
+
+                    publicarIdeiaComMentor(ordenados.get(0).getId());
                 } else {
-                    procurarMentorNoEstadoFallback(estado);
+                    procurarMentorNoEstadoFallback(localizacaoUsuario, ownerId);
                 }
             });
         } else {
-            procurarMentorNoEstadoFallback(estado);
+            procurarMentorNoEstadoFallback(localizacaoUsuario, ownerId);
         }
     }
 
-    private void procurarMentorNoEstadoFallback(@Nullable String estado) {
+    private void procurarMentorNoEstadoFallback(@Nullable Location localizacaoUsuario, @Nullable String ownerId) {
+        final String estado = (localizacaoUsuario != null) ? getEstadoFromLocation(localizacaoUsuario) : null;
+
         if (estado != null && !estado.isEmpty()) {
-            Log.d(TAG_MATCHMAKING, "Nenhum mentor encontrado na cidade. A expandir para o estado: " + estado);
-            firestoreHelper.findMentorByState(estado, ideia.getOwnerId(), rState -> {
-                if (rState.isOk() && rState.data != null) {
-                    publicarIdeiaComMentor(rState.data.getId());
+            Log.d(TAG_MATCHMAKING, "Fallback: Tentando encontrar no estado: " + estado);
+            firestoreHelper.findMentoresByState(estado, ownerId, rState -> {
+                if (rState.isOk() && rState.data != null && !rState.data.isEmpty()) {
+                    Log.d(TAG_MATCHMAKING, "Sucesso Fallback: " + rState.data.size() + " mentores no estado. Ordenando...");
+                    List<Mentor> ordenados = MentorMatchService.ordenarPorAfinidadeEProximidade(rState.data, new ArrayList<>(), localizacaoUsuario);
+
+                    // --- CORREÇÃO AQUI ---
+                    if (this.ideia != null) {
+                        this.ideia.setMatchmakingLog("Mentor encontrado por proximidade no estado (fallback).");
+                    }
+
+                    publicarIdeiaComMentor(ordenados.get(0).getId());
                 } else {
                     publicarIdeiaSemMentor();
                 }
             });
         } else {
-            Log.w(TAG_MATCHMAKING, "Nenhuma cidade ou estado disponível para busca por proximidade.");
             publicarIdeiaSemMentor();
         }
+    }
+
+    private String getCidadeFromLocation(Location location) {
+        Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+        try {
+            List<Address> addresses = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
+            if (addresses != null && !addresses.isEmpty()) {
+                return addresses.get(0).getLocality();
+            }
+        } catch (IOException e) {
+            Log.e(TAG_MATCHMAKING, "Erro de Geocoder ao obter cidade", e);
+        }
+        return null;
+    }
+
+    private String getEstadoFromLocation(Location location) {
+        Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+        try {
+            List<Address> addresses = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
+            if (addresses != null && !addresses.isEmpty()) {
+                return addresses.get(0).getAdminArea();
+            }
+        } catch (IOException e) {
+            Log.e(TAG_MATCHMAKING, "Erro de Geocoder ao obter estado", e);
+        }
+        return null;
     }
 
     private void publicarIdeiaComMentor(String mentorId) {
@@ -660,18 +731,35 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements
     }
 
     private void publicarIdeiaSemMentor() {
-        Log.e(TAG_MATCHMAKING, "A executar 'publicarIdeiaSemMentor'. NENHUM MENTOR FOI VINCULADO.");
-        updateLoadingDialog("Nenhum mentor compatível encontrado. Publicando para avaliação geral...");
-        loadingHandler.postDelayed(() ->
-                firestoreHelper.publicarIdeia(ideia.getId(), null, r -> {
-                    hideLoadingDialog();
-                    if (r.isOk()) {
-                        Toast.makeText(this, "Ideia publicada para avaliação geral!", Toast.LENGTH_LONG).show();
-                        finish();
-                    } else {
-                        Toast.makeText(this, "Erro ao publicar ideia.", Toast.LENGTH_SHORT).show();
-                    }
-                }), 2000);
+        Log.e(TAG_MATCHMAKING, "NENHUM MENTOR COMPATÍVEL ENCONTRADO.");
+        hideLoadingDialog(); // Esconde o dialog de "carregando"
+
+        new AlertDialog.Builder(this)
+                .setTitle("Nenhum Mentor Encontrado")
+                .setMessage("Não encontramos um mentor com o perfil ideal no momento. Deseja publicar sua ideia para uma avaliação geral ou tentar a busca novamente?")
+                .setPositiveButton("Publicar Mesmo Assim", (dialog, which) -> {
+                    showLoadingDialog("Publicando para avaliação geral...");
+                    // Usamos um postDelayed para o usuário perceber a mudança na mensagem
+                    loadingHandler.postDelayed(() ->
+                            firestoreHelper.publicarIdeia(ideia.getId(), null, r -> {
+                                hideLoadingDialog();
+                                if (r.isOk()) {
+                                    Toast.makeText(this, "Ideia publicada para avaliação geral!", Toast.LENGTH_LONG).show();
+                                    finish();
+                                } else {
+                                    Toast.makeText(this, "Erro ao publicar ideia.", Toast.LENGTH_SHORT).show();
+                                }
+                            }), 1000);
+                })
+                .setNeutralButton("Refazer Busca", (dialog, which) -> {
+                    // Simplesmente chama o início do processo de publicação de novo
+                    verificarPermissaoEPublicar();
+                })
+                .setNegativeButton("Cancelar", (dialog, which) -> {
+                    Toast.makeText(this, "Publicação cancelada.", Toast.LENGTH_SHORT).show();
+                })
+                .setCancelable(false) // Impede que o usuário feche o diálogo clicando fora
+                .show();
     }
 
     private void despublicarIdeia() {
@@ -698,9 +786,12 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements
     }
 
     private void notificarFragmentoAtual() {
+        if (binding == null) return;
         Fragment frag = getSupportFragmentManager().findFragmentByTag("f" + binding.viewPagerCanvas.getCurrentItem());
         if (frag instanceof CanvasBlockFragment) {
             ((CanvasBlockFragment) frag).atualizarDadosIdeia(this.ideia);
+        } else if (frag instanceof IdeiaStatusFragment) { // Adiciona a verificação para o StatusFragment
+            ((IdeiaStatusFragment) frag).atualizarDadosIdeia(this.ideia);
         }
     }
 
@@ -730,11 +821,6 @@ public class CanvasIdeiaActivity extends AppCompatActivity implements
             this.ideia.setAreasNecessarias(ideiaAtualizada.getAreasNecessarias());
         }
     }
-    /**
-     * Este metodo é exigido pela interface CanvasBlockListener.
-     * No nosso caso, ele pode ficar vazio, pois as atualizações da lista de post-its
-     * já são tratadas automaticamente pelo listener em tempo real do Firestore (attachIdeiaListener).
-     */
 
     @Override
     public void onAmbienteIdealDetectado(boolean isIdeal) {

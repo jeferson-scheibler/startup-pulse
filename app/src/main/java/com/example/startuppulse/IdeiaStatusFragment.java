@@ -29,6 +29,7 @@ import com.example.startuppulse.util.PdfGenerator;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
+import java.util.List; // Import necessário
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
@@ -189,51 +190,90 @@ public class IdeiaStatusFragment extends Fragment {
     }
 
     private void tentarNovoMatchmaking() {
-        if (ideia.getUltimaBuscaMentorTimestamp() != null) {
-            long agora = System.currentTimeMillis();
-            long ultimaBusca = ideia.getUltimaBuscaMentorTimestamp().getTime();
-            long horasPassadas = TimeUnit.MILLISECONDS.toHours(agora - ultimaBusca);
-
-            if (horasPassadas < 24) {
-                Toast.makeText(getContext(), "Você já procurou por um mentor hoje. Tente novamente mais tarde.", Toast.LENGTH_LONG).show();
-                return;
-            }
-        }
-
-        // Para executar o matchmaking, precisamos da localização. Reutilizamos a lógica da CanvasIdeiaActivity.
-        // Verificamos a permissão e o GPS.
+        // 1. Verificar permissão de localização
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(getContext(), "Permissão de localização necessária.", Toast.LENGTH_SHORT).show();
-            // O ideal seria pedir a permissão aqui, mas por simplicidade, apenas notificamos.
+            // Se não tiver permissão, solicite-a.
+            // O ideal é usar um ActivityResultLauncher aqui, mas por simplicidade, notificamos.
+            Toast.makeText(getContext(), "Permissão de localização é necessária para encontrar um mentor.", Toast.LENGTH_LONG).show();
+            // Você pode adicionar um launcher para pedir a permissão aqui.
             return;
         }
 
+        // 2. Verificar se o GPS está ligado
         LocationManager locationManager = (LocationManager) requireContext().getSystemService(Context.LOCATION_SERVICE);
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-            Toast.makeText(getContext(), "Por favor, ative o GPS para procurar um mentor.", Toast.LENGTH_SHORT).show();
+            new AlertDialog.Builder(requireContext())
+                    .setTitle("GPS Desativado")
+                    .setMessage("Para encontrar o mentor ideal, precisamos da sua localização. Por favor, ative o GPS.")
+                    .setPositiveButton("Ativar GPS", (dialog, which) -> startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)))
+                    .setNegativeButton("Cancelar", null)
+                    .show();
             return;
         }
 
-        // Se tudo estiver OK, executa a busca (esta é uma versão simplificada da lógica da CanvasIdeiaActivity)
-        // O ideal seria ter esta lógica num método reutilizável no FirestoreHelper.
-        Toast.makeText(getContext(), "A procurar por um novo mentor...", Toast.LENGTH_SHORT).show();
+        // 3. Se tudo estiver OK, iniciar a busca
+        binding.btnProcurarMentor.setEnabled(false); // Desativa o botão para evitar cliques duplos
 
-        // NOTA: A lógica completa de matchmaking (com Geocoder, etc.) é complexa.
-        // Uma implementação completa envolveria mover a lógica de `iniciarMatchmakingDeMentor`
-        // para um método reutilizável e chamá-lo aqui. O listener da Activity trataria da atualização da UI.
+        firestoreHelper.realizarMatchmakingParaIdeia(requireContext(), ideia, r -> {
+            // Garante que o fragmento ainda está "vivo" antes de atualizar a UI
+            if (!isAdded()) {
+                return;
+            }
 
-        // Por agora, vamos simular a atualização do timestamp para o controlo de tempo funcionar.
-        new FirestoreHelper().atualizarTimestampBuscaMentor(ideia.getId());
+            binding.btnProcurarMentor.setEnabled(true);
+
+            if (r.isOk() && r.data != null) {
+                Toast.makeText(getContext(), "Sucesso! Um novo mentor foi vinculado à sua ideia.", Toast.LENGTH_LONG).show();
+                // A UI será atualizada automaticamente pelo listener da Activity que hospeda este fragmento.
+                // Se não houver listener, você precisaria chamar `updateUI()` aqui com a ideia atualizada.
+            } else {
+                // Mostra o diálogo que já criamos, dando a opção de tentar novamente.
+                new AlertDialog.Builder(requireContext())
+                        .setTitle("Nenhum Mentor Encontrado")
+                        .setMessage("Não encontramos um mentor compatível no momento. Você pode tentar novamente mais tarde.")
+                        .setPositiveButton("Entendi", null)
+                        .show();
+            }
+        });
     }
 
-    private void showFeedbackDialog() {
-        if (!isAdded() || ideia.getAvaliacoes() == null || ideia.getAvaliacoes().isEmpty()) return;
+    public void atualizarDadosIdeia(Ideia ideiaAtualizada) {
+        this.ideia = ideiaAtualizada;
+        // Se a view já foi criada, atualiza a UI imediatamente.
+        if (binding != null) {
+            updateUI();
+        }
+    }
 
-        // Assumindo que a lista contém objetos AvaliacaoCompleta
-        AvaliacaoCompleta ultimaAvaliacao = ideia.getAvaliacoes().get(ideia.getAvaliacoes().size() - 1);
+ private void showFeedbackDialog() {
+        if (!isAdded() || ideia == null) return;
+
+        List<Avaliacao> avaliacoes = ideia.getAvaliacoes();
+
+        if (avaliacoes == null || avaliacoes.isEmpty()) {
+            Toast.makeText(getContext(), "Nenhum detalhe de feedback encontrado.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Busca o nome do mentor para usar no título
+        final String[] mentorNome = {"Mentor"}; // Fallback
+        if (ideia.getMentorId() != null && !ideia.getMentorId().isEmpty()) {
+            firestoreHelper.findMentorById(ideia.getMentorId(), r -> {
+                if (r.isOk() && r.data != null) {
+                    mentorNome[0] = r.data.getNome();
+                }
+                // Mostra o diálogo depois de tentar obter o nome
+                exibirDialogoComFeedback(mentorNome[0], avaliacoes);
+            });
+        } else {
+            exibirDialogoComFeedback(mentorNome[0], avaliacoes);
+        }
+    }
+
+    private void exibirDialogoComFeedback(String mentorNome, List<Avaliacao> avaliacoes) {
         SpannableStringBuilder formattedFeedback = new SpannableStringBuilder();
 
-        for (Avaliacao criterio : ultimaAvaliacao.getCriteriosAvaliados()) {
+        for (Avaliacao criterio : avaliacoes) {
             String header = criterio.getCriterio() + String.format(Locale.getDefault(), ": %.1f/10\n", criterio.getNota());
             int start = formattedFeedback.length();
             formattedFeedback.append(header);
@@ -247,11 +287,12 @@ public class IdeiaStatusFragment extends Fragment {
         }
 
         new AlertDialog.Builder(requireContext())
-                .setTitle("Feedback de " + ultimaAvaliacao.getMentorNome())
+                .setTitle("Feedback de " + mentorNome)
                 .setMessage(formattedFeedback)
                 .setPositiveButton("Entendi", null)
                 .show();
     }
+
 
     private void verificarPermissaoEGerarPdf() {
         if (getContext() == null) return; // Checagem de segurança

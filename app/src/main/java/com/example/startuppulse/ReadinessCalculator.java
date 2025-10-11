@@ -45,7 +45,7 @@ public class ReadinessCalculator {
     }
 
     /**
-     * NOVA LÓGICA: Verifica se uma ideia foi validada por um mentor.
+     * LÓGICA CORRIGIDA: Verifica se uma ideia foi validada por um mentor.
      * A validação requer que a ideia tenha sido avaliada e que a média das notas
      * seja igual ou superior à nota mínima definida.
      */
@@ -54,29 +54,25 @@ public class ReadinessCalculator {
             return false;
         }
 
-        List<AvaliacaoCompleta> avaliacoes = ideia.getAvaliacoes();
+        // Acessa a lista de avaliações, que agora é uma lista simples de critérios.
+        List<Avaliacao> avaliacoes = ideia.getAvaliacoes();
         if (avaliacoes == null || avaliacoes.isEmpty()) {
             return false;
         }
 
-        // Pega a avaliação mais recente
-        AvaliacaoCompleta ultimaAvaliacao = avaliacoes.get(avaliacoes.size() - 1);
-        if (ultimaAvaliacao.getCriteriosAvaliados() == null || ultimaAvaliacao.getCriteriosAvaliados().isEmpty()) {
-            return false;
-        }
-
+        // Calcula a soma das notas diretamente da lista de avaliações.
         double somaNotas = 0;
-        for (Avaliacao criterio : ultimaAvaliacao.getCriteriosAvaliados()) {
+        for (Avaliacao criterio : avaliacoes) {
             somaNotas += criterio.getNota();
         }
 
-        double media = somaNotas / ultimaAvaliacao.getCriteriosAvaliados().size();
+        // A média é calculada sobre o tamanho da lista de avaliações.
+        double media = somaNotas / avaliacoes.size();
 
         return media >= NOTA_MINIMA_MENTOR;
     }
 
     private static boolean isCanvasPreenchido(Ideia ideia) {
-        // ... (resto do método continua igual)
         Map<String, List<PostIt>> canvas = ideia.getPostIts();
         if (canvas == null) return false;
         return !isPostItListEmpty(canvas.get(CanvasEtapa.CHAVE_PROPOSTA_VALOR)) &&

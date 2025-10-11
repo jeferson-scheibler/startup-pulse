@@ -29,7 +29,7 @@ public class Ideia implements Serializable {
     private boolean autorIsPremium;
     private String mentorId;
     private String avaliacaoStatus;
-    private List<AvaliacaoCompleta> avaliacoes;
+    private List<Avaliacao> avaliacoes; // << ALTERAÇÃO CRÍTICA APLICADA AQUI
     private List<String> areasNecessarias;
     private String matchmakingLog;
 
@@ -77,8 +77,8 @@ public class Ideia implements Serializable {
     public void setMentorId(String mentorId) { this.mentorId = mentorId; }
     public String getAvaliacaoStatus() { return avaliacaoStatus; }
     public void setAvaliacaoStatus(String avaliacaoStatus) { this.avaliacaoStatus = avaliacaoStatus; }
-    public List<AvaliacaoCompleta> getAvaliacoes() { return avaliacoes; }
-    public void setAvaliacoes(List<AvaliacaoCompleta> avaliacoes) { this.avaliacoes = avaliacoes; }
+    public List<Avaliacao> getAvaliacoes() { return avaliacoes; } // << ALTERAÇÃO CRÍTICA APLICADA AQUI
+    public void setAvaliacoes(List<Avaliacao> avaliacoes) { this.avaliacoes = avaliacoes; } // << ALTERAÇÃO CRÍTICA APLICADA AQUI
     public Date getTimestamp() { return timestamp; }
     public void setTimestamp(Date timestamp) { this.timestamp = timestamp; }
     public Map<String, List<PostIt>> getPostIts() { return postIts; }

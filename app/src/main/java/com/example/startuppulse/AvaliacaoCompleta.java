@@ -1,6 +1,7 @@
 package com.example.startuppulse;
 
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.PropertyName;
 import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
@@ -38,6 +39,9 @@ public class AvaliacaoCompleta implements Serializable {
     public Date getTimestamp() { return timestamp; }
     public void setTimestamp(Date timestamp) { this.timestamp = timestamp; }
 
+    @PropertyName("avaliacoes")
     public List<Avaliacao> getCriteriosAvaliados() { return criteriosAvaliados; }
+    
+    @PropertyName("avaliacoes")
     public void setCriteriosAvaliados(List<Avaliacao> criteriosAvaliados) { this.criteriosAvaliados = criteriosAvaliados; }
 }

@@ -5,6 +5,7 @@ import java.io.Serializable;
 public class Mentor implements Serializable {
 
     private String id;
+    private String ownerId;
     private String nome;
     private String profissao;
     private String cidade;
@@ -54,6 +55,9 @@ public class Mentor implements Serializable {
 
     public double getLongitude() { return longitude; }
     public void setLongitude(double longitude) { this.longitude = longitude; }
+
+    public String getOwnerId() { return ownerId; }
+    public void setOwnerId(String ownerId) { this.ownerId = ownerId; }
 
     public boolean isAtivoPublico() {
         return ativoPublico;
