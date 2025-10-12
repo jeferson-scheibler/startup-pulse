@@ -119,4 +119,19 @@
     <string name="nenhum_rascunho_por_enquanto">Nenhum rascunho por enquanto</string>
     <string name="crie_uma_ideia_para_come_ar">Crie uma ideia para começar</string>
     <string name="titulo_detalhe_investidor">Perfil de Investidor</string>
+
+    <string name="login_title">Bem-vindo de volta!</string>
+    <string name="email_hint">E-mail</string>
+    <string name="password_hint">Senha</string>
+    <string name="login_button_text">Entrar</string>
+    <string name="or_divider">ou</string>
+    <string name="google_sign_in_button_text">Continuar com Google</string>
+    <string name="no_account_prompt">Não tem uma conta?</string>
+    <string name="sign_up_link">Cadastre-se</string>
+
+    <string name="sign_up_title">Crie sua Conta</string>
+    <string name="name_hint">Nome completo</string>
+    <string name="sign_up_button_text">Cadastrar</string>
+    <string name="already_have_account_prompt">Já tem uma conta?</string>
+    <string name="login_link">Faça login</string>
 </resources>
