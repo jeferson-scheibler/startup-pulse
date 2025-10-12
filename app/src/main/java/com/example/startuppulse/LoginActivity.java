@@ -3,10 +3,7 @@ package com.example.startuppulse;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.LinearLayout;
-import android.widget.TextView;
+import android.view.View;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -14,7 +11,8 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
-import com.example.startuppulse.common.Result;
+import com.example.startuppulse.databinding.ActivityLoginBinding; // Importe sua classe de binding
+import com.example.startuppulse.ui.login.LoginState;
 import com.example.startuppulse.ui.login.LoginViewModel;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
@@ -22,213 +20,126 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.Task;
-import com.google.firebase.auth.AuthCredential;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.auth.GoogleAuthProvider;
 
 public class LoginActivity extends AppCompatActivity {
 
-    private EditText emailEditText, passwordEditText;
-    private Button loginButton;
-    private TextView signUpTextView;
-    private LinearLayout googleButtonLayout;
-    private FirebaseAuth mAuth;
-    private FirestoreHelper dbHelper;
+    private static final String TAG = "LoginActivity";
+    private ActivityLoginBinding binding; // Usando View Binding
+    private LoginViewModel loginViewModel;
 
     private GoogleSignInClient mGoogleSignInClient;
     private ActivityResultLauncher<Intent> googleSignInLauncher;
-    private static final String TAG = "LoginActivity";
-    private LoginViewModel viewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        setTheme(R.style.Theme_StartupPulse);
+        setTheme(R.style.Theme_StartupPulse); // Retorna o tema após o Splash
         super.onCreate(savedInstanceState);
+        binding = ActivityLoginBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
-        viewModel = new ViewModelProvider(this).get(LoginViewModel.class);
-        viewModel.authState.observe(this, state -> {
-            switch (state) {
-                case LOADING:
-                    // Mostrar ProgressBar
-                    break;
-                case AUTHENTICATED:
-                    // Navegar para MainActivity
-                    break;
-                case ERROR:
-                    // Mostrar mensagem de erro
-                    break;
-            }
-        });
+        // 1. Inicializar ViewModel
+        loginViewModel = new ViewModelProvider(this).get(LoginViewModel.class);
 
-        binding.loginButton.setOnClickListener(v -> {
-            String email = binding.emailEditText.getText().toString();
-            String password = binding.passwordEditText.getText().toString();
-            viewModel.login(email, password);
-        });
-
+        // 2. Configurar a UI e os listeners
+        setupClickListeners();
         configureGoogleSignIn();
 
-        loginButton.setOnClickListener(v -> {
-            Log.d(TAG, "Botão de login (email/senha) clicado");
-            loginUser();
-        });
-
-        signUpTextView.setOnClickListener(v -> {
-            Log.d(TAG, "Clique em Criar Conta");
-            startActivity(new Intent(LoginActivity.this, SignUpActivity.class));
-        });
-
-        googleButtonLayout.setOnClickListener(v -> {
-            Log.d(TAG, "Botão Google clicado → chamando signInWithGoogle()");
-            signInWithGoogle();
-        });
+        // 3. Observar o estado do ViewModel para atualizar a UI
+        loginViewModel.loginState.observe(this, this::handleLoginState);
     }
 
-    private void loginUser() {
-        String email = emailEditText.getText().toString().trim();
-        String password = passwordEditText.getText().toString().trim();
-        Log.d(TAG, "Tentando login com email=" + email);
+    private void setupClickListeners() {
+        // Login com E-mail
+        binding.loginButton.setOnClickListener(v -> {
+            String email = binding.emailEditText.getText().toString().trim();
+            String password = binding.passwordEditText.getText().toString().trim();
+            loginViewModel.loginWithEmail(email, password);
+        });
 
-        if (email.isEmpty() || password.isEmpty()) {
-            Log.w(TAG, "Campos vazios no login");
-            Toast.makeText(this, "Por favor, preencha todos os campos.", Toast.LENGTH_SHORT).show();
-            return;
-        }
+        // Login com Google
+        binding.googleButtonLayout.setOnClickListener(v -> {
+            // Limpa qualquer sessão anterior para sempre mostrar o seletor de contas
+            mGoogleSignInClient.signOut().addOnCompleteListener(task -> {
+                Intent signInIntent = mGoogleSignInClient.getSignInIntent();
+                googleSignInLauncher.launch(signInIntent);
+            });
+        });
 
-        mAuth.signInWithEmailAndPassword(email, password)
-                .addOnCompleteListener(this, task -> {
-                    Log.d(TAG, "signInWithEmailAndPassword: sucesso=" + task.isSuccessful());
-                    if (!task.isSuccessful()) {
-                        Log.w(TAG, "Falha na autenticação email/senha", task.getException());
-                        Toast.makeText(LoginActivity.this, "Falha na autenticação.", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-
-                    FirebaseUser user = mAuth.getCurrentUser();
-                    Log.d(TAG, "Usuário logado: " + (user != null ? user.getUid() : "null"));
-                    if (user == null) {
-                        Toast.makeText(this, "Erro: usuário nulo após login.", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-
-                    String fotoUrl = (user.getPhotoUrl() != null) ? user.getPhotoUrl().toString() : null;
-                    dbHelper.salvarUsuario(
-                            user.getUid(),
-                            user.getDisplayName(),
-                            user.getEmail(),
-                            fotoUrl,
-                            null,
-                            r -> {
-                                Log.d(TAG, "Resultado salvarUsuario: " + r.isOk());
-                                if (!r.isOk()) {
-                                    Log.w(TAG, "salvarUsuario (email/senha) falhou: ", r.error);
-                                }
-                                Toast.makeText(LoginActivity.this, "Login bem-sucedido.", Toast.LENGTH_SHORT).show();
-                                startActivity(new Intent(LoginActivity.this, MainActivity.class));
-                                finish();
-                            }
-                    );
-                });
+        // Navegar para a tela de Cadastro
+        binding.signUpTextView.setOnClickListener(v -> {
+            startActivity(new Intent(LoginActivity.this, SignUpActivity.class));
+        });
     }
 
     private void configureGoogleSignIn() {
-        String clientId = getString(R.string.default_web_client_id);
-        Log.d(TAG, "Config GoogleSignIn: default_web_client_id=" + clientId);
-
+        // Configura o Google Sign-In
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestIdToken(clientId)
+                .requestIdToken(getString(R.string.default_web_client_id))
                 .requestEmail()
                 .build();
-
         mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
 
+        // Prepara o launcher que receberá o resultado da tela de login do Google
         googleSignInLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
-                    Log.d(TAG, "Resultado do Google Sign-In: resultCode=" + result.getResultCode());
-                    if (result.getResultCode() != RESULT_OK) {
-                        Log.w(TAG, "Google Sign-In cancelado ou falhou");
-                        return;
-                    }
-                    Intent data = result.getData();
-                    if (data == null) {
-                        Log.w(TAG, "Intent de retorno nula");
-                        return;
-                    }
-                    Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
-                    try {
-                        GoogleSignInAccount account = task.getResult(ApiException.class);
-                        Log.d(TAG, "Conta Google obtida: " + (account != null ? account.getEmail() : "null"));
-                        if (account != null) {
-                            Log.d(TAG, "IdToken=" + account.getIdToken());
-                            firebaseAuthWithGoogle(account);
+                    if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                        Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(result.getData());
+                        try {
+                            GoogleSignInAccount account = task.getResult(ApiException.class);
+                            if (account != null) {
+                                // SUCESSO: Envia a conta para o ViewModel processar
+                                loginViewModel.loginWithGoogle(account);
+                            } else {
+                                // ERRO: Conta nula
+                                handleLoginState(new LoginState("Não foi possível obter a conta Google."));
+                            }
+                        } catch (ApiException e) {
+                            // ERRO: Falha na API do Google
+                            Log.w(TAG, "Google sign in failed", e);
+                            handleLoginState(new LoginState("Falha no login com Google. Código: " + e.getStatusCode()));
                         }
-                    } catch (ApiException e) {
-                        Log.e(TAG, "Google sign in failed", e);
-                        Toast.makeText(this, "Falha no login com Google.", Toast.LENGTH_SHORT).show();
+                    } else {
+                        // A tela do Google foi cancelada pelo usuário
+                        handleLoginState(new LoginState(LoginState.AuthState.IDLE));
                     }
                 }
         );
     }
 
-    private void signInWithGoogle() {
-        Log.d(TAG, "Iniciando intent do Google Sign-In");
-        // força limpar sessão anterior para abrir o seletor de contas limpinho
-        mGoogleSignInClient.signOut().addOnCompleteListener(t -> {
-            Intent signInIntent = mGoogleSignInClient.getSignInIntent();
-            googleSignInLauncher.launch(signInIntent);
-        });
-    }
-
-
-    private void firebaseAuthWithGoogle(GoogleSignInAccount acct) {
-        Log.d(TAG, "firebaseAuthWithGoogle: iniciando autenticação com Firebase");
-        AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
-        mAuth.signInWithCredential(credential)
-                .addOnCompleteListener(this, task -> {
-                    Log.d(TAG, "signInWithCredential: sucesso=" + task.isSuccessful());
-                    if (!task.isSuccessful()) {
-                        Log.w(TAG, "Falha na autenticação com Firebase (Google)", task.getException());
-                        Toast.makeText(this, "Falha na autenticação com Firebase.", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-
-                    FirebaseUser user = mAuth.getCurrentUser();
-                    Log.d(TAG, "Usuário Google logado: " + (user != null ? user.getUid() : "null"));
-                    if (user == null) {
-                        Toast.makeText(this, "Erro: usuário nulo após login (Google).", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-
-                    String fotoUrl = (user.getPhotoUrl() != null) ? user.getPhotoUrl().toString() : null;
-                    dbHelper.salvarUsuario(
-                            user.getUid(),
-                            user.getDisplayName(),
-                            user.getEmail(),
-                            fotoUrl,
-                            null,
-                            r -> {
-                                Log.d(TAG, "Resultado salvarUsuario (Google): " + r.isOk());
-                                if (!r.isOk()) {
-                                    Log.w(TAG, "salvarUsuario (google) falhou: ", r.error);
-                                }
-                                Toast.makeText(this, "Login com Google bem-sucedido.", Toast.LENGTH_SHORT).show();
-                                startActivity(new Intent(LoginActivity.this, MainActivity.class));
-                                finish();
-                            }
-                    );
-                });
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        FirebaseUser currentUser = mAuth.getCurrentUser();
-        Log.d(TAG, "onStart: usuário atual=" + (currentUser != null ? currentUser.getUid() : "null"));
-        if (currentUser != null) {
-            startActivity(new Intent(LoginActivity.this, MainActivity.class));
-            finish();
+    private void handleLoginState(LoginState state) {
+        // Centraliza toda a lógica de atualização da UI aqui
+        switch (state.getState()) {
+            case LOADING:
+                setLoadingState(true);
+                break;
+            case SUCCESS:
+                setLoadingState(false);
+                navigateToMainApp();
+                break;
+            case ERROR:
+                setLoadingState(false);
+                Toast.makeText(this, state.getErrorMessage(), Toast.LENGTH_LONG).show();
+                break;
+            case IDLE:
+            default:
+                setLoadingState(false);
+                break;
         }
+    }
+
+    private void setLoadingState(boolean isLoading) {
+        binding.progressBar.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+        binding.loginButton.setEnabled(!isLoading);
+        binding.googleButtonLayout.setEnabled(!isLoading);
+        binding.signUpTextView.setEnabled(!isLoading);
+    }
+
+    private void navigateToMainApp() {
+        Toast.makeText(this, "Login bem-sucedido!", Toast.LENGTH_SHORT).show();
+        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+        finish(); // Finaliza a LoginActivity para que o usuário não possa voltar a ela
     }
 }
