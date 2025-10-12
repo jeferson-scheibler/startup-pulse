@@ -1,102 +1,85 @@
 package com.example.startuppulse;
 
 import android.content.Intent;
-import android.graphics.Paint;
 import android.os.Bundle;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.TextView;
+import android.view.View;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.auth.UserProfileChangeRequest;
+import com.example.startuppulse.databinding.ActivitySignUpBinding; // Importe sua classe de binding
+import com.example.startuppulse.ui.signup.SignUpState;
+import com.example.startuppulse.ui.signup.SignUpViewModel;
 
 public class SignUpActivity extends AppCompatActivity {
 
-    FirebaseAuth mAuth;
-    private EditText editTextName;
-    private EditText editTextEmail;
-    private EditText editTextPassword;
-    private EditText editTextConfirmPassword;
-    private Button buttonSignUp;
-    private TextView buttonBack;
-
-    // Verifica se o usuário ja está logado
-    @Override
-    public void onStart() {
-        super.onStart();
-
-        FirebaseUser currentUser = mAuth.getCurrentUser();
-        if(currentUser != null){
-            startActivity(new Intent(SignUpActivity.this, MainActivity.class));
-            finish();
-        }
-    }
+    private ActivitySignUpBinding binding;
+    private SignUpViewModel signUpViewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_sign_up);
+        binding = ActivitySignUpBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
-        mAuth = FirebaseAuth.getInstance();
+        // 1. Inicializar ViewModel
+        signUpViewModel = new ViewModelProvider(this).get(SignUpViewModel.class);
 
-        editTextName = findViewById(R.id.editTextName);
-        editTextEmail = findViewById(R.id.editTextEmail);
-        editTextPassword = findViewById(R.id.editTextPassword);
-        editTextConfirmPassword = findViewById(R.id.editTextConfirmPassword);
-        buttonSignUp = findViewById(R.id.buttonSignUp);
-        buttonBack = findViewById(R.id.buttonBack);
+        // 2. Configurar os listeners da UI
+        setupClickListeners();
 
-        buttonBack.setPaintFlags(buttonBack.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
+        // 3. Observar o estado para atualizar a UI
+        signUpViewModel.signUpState.observe(this, this::handleSignUpState);
+    }
 
-        buttonBack.setOnClickListener(v -> finish());
-
-        buttonSignUp.setOnClickListener(v -> {
-            String name = editTextName.getText().toString().trim();
-            String email = editTextEmail.getText().toString().trim();
-            String password = editTextPassword.getText().toString().trim();
-            String confirmPassword = editTextConfirmPassword.getText().toString().trim();
-
-            if (name.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
-                Toast.makeText(this, "Preencha todos os campos", Toast.LENGTH_SHORT).show();
-            } else if (!password.equals(confirmPassword)) {
-                Toast.makeText(this, "As senhas não coincidem", Toast.LENGTH_SHORT).show();
-            } else {
-                // Realiza a criação do usuário
-                mAuth.createUserWithEmailAndPassword(email, password)
-                        .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
-                            @Override
-                            public void onComplete(@NonNull Task<AuthResult> task) {
-                                if (task.isSuccessful()) {
-                                    FirebaseUser user = mAuth.getCurrentUser();
-                                    if (user != null) {
-                                        user.updateProfile(new UserProfileChangeRequest.Builder()
-                                                .setDisplayName(name)
-                                                .build()
-                                        ).addOnCompleteListener(profileTask -> {
-                                            if (profileTask.isSuccessful()) {
-                                                Toast.makeText(SignUpActivity.this, "Conta criada com sucesso!", Toast.LENGTH_SHORT).show();
-                                                startActivity(new Intent(SignUpActivity.this, MainActivity.class));
-                                                finish();
-                                            } else {
-                                                Toast.makeText(SignUpActivity.this, "Conta criada, mas erro ao salvar nome!", Toast.LENGTH_SHORT).show();
-                                            }
-                                        });
-                                    }
-                                } else {
-                                    Toast.makeText(SignUpActivity.this, "A criação de conta falhou. Altere o e-mail ou a senha!", Toast.LENGTH_SHORT).show();
-                                }
-                            }
-                        });
-
-            }
+    private void setupClickListeners() {
+        binding.signUpButton.setOnClickListener(v -> {
+            String name = binding.nameEditText.getText().toString().trim();
+            String email = binding.emailEditText.getText().toString().trim();
+            String password = binding.passwordEditText.getText().toString().trim();
+            signUpViewModel.signUp(name, email, password);
         });
+
+        // Listener para voltar para a tela de login
+        binding.loginTextView.setOnClickListener(v -> {
+            // Finaliza a tela de cadastro e volta para a de login que já está na pilha
+            finish();
+        });
+    }
+
+    private void handleSignUpState(SignUpState state) {
+        switch (state.getState()) {
+            case LOADING:
+                setLoadingState(true);
+                break;
+            case SUCCESS:
+                setLoadingState(false);
+                navigateToMainApp();
+                break;
+            case ERROR:
+                setLoadingState(false);
+                Toast.makeText(this, state.getErrorMessage(), Toast.LENGTH_LONG).show();
+                break;
+            case IDLE:
+            default:
+                setLoadingState(false);
+                break;
+        }
+    }
+
+    private void setLoadingState(boolean isLoading) {
+        binding.progressBar.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+        binding.signUpButton.setEnabled(!isLoading);
+        binding.loginTextView.setEnabled(!isLoading);
+    }
+
+    private void navigateToMainApp() {
+        Toast.makeText(this, "Cadastro realizado com sucesso!", Toast.LENGTH_SHORT).show();
+        Intent intent = new Intent(SignUpActivity.this, MainActivity.class);
+        // Limpa a pilha de activities para que o usuário não volte para as telas de login/cadastro
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+        finish();
     }
 }

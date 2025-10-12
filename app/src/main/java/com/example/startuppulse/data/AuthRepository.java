@@ -5,6 +5,7 @@ import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.firebase.auth.UserProfileChangeRequest;
 import com.google.firebase.firestore.FirebaseFirestore; // Usar diretamente ou via helper
 
 import java.util.HashMap;
@@ -89,6 +90,32 @@ public class AuthRepository {
                         finalCallback.onError(task.getException());
                     }
                 });
+    }
+
+    public void createUser(String name, String email, String password, ResultCallback<FirebaseUser> callback) {
+        firebaseAuth.createUserWithEmailAndPassword(email, password)
+                .addOnSuccessListener(authResult -> {
+                    FirebaseUser user = authResult.getUser();
+                    if (user != null) {
+                        // Após criar, atualizamos o perfil com o nome fornecido
+                        UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
+                                .setDisplayName(name)
+                                .build();
+                        user.updateProfile(profileUpdates)
+                                .addOnCompleteListener(task -> {
+                                    if (task.isSuccessful()) {
+                                        // Com o perfil atualizado, salvamos no Firestore
+                                        saveUserToFirestore(user, callback);
+                                    } else {
+                                        // Se a atualização do perfil falhar, ainda consideramos um erro
+                                        callback.onError(task.getException());
+                                    }
+                                });
+                    } else {
+                        callback.onError(new Exception("Falha ao obter o usuário após a criação."));
+                    }
+                })
+                .addOnFailureListener(callback::onError);
     }
 
     public void logout() {
