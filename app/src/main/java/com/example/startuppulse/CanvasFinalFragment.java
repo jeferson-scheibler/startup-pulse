@@ -8,6 +8,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.example.startuppulse.data.Ideia;
+
 public class CanvasFinalFragment extends Fragment {
     @Nullable
     @Override

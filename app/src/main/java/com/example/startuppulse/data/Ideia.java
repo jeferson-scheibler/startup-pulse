@@ -1,5 +1,9 @@
-package com.example.startuppulse;
+package com.example.startuppulse.data;
 
+import com.example.startuppulse.Avaliacao;
+import com.example.startuppulse.MembroEquipe;
+import com.example.startuppulse.Metrica;
+import com.example.startuppulse.PostIt;
 import com.google.firebase.firestore.ServerTimestamp;
 import java.io.Serializable;
 import java.util.ArrayList;

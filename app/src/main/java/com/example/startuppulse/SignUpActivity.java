@@ -8,19 +8,19 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
-import com.example.startuppulse.databinding.ActivitySignUpBinding; // Importe sua classe de binding
+import com.example.startuppulse.databinding.FragmentSignUpBinding;
 import com.example.startuppulse.ui.signup.SignUpState;
 import com.example.startuppulse.ui.signup.SignUpViewModel;
 
 public class SignUpActivity extends AppCompatActivity {
 
-    private ActivitySignUpBinding binding;
+    private FragmentSignUpBinding binding;
     private SignUpViewModel signUpViewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        binding = ActivitySignUpBinding.inflate(getLayoutInflater());
+        binding = FragmentSignUpBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
         // 1. Inicializar ViewModel

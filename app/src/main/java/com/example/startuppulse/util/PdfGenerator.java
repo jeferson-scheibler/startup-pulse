@@ -16,9 +16,8 @@ import android.provider.MediaStore;
 import android.text.Layout;
 import android.text.StaticLayout;
 import android.text.TextPaint;
-import android.widget.Toast;
 
-import com.example.startuppulse.Ideia;
+import com.example.startuppulse.data.Ideia;
 import com.example.startuppulse.PostIt;
 
 import java.io.IOException;

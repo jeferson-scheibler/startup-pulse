@@ -10,6 +10,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
+
+import com.example.startuppulse.data.Ideia;
 import com.example.startuppulse.databinding.FragmentCanvasBlockBinding;
 import com.google.android.material.snackbar.Snackbar;
 import java.util.ArrayList;

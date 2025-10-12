@@ -1,6 +1,9 @@
 package com.example.startuppulse;
 
 import android.text.TextUtils;
+
+import com.example.startuppulse.data.Ideia;
+
 import java.util.List;
 import java.util.Map;
 

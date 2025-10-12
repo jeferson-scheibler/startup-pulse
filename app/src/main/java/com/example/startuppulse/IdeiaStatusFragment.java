@@ -14,7 +14,6 @@ import android.text.style.StyleSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -24,6 +23,8 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+
+import com.example.startuppulse.data.Ideia;
 import com.example.startuppulse.databinding.FragmentIdeiaStatusBinding; // Importar o ViewBinding
 import com.example.startuppulse.util.PdfGenerator;
 import com.google.firebase.auth.FirebaseAuth;
@@ -31,7 +32,6 @@ import com.google.firebase.auth.FirebaseUser;
 
 import java.util.List; // Import necessário
 import java.util.Locale;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Fragmento para exibir o status de uma ideia publicada, incluindo o mentor

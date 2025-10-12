@@ -8,7 +8,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
-import com.example.startuppulse.common.Result;
+import com.example.startuppulse.data.Ideia;
 import com.example.startuppulse.databinding.ActivityPreparacaoInvestidorBinding;
 
 import java.util.ArrayList;
@@ -19,10 +19,8 @@ import com.google.android.material.textfield.TextInputEditText;
 import android.text.TextUtils;
 import android.widget.ImageButton;
 import android.view.ViewGroup;
-import com.google.android.material.textfield.TextInputEditText;
 
 import android.app.ProgressDialog;
-import android.content.Intent;
 import android.net.Uri;
 import android.widget.LinearLayout;
 import androidx.activity.result.ActivityResultLauncher;

@@ -1,21 +1,21 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.google.gms.google.services)
+    // ADICIONADO: Aplica o plugin Safe Args
+    alias(libs.plugins.androidx.navigation.safeargs)
 }
 
 android {
     namespace = "com.example.startuppulse"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.startuppulse"
         minSdk = 24
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        // Vetores em devices antigos
         vectorDrawables {
             useSupportLibrary = true
         }
@@ -23,7 +23,6 @@ android {
 
     buildTypes {
         release {
-            // Ativa ofuscação e remoção de recursos — menor APK e mais segurança
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -32,25 +31,21 @@ android {
             )
         }
         debug {
-            // Útil pra instalar debug e release lado a lado e identificar versão
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
         }
     }
 
-    // Habilita ViewBinding no projeto Java (adeus findViewById)
     buildFeatures {
         viewBinding = true
     }
 
-    // Java 11 + desugaring para usar java.time, etc.
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
         isCoreLibraryDesugaringEnabled = true
     }
 
-    // Evita conflitos de licenças/arquivos META-INF em libs (ex.: osmdroid)
     packaging {
         resources {
             excludes += setOf(
@@ -95,18 +90,13 @@ dependencies {
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.converter.gson)
 
-    // (Opcional) Credentials/GoogleID se usar login mais moderno
-    // implementation(libs.credentials)
-    // implementation(libs.credentials.play.services.auth)
-    // implementation(libs.googleid)
-
-    val navigationVersion = "2.7.7"
-    implementation("androidx.navigation:navigation-fragment:$navigationVersion")
-    implementation("androidx.navigation:navigation-ui:$navigationVersion")
+    // CORRIGIDO: Dependências de Navegação via catálogo
+    implementation(libs.androidx.navigation.fragment)
+    implementation(libs.androidx.navigation.ui)
 
     implementation("com.google.firebase:firebase-storage")
 
-    // Desugaring (java.time, etc.)
+    // Desugaring
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.2")
 
     // Testes

@@ -1,39 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:paddingHorizontal="0dp"
-    android:paddingTop="0dp"
-    android:background="@color/colorSurface"
-    tools:context=".IdeiasHostFragment">
+    tools:context=".IdeiasHostFragment"> <com.google.android.material.button.MaterialButtonToggleGroup
+    android:id="@+id/toggle_button_group"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:layout_margin="16dp"
+    app:layout_constraintTop_toTopOf="parent"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:singleSelection="true"
+    app:selectionRequired="true"
+    app:checkedButton="@id/btn_publicadas">
 
-    <com.google.android.material.tabs.TabLayout
-        android:id="@+id/tabLayout"
-        android:layout_width="match_parent"
+    <Button
+        android:id="@+id/btn_publicadas"
+        style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:contentDescription="@string/ideas_tabs_content_desc"
-        android:background="@color/colorSurface"
-        android:elevation="2dp"
-        app:tabMode="fixed"
-        app:tabGravity="fill"
-        app:tabInlineLabel="true"
-        app:tabIndicatorFullWidth="false"
-        app:tabIndicatorAnimationMode="elastic"
-        app:tabIndicatorColor="@color/colorSecondary"
-        app:tabSelectedTextColor="@color/colorOnSurface"
-        app:tabTextColor="@color/colorOnSurface"
-        app:tabIconTint="@color/colorOnSurface"
-        android:textAppearance="@style/Text.BodyMedium"/>
+        android:layout_weight="1"
+        android:text="Feed Global"
+        android:textAllCaps="false"/>
+
+    <Button
+        android:id="@+id/btn_rascunhos"
+        style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="Meus Rascunhos"
+        android:textAllCaps="false"/>
+
+</com.google.android.material.button.MaterialButtonToggleGroup>
 
     <androidx.viewpager2.widget.ViewPager2
-        android:id="@+id/viewPager"
-        android:layout_width="match_parent"
+        android:id="@+id/view_pager"
+        android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:contentDescription="@string/ideas_pager_content_desc"
-        tools:listitem="@layout/item_ideia"
-        android:textAppearance="@style/Text.BodyMedium"/>
-</LinearLayout>
+        android:layout_marginTop="8dp"
+        app:layout_constraintTop_toBottomOf="@id/toggle_button_group"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

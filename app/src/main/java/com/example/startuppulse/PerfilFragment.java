@@ -1,34 +1,25 @@
 package com.example.startuppulse;
 
-import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.text.format.DateUtils;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.navigation.NavController;
+import androidx.navigation.Navigation;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
-import com.example.startuppulse.common.Result;
-import com.google.android.material.imageview.ShapeableImageView;
-import com.google.firebase.Timestamp;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.FirebaseFirestore;
+import com.example.startuppulse.data.User;
+import com.example.startuppulse.databinding.FragmentPerfilBinding; // Importe o binding
+import com.example.startuppulse.ui.perfil.PerfilViewModel; // Importe o ViewModel
 
-import java.util.Date;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
@@ -36,171 +27,90 @@ public class PerfilFragment extends Fragment {
 
     private static final String TAG = "PerfilFragment";
 
-    private FirebaseAuth mAuth;
-    private FirebaseUser currentUser;
-    private FirestoreHelper firestoreHelper;
-
-    // UI existentes
-    private ShapeableImageView imageViewPerfil;
-    private TextView nomeTextView, emailTextView;
-    private TextView nomePlanoTextView, validadePlanoTextView;
-    private Button sairButton, btnGerenciarAssinatura;
-
-    // Novos (do layout remodelado)
-    private TextView chipPremium, chipMemberSince;
-    private TextView statPublicadas, statSeguindo, statDias;
+    // 1. Declare o binding e o ViewModel
+    private FragmentPerfilBinding binding;
+    private PerfilViewModel viewModel;
+    private NavController navController;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_perfil, container, false);
+        // 2. Infla o layout com View Binding
+        binding = FragmentPerfilBinding.inflate(inflater, container, false);
+        return binding.getRoot();
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        mAuth = FirebaseAuth.getInstance();
-        currentUser = mAuth.getCurrentUser();
-        firestoreHelper = new FirestoreHelper();
+        // 3. Inicializa o ViewModel e o NavController
+        viewModel = new ViewModelProvider(this).get(PerfilViewModel.class);
+        navController = Navigation.findNavController(view);
 
-        // Plano
-        nomePlanoTextView = view.findViewById(R.id.text_view_nome_plano);
-        validadePlanoTextView = view.findViewById(R.id.text_view_validade_plano);
-        btnGerenciarAssinatura = view.findViewById(R.id.btnGerenciarAssinatura);
-        btnGerenciarAssinatura.setOnClickListener(v ->
-                getParentFragmentManager()
-                        .beginTransaction()
-                        .replace(R.id.fragment_container, new AssinaturaFragment())
-                        .addToBackStack(null)
-                        .commit()
-        );
-
-        // Perfil
-        imageViewPerfil = view.findViewById(R.id.image_view_perfil);
-        nomeTextView = view.findViewById(R.id.text_view_nome_perfil);
-        emailTextView = view.findViewById(R.id.text_view_email_perfil);
-        sairButton = view.findViewById(R.id.btn_sair);
-
-        // Novos componentes
-        chipPremium = view.findViewById(R.id.chip_premium);
-        chipMemberSince = view.findViewById(R.id.chip_member_since);
-        statPublicadas = view.findViewById(R.id.stat_publicadas);
-        statSeguindo = view.findViewById(R.id.stat_seguindo);
-        statDias = view.findViewById(R.id.stat_dias);
-
-        configurarListeners();
-
-        if (currentUser != null) {
-            exibirDadosUsuario();
-            verificarPlanoUsuario(nomePlanoTextView); // também controla chip premium
-            preencherDiasDeConta();
-            carregarContagemPublicadas();
-            carregarContagemSeguindo();
-        } else {
-            irParaLogin();
-        }
+        setupObservers();
+        setupClickListeners();
     }
 
-    private void exibirDadosUsuario() {
-        String nome = (currentUser != null) ? currentUser.getDisplayName() : null;
-        String email = (currentUser != null) ? currentUser.getEmail() : null;
+    private void setupObservers() {
+        // Observa os dados do perfil
+        viewModel.userProfile.observe(getViewLifecycleOwner(), user -> {
+            if (user != null && binding != null) {
+                populateUi(user);
+            }
+        });
 
-        nomeTextView.setText(TextUtils.isEmpty(nome) ? "Sem nome" : nome);
-        emailTextView.setText(TextUtils.isEmpty(email) ? "—" : email);
+        // Observa o evento de logout para navegar para a tela de login
+        viewModel.navigateToLogin.observe(getViewLifecycleOwner(), shouldNavigate -> {
+            if (shouldNavigate) {
+                irParaLogin();
+            }
+        });
+    }
 
-        Uri fotoUrl = (currentUser != null) ? currentUser.getPhotoUrl() : null;
+    private void setupClickListeners() {
+        binding.btnSair.setOnClickListener(v -> viewModel.logout());
+
+        binding.btnGerenciarAssinatura.setOnClickListener(v -> {
+            // CORRIGIDO: Usa o NavController para navegar para a tela de assinatura
+            // Você precisará adicionar esta ação ao seu nav_graph
+            navController.navigate(R.id.action_perfilFragment_to_assinaturaFragment);
+        });
+    }
+
+    private void populateUi(User user) {
+        // Popula a UI usando o objeto User e o binding
+        binding.textViewNomePerfil.setText(TextUtils.isEmpty(user.getNome()) ? "Sem nome" : user.getNome());
+        binding.textViewEmailPerfil.setText(TextUtils.isEmpty(user.getEmail()) ? "—" : user.getEmail());
+
         if (isAdded()) {
             Glide.with(this)
-                    .load(fotoUrl)
+                    .load(user.getFotoUrl())
                     .placeholder(R.drawable.ic_person)
                     .error(R.drawable.ic_person)
                     .circleCrop()
                     .transition(DrawableTransitionOptions.withCrossFade())
-                    .into(imageViewPerfil);
+                    .into(binding.imageViewPerfil);
         }
 
-        if (currentUser != null) {
-            firestoreHelper.buscarUsuario(currentUser.getUid(), (Result<DocumentSnapshot> r) -> {
-                if (!isAdded()) return;
-                if (!r.isOk()) {
-                    Log.e(TAG, "Erro ao carregar usuário", r.error);
-                }
-            });
-        }
-    }
-
-    private void configurarListeners() {
-        sairButton.setOnClickListener(v -> {
-            mAuth.signOut();
-            irParaLogin();
-        });
-    }
-
-    /**
-     * Atualiza card do plano e também a visibilidade do chip "Premium".
-     */
-    private void verificarPlanoUsuario(TextView textViewPlano) {
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null) {
-            textViewPlano.setText("Plano Básico");
-            validadePlanoTextView.setText("");
-            setPremiumChipVisible(false);
-            return;
+        // Lógica do Plano
+        if (user.isPremium()) {
+            binding.textViewNomePlano.setText("Plano Premium");
+            binding.textViewValidadePlano.setText("Válido até " + user.getValidadePlano());
+            binding.chipPremium.setVisibility(View.VISIBLE);
+        } else {
+            binding.textViewNomePlano.setText("Plano Básico");
+            binding.textViewValidadePlano.setText("");
+            binding.chipPremium.setVisibility(View.GONE);
         }
 
-        FirebaseFirestore.getInstance().collection("premium")
-                .document(user.getUid())
-                .get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    if (!isAdded()) return;
+        // Lógica dos Stats
+        binding.statPublicadas.setText(String.valueOf(user.getPublicadasCount()));
+        binding.statSeguindo.setText(String.valueOf(user.getSeguindoCount()));
+        binding.statDias.setText(String.valueOf(user.getDiasDeConta()));
 
-                    boolean ativo = false;
-                    if (documentSnapshot.exists()) {
-                        Timestamp dataFim = documentSnapshot.getTimestamp("data_fim");
-                        if (dataFim != null && dataFim.toDate().after(new Date())) {
-                            String dataFormatada = android.text.format.DateFormat
-                                    .format("dd/MM/yyyy", dataFim.toDate()).toString();
-                            nomePlanoTextView.setText("Plano Premium");
-                            validadePlanoTextView.setText("Válido até " + dataFormatada);
-                            ativo = true;
-                        }
-                    }
-
-                    if (!ativo) {
-                        nomePlanoTextView.setText("Plano Básico");
-                        validadePlanoTextView.setText("");
-                    }
-                    setPremiumChipVisible(ativo);
-                })
-                .addOnFailureListener(e -> {
-                    if (!isAdded()) return;
-                    Log.e(TAG, "Erro ao acessar Firestore (premium):", e);
-                    textViewPlano.setText("Erro ao verificar plano");
-                    setPremiumChipVisible(false);
-                    Toast.makeText(requireContext(), "Erro ao acessar Firestore: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                });
-    }
-
-    private void setPremiumChipVisible(boolean visible) {
-        if (chipPremium != null) chipPremium.setVisibility(visible ? View.VISIBLE : View.GONE);
-    }
-
-    /**
-     * Preenche "Membro há X dias" e o card "Dias".
-     */
-    private void preencherDiasDeConta() {
-        if (currentUser == null || currentUser.getMetadata() == null) {
-            if (chipMemberSince != null) chipMemberSince.setText("");
-            if (statDias != null) statDias.setText("—");
-            return;
-        }
-        long created = currentUser.getMetadata().getCreationTimestamp();
-        long dias = Math.max(1, TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - created));
-
-        if (statDias != null) statDias.setText(String.valueOf(dias));
-
-        // Texto compacto para o chip
+        // Lógica do Chip "Membro desde"
+        long dias = user.getDiasDeConta();
         String textoChip;
         if (dias < 30) {
             textoChip = String.format(Locale.getDefault(), "Membro há %d dias", dias);
@@ -209,85 +119,20 @@ public class PerfilFragment extends Fragment {
             textoChip = String.format(Locale.getDefault(), "Membro há %d %s",
                     meses, (meses == 1 ? "mês" : "meses"));
         }
-        if (chipMemberSince != null) chipMemberSince.setText(textoChip);
-    }
-
-    /**
-     * Contabiliza ideias publicadas do usuário.
-     * Ajuste a coleção/campo conforme seu modelo.
-     */
-    private void carregarContagemPublicadas() {
-        if (currentUser == null) {
-            if (statPublicadas != null) statPublicadas.setText("—");
-            return;
-        }
-        // Exemplo de modelo:
-        // Collection "ideias" com campos: autorId (string) e status (ex: "PUBLICADA")
-        FirebaseFirestore.getInstance()
-                .collection("ideias")
-                .whereEqualTo("ownerId", currentUser.getUid())
-                .whereIn("status", java.util.Arrays.asList("EM_AVALIACAO", "AVALIADA_APROVADA", "AVALIADA_REPROVADA"))
-                .get()
-                .addOnSuccessListener(snap -> {
-                    if (!isAdded()) return;
-                    int count = (snap != null) ? snap.size() : 0;
-                    if (count == 0) {
-                        // fallback: talvez seu modelo use "visibilidade"=="publica"
-                        FirebaseFirestore.getInstance()
-                                .collection("ideias")
-                                .whereEqualTo("autorId", currentUser.getUid())
-                                .whereEqualTo("visibilidade", "publica")
-                                .get()
-                                .addOnSuccessListener(snap2 -> {
-                                    int c2 = (snap2 != null) ? snap2.size() : 0;
-                                    if (statPublicadas != null) statPublicadas.setText(String.valueOf(c2));
-                                })
-                                .addOnFailureListener(e -> {
-                                    Log.w(TAG, "contagem publicadas fallback falhou", e);
-                                    if (statPublicadas != null) statPublicadas.setText("0");
-                                });
-                    } else {
-                        if (statPublicadas != null) statPublicadas.setText(String.valueOf(count));
-                    }
-                })
-                .addOnFailureListener(e -> {
-                    if (!isAdded()) return;
-                    Log.w(TAG, "contagem publicadas falhou", e);
-                    if (statPublicadas != null) statPublicadas.setText("0");
-                });
-    }
-
-    /**
-     * Contabiliza mentores seguidos.
-     * Ajuste a coleção/campo conforme seu modelo (ex.: /users/{uid}/following_mentors).
-     */
-    private void carregarContagemSeguindo() {
-        if (currentUser == null) {
-            if (statSeguindo != null) statSeguindo.setText("—");
-            return;
-        }
-        FirebaseFirestore.getInstance()
-                .collection("users")
-                .document(currentUser.getUid())
-                .collection("following_mentors")
-                .get()
-                .addOnSuccessListener(snap -> {
-                    if (!isAdded()) return;
-                    int count = (snap != null) ? snap.size() : 0;
-                    if (statSeguindo != null) statSeguindo.setText(String.valueOf(count));
-                })
-                .addOnFailureListener(e -> {
-                    if (!isAdded()) return;
-                    Log.w(TAG, "contagem seguindo falhou", e);
-                    if (statSeguindo != null) statSeguindo.setText("0");
-                });
+        binding.chipMemberSince.setText(textoChip);
     }
 
     private void irParaLogin() {
-        if (getActivity() == null) return;
-        Intent intent = new Intent(getActivity(), LoginActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        startActivity(intent);
-        getActivity().finish();
+        // CORRIGIDO: Usa o NavController para voltar ao início do gráfico de navegação (login)
+        // Você precisará de uma ação global no seu nav_graph principal para isso
+        if (isAdded()) {
+            navController.navigate(R.id.action_global_return_to_login);
+        }
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        binding = null; // Previne memory leaks
     }
 }

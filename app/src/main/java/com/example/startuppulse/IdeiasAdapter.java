@@ -7,64 +7,52 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
-import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.android.material.snackbar.Snackbar;
+import com.example.startuppulse.data.Ideia;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import java.util.ArrayList;
-import java.util.List;
+
 import java.util.Objects;
 
+// O Adapter agora só precisa da lista de ideias, que será gerenciada pelo ListAdapter.
 public class IdeiasAdapter extends ListAdapter<Ideia, IdeiasAdapter.IdeiaViewHolder> {
 
+    // A interface foi simplificada. O Fragment decidirá o que fazer com o clique.
     public interface OnIdeiaClickListener {
         void onIdeiaClick(Ideia ideia);
     }
 
-    private final OnIdeiaClickListener listener;
-    @Nullable private final Fragment fragment;
+    private final OnIdeiaClickListener clickListener;
 
-    private static final DiffUtil.ItemCallback<Ideia> DIFF = new DiffUtil.ItemCallback<Ideia>() {
-        @Override
-        public boolean areItemsTheSame(@NonNull Ideia oldItem, @NonNull Ideia newItem) {
-            return Objects.equals(oldItem.getId(), newItem.getId());
-        }
-
-        @Override
-        public boolean areContentsTheSame(@NonNull Ideia o, @NonNull Ideia n) {
-            return Objects.equals(o.getNome(), n.getNome())
-                    && Objects.equals(o.getAutorNome(), n.getAutorNome())
-                    && Objects.equals(o.getMentorId(), n.getMentorId())
-                    && o.getStatus().equals(n.getStatus())
-                    && Objects.equals(o.getAvaliacaoStatus(), n.getAvaliacaoStatus());
-        }
-    };
-
-    public IdeiasAdapter(@NonNull OnIdeiaClickListener listener, @Nullable Fragment fragment) {
-        super(DIFF);
-        this.listener = listener;
-        this.fragment = fragment;
+    // Construtor limpo: só precisa do listener de clique.
+    public IdeiasAdapter(@NonNull OnIdeiaClickListener clickListener) {
+        super(DIFF_CALLBACK);
+        this.clickListener = clickListener;
     }
 
     @NonNull
     @Override
     public IdeiaViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_ideia, parent, false);
-        return new IdeiaViewHolder(v);
+        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_ideia, parent, false);
+        return new IdeiaViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull IdeiaViewHolder holder, int position) {
-        holder.bind(getItem(position), listener);
+        Ideia ideia = getItem(position);
+        holder.bind(ideia, clickListener);
     }
 
+    // Método público para que o Fragment possa pegar a ideia em uma certa posição (para o swipe)
+    public Ideia getIdeiaAt(int position) {
+        return getItem(position);
+    }
+
+    // ViewHolder permanece similar, pois sua responsabilidade é popular a view.
     static class IdeiaViewHolder extends RecyclerView.ViewHolder {
         TextView titulo, autor;
         View highlightView;
@@ -84,9 +72,7 @@ public class IdeiasAdapter extends ListAdapter<Ideia, IdeiasAdapter.IdeiaViewHol
             titulo.setText(ideia.getNome());
             autor.setText("Por: " + ideia.getAutorNome());
 
-            itemView.setOnClickListener(v -> {
-                if (listener != null) listener.onIdeiaClick(ideia);
-            });
+            itemView.setOnClickListener(v -> listener.onIdeiaClick(ideia));
 
             FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
             String uid = (user != null) ? user.getUid() : null;
@@ -94,21 +80,21 @@ public class IdeiasAdapter extends ListAdapter<Ideia, IdeiasAdapter.IdeiaViewHol
             boolean souMentor = uid != null && uid.equals(ideia.getMentorId());
             highlightView.setVisibility(souMentor ? View.VISIBLE : View.GONE);
 
-            // --- CORREÇÃO: A lógica agora usa o Enum de Status ---
             boolean souDono = uid != null && uid.equals(ideia.getOwnerId());
-            // Mostra o ícone se a ideia não for mais um rascunho
-            if (souDono && ideia.getStatus() != Ideia.Status.RASCUNHO) {
+
+            // Lógica para mostrar o status (ícone de avaliação)
+            if (souDono && !"RASCUNHO".equals(ideia.getStatus())) {
                 statusIcon.setVisibility(View.VISIBLE);
-                if ("Avaliada".equals(ideia.getAvaliacaoStatus())) {
+                if ("AVALIADA_APROVADA".equals(ideia.getStatus()) || "AVALIADA_REPROVADA".equals(ideia.getStatus())) {
                     statusIcon.setImageResource(R.drawable.ic_check);
                     statusIcon.setImageTintList(ColorStateList.valueOf(
                             ContextCompat.getColor(itemView.getContext(), R.color.green_success)
                     ));
                     statusIcon.setContentDescription("Ideia avaliada");
-                } else {
+                } else { // EM_AVALIACAO
                     statusIcon.setImageResource(R.drawable.ic_hourglass);
                     statusIcon.setImageTintList(ColorStateList.valueOf(
-                            ContextCompat.getColor(itemView.getContext(), R.color.primary_color)
+                            ContextCompat.getColor(itemView.getContext(), R.color.colorPrimary)
                     ));
                     statusIcon.setContentDescription("Ideia em avaliação");
                 }
@@ -118,29 +104,21 @@ public class IdeiasAdapter extends ListAdapter<Ideia, IdeiasAdapter.IdeiaViewHol
         }
     }
 
-    // --- MÉTODOS DE AJUDA PARA FRAGMENTOS ---
-    public void iniciarExclusao(final int position) {
-        if (fragment == null || position < 0 || position >= getItemCount()) return;
-        Ideia ideia = getItem(position);
-        new AlertDialog.Builder(fragment.requireContext())
-                .setTitle("Confirmar Exclusão")
-                .setMessage("Tem certeza que quer excluir a ideia '" + ideia.getNome() + "'?")
-                .setPositiveButton("Excluir", (dialog, which) -> excluirItem(ideia, position))
-                .setNegativeButton("Cancelar", (dialog, which) -> notifyItemChanged(position))
-                .setOnCancelListener(dialog -> notifyItemChanged(position))
-                .show();
-    }
+    // O DiffUtil.ItemCallback é o coração do ListAdapter, garantindo animações eficientes.
+    private static final DiffUtil.ItemCallback<Ideia> DIFF_CALLBACK = new DiffUtil.ItemCallback<Ideia>() {
+        @Override
+        public boolean areItemsTheSame(@NonNull Ideia oldItem, @NonNull Ideia newItem) {
+            return Objects.equals(oldItem.getId(), newItem.getId());
+        }
 
-    private void excluirItem(Ideia ideia, int position) {
-        if (fragment == null) return;
-        new FirestoreHelper().excluirIdeia(ideia.getId(), r -> {
-            if (fragment.getView() == null) return;
-            if (r.isOk()) {
-                Snackbar.make(fragment.requireView(), "Ideia excluída!", Snackbar.LENGTH_SHORT).show();
-            } else {
-                Snackbar.make(fragment.requireView(), "Erro ao excluir: " + r.error.getMessage(), Snackbar.LENGTH_LONG).show();
-                // A lista será atualizada pelo listener do Firestore, revertendo a mudança visual se falhar.
-            }
-        });
-    }
+        @Override
+        public boolean areContentsTheSame(@NonNull Ideia oldItem, @NonNull Ideia newItem) {
+            // Compare todos os campos que afetam a UI
+            return Objects.equals(oldItem.getNome(), newItem.getNome())
+                    && Objects.equals(oldItem.getAutorNome(), newItem.getAutorNome())
+                    && Objects.equals(oldItem.getMentorId(), newItem.getMentorId())
+                    && Objects.equals(oldItem.getStatus(), newItem.getStatus())
+                    && Objects.equals(oldItem.getOwnerId(), newItem.getOwnerId());
+        }
+    };
 }

@@ -15,6 +15,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.example.startuppulse.data.Ideia;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 

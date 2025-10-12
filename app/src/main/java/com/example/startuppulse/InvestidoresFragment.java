@@ -12,7 +12,9 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
+import com.example.startuppulse.data.Ideia;
 import com.example.startuppulse.databinding.FragmentInvestidoresBinding; // Importação correta
+import com.example.startuppulse.data.Investor;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 

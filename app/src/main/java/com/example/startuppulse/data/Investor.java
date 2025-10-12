@@ -1,4 +1,4 @@
-package com.example.startuppulse;
+package com.example.startuppulse.data;
 
 import java.io.Serializable;
 import java.util.List;

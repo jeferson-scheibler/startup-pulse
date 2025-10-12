@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main_nav_graph"
+    app:startDestination="@id/ideiasFragment"> <fragment
+    android:id="@+id/ideiasFragment"
+    android:name="com.example.startuppulse.IdeiasHostFragment"
+    android:label="Ideias"
+    tools:layout="@layout/fragment_ideias_host" />
+
+    <fragment
+        android:id="@+id/mentoresFragment"
+        android:name="com.example.startuppulse.MentoresFragment"
+        android:label="Mentores"
+        tools:layout="@layout/fragment_mentores" />
+
+    <fragment
+        android:id="@+id/investorDetailFragment"
+        android:name="com.example.startuppulse.ui.investor.InvestorDetailFragment"
+        android:label="Detalhes do Investidor"
+        tools:layout="@layout/fragment_investor_detail">
+        <argument
+            android:name="investorId"
+            app:argType="string" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/investidoresFragment"
+        android:name="com.example.startuppulse.InvestidoresFragment"
+        android:label="Investidores"
+        tools:layout="@layout/fragment_investidores">
+
+        <action
+            android:id="@+id/action_investidoresFragment_to_investorDetailFragment"
+            app:destination="@id/investorDetailFragment" />
+
+    </fragment>
+
+    <fragment
+        android:id="@+id/perfilFragment"
+        android:name="com.example.startuppulse.PerfilFragment"
+        android:label="Perfil"
+        tools:layout="@layout/fragment_perfil" >
+        <action
+            android:id="@+id/action_perfilFragment_to_assinaturaFragment"
+            app:destination="@id/assinaturaFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/assinaturaFragment"
+        android:name="com.example.startuppulse.AssinaturaFragment"
+        android:label="Assinatura"
+        tools:layout="@layout/fragment_assinatura" />
+
+</navigation>

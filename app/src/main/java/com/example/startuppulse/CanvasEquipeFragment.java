@@ -12,9 +12,10 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
+
+import com.example.startuppulse.data.Ideia;
 import com.example.startuppulse.databinding.FragmentCanvasEquipeBinding;
 import java.util.ArrayList;
-import java.util.List;
 
 public class CanvasEquipeFragment extends Fragment {
 

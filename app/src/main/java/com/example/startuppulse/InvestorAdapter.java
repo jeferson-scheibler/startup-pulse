@@ -6,9 +6,12 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.navigation.NavDirections;
+import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.example.startuppulse.data.Investor;
 import com.google.android.material.imageview.ShapeableImageView;
 
 import java.util.List;
@@ -35,7 +38,14 @@ public class InvestorAdapter extends RecyclerView.Adapter<InvestorAdapter.Invest
     @Override
     public void onBindViewHolder(@NonNull InvestorViewHolder holder, int position) {
         Investor investor = investorList.get(position);
+
         holder.bind(investor);
+        holder.itemView.setOnClickListener(v -> {
+            // Cria a ação passando o ID do investidor
+            NavDirections action = InvestidoresFragmentDirections.actionInvestidoresFragmentToInvestorDetailFragment(investor.getId());
+            // Encontra o NavController a partir da View e navega
+            Navigation.findNavController(v).navigate(action);
+        });
     }
 
     @Override

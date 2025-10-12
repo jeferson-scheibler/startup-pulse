@@ -1,113 +1,148 @@
 package com.example.startuppulse;
 
+import android.graphics.Canvas;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.content.Intent;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.startuppulse.common.Result;
+import com.example.startuppulse.data.Ideia;
 import com.example.startuppulse.databinding.FragmentMeusRascunhosBinding;
+import com.example.startuppulse.ui.ideias.IdeiasViewModel;
 import com.google.android.material.snackbar.Snackbar;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class MeusRascunhosFragment extends Fragment implements IdeiasAdapter.OnIdeiaClickListener {
 
     private FragmentMeusRascunhosBinding binding;
+    private IdeiasViewModel viewModel;
     private IdeiasAdapter ideiasAdapter;
-    private FirestoreHelper firestoreHelper;
-    private com.google.firebase.firestore.ListenerRegistration rascunhosRegistration;
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater,
-                             @Nullable ViewGroup container,
-                             @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         binding = FragmentMeusRascunhosBinding.inflate(inflater, container, false);
-        firestoreHelper = new FirestoreHelper();
-
-        // Recycler
-        binding.recyclerViewIdeias.setLayoutManager(new LinearLayoutManager(requireContext()));
-        ideiasAdapter = new IdeiasAdapter(this, this);
-        binding.recyclerViewIdeias.setAdapter(ideiasAdapter);
-
-        // Swipe-to-delete apenas para o dono (essa aba já é do dono por definição)
-        ItemTouchHelper.SimpleCallback swipeCallback = new ItemTouchHelper.SimpleCallback(0,
-                ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
-            @Override public boolean onMove(@NonNull RecyclerView rv, @NonNull RecyclerView.ViewHolder vh, @NonNull RecyclerView.ViewHolder t) { return false; }
-            @Override public void onSwiped(@NonNull RecyclerView.ViewHolder vh, int dir) {
-                int position = vh.getBindingAdapterPosition();
-                ideiasAdapter.iniciarExclusao(position);
-            }
-        };
-        new ItemTouchHelper(swipeCallback).attachToRecyclerView(binding.recyclerViewIdeias);
-
-        // Pull-to-refresh reata o listener
-        binding.swipeRefreshLayout.setOnRefreshListener(this::startRealtime);
-
         return binding.getRoot();
     }
 
-    @Override public void onStart() { super.onStart(); startRealtime(); }
-    @Override public void onStop() { super.onStop(); stopRealtime(); }
-
     @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        stopRealtime();
-        binding = null;
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        viewModel = new ViewModelProvider(requireParentFragment()).get(IdeiasViewModel.class);
+
+        setupRecyclerView();
+        setupObservers();
+        attachSwipeToDelete(); // Este método agora conterá toda a lógica
+
+        binding.swipeRefreshLayout.setOnRefreshListener(() -> viewModel.refresh());
     }
 
-    private void startRealtime() {
-        if (binding == null) return;
-        if (rascunhosRegistration != null) return;
+    private void setupRecyclerView() {
+        ideiasAdapter = new IdeiasAdapter(this);
+        binding.recyclerViewIdeias.setLayoutManager(new LinearLayoutManager(requireContext()));
+        binding.recyclerViewIdeias.setAdapter(ideiasAdapter);
+    }
 
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        String ownerId = user != null ? user.getUid() : "";
-        binding.swipeRefreshLayout.setRefreshing(true);
-
-        rascunhosRegistration = firestoreHelper.listenToMeusRascunhos(ownerId, (Result<List<Ideia>> r) -> {
-            if (binding == null) return;
-            binding.swipeRefreshLayout.setRefreshing(false);
-
-            if (!r.isOk()) {
-                Snackbar.make(binding.getRoot(), "Erro: " + r.error.getMessage(), Snackbar.LENGTH_LONG).show();
-                return;
+    private void setupObservers() {
+        viewModel.draftIdeias.observe(getViewLifecycleOwner(), rascunhos -> {
+            if (rascunhos != null) {
+                ideiasAdapter.submitList(rascunhos);
+                binding.viewEmptyStateIdeias.setVisibility(rascunhos.isEmpty() ? View.VISIBLE : View.GONE);
+                binding.recyclerViewIdeias.setVisibility(rascunhos.isEmpty() ? View.GONE : View.VISIBLE);
             }
-            List<Ideia> ideias = r.data != null ? r.data : new ArrayList<>();
-            if (ideias.isEmpty()) {
-                binding.viewEmptyStateIdeias.setVisibility(View.VISIBLE);
-                binding.recyclerViewIdeias.setVisibility(View.GONE);
-            } else {
-                binding.viewEmptyStateIdeias.setVisibility(View.GONE);
-                binding.recyclerViewIdeias.setVisibility(View.VISIBLE);
-                ideiasAdapter.submitList(ideias);
+        });
+
+        viewModel.isLoading.observe(getViewLifecycleOwner(), isLoading -> {
+            if (binding != null && binding.swipeRefreshLayout.isRefreshing() != isLoading) {
+                binding.swipeRefreshLayout.setRefreshing(isLoading);
             }
         });
     }
 
-    private void stopRealtime() {
-        if (rascunhosRegistration != null) {
-            rascunhosRegistration.remove();
-            rascunhosRegistration = null;
-        }
-    }
-
-    // Clique abre em modo edição (é do dono)
     @Override
     public void onIdeiaClick(Ideia ideia) {
-        android.content.Intent intent = new android.content.Intent(getActivity(), CanvasIdeiaActivity.class);
+        Intent intent = new Intent(requireActivity(), CanvasIdeiaActivity.class);
         intent.putExtra("ideia_id", ideia.getId());
         startActivity(intent);
+    }
+
+    private void attachSwipeToDelete() {
+        // Prepara os drawables para o visual do swipe
+        Drawable icon = ContextCompat.getDrawable(requireContext(), R.drawable.ic_delete);
+        ColorDrawable background = new ColorDrawable(ContextCompat.getColor(requireContext(), R.color.colorError));
+
+        ItemTouchHelper.SimpleCallback simpleCallback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT) {
+            @Override
+            public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) {
+                return false;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+                int position = viewHolder.getAdapterPosition();
+                if (position == RecyclerView.NO_POSITION) return;
+
+                final Ideia ideiaParaExcluir = ideiasAdapter.getIdeiaAt(position);
+
+                new AlertDialog.Builder(requireContext())
+                        .setTitle("Confirmar Exclusão")
+                        .setMessage("Tem certeza que quer excluir o rascunho '" + ideiaParaExcluir.getNome() + "'?")
+                        .setPositiveButton("Excluir", (dialog, which) -> {
+                            viewModel.deleteIdeia(ideiaParaExcluir.getId());
+                            if (binding != null) {
+                                Snackbar.make(binding.getRoot(), "Rascunho excluído", Snackbar.LENGTH_SHORT).show();
+                            }
+                        })
+                        .setNegativeButton("Cancelar", (dialog, which) -> ideiasAdapter.notifyItemChanged(position))
+                        .setOnCancelListener(dialog -> ideiasAdapter.notifyItemChanged(position))
+                        .show();
+            }
+
+            @Override
+            public void onChildDraw(@NonNull Canvas c, @NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, float dX, float dY, int actionState, boolean isCurrentlyActive) {
+                super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive);
+                View itemView = viewHolder.itemView;
+                int backgroundCornerOffset = 20;
+
+                if (icon != null) {
+                    int iconMargin = (itemView.getHeight() - icon.getIntrinsicHeight()) / 2;
+                    int iconTop = itemView.getTop() + (itemView.getHeight() - icon.getIntrinsicHeight()) / 2;
+                    int iconBottom = iconTop + icon.getIntrinsicHeight();
+
+                    if (dX < 0) { // Deslizando para a esquerda
+                        int iconLeft = itemView.getRight() - iconMargin - icon.getIntrinsicWidth();
+                        int iconRight = itemView.getRight() - iconMargin;
+                        icon.setBounds(iconLeft, iconTop, iconRight, iconBottom);
+
+                        background.setBounds(itemView.getRight() + ((int) dX) - backgroundCornerOffset,
+                                itemView.getTop(), itemView.getRight(), itemView.getBottom());
+                    } else {
+                        background.setBounds(0, 0, 0, 0);
+                    }
+                    background.draw(c);
+                    icon.draw(c);
+                }
+            }
+        };
+        new ItemTouchHelper(simpleCallback).attachToRecyclerView(binding.recyclerViewIdeias);
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        binding = null;
     }
 }

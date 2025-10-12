@@ -9,9 +9,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
+import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.startuppulse.databinding.FragmentIdeiasHostBinding;
-import com.google.android.material.tabs.TabLayoutMediator;
 
 public class IdeiasHostFragment extends Fragment {
 
@@ -19,31 +19,70 @@ public class IdeiasHostFragment extends Fragment {
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater,
-                             @Nullable ViewGroup container,
-                             @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         binding = FragmentIdeiasHostBinding.inflate(inflater, container, false);
+        return binding.getRoot();
+    }
 
-        // ViewPager2 + Adapter
-        binding.viewPager.setAdapter(new FragmentStateAdapter(this) {
-            @NonNull @Override public Fragment createFragment(int position) {
-                if (position == 0) return new IdeiasFragment();         // Publicadas (seu fragment atual)
-                else return new MeusRascunhosFragment();                 // Nova aba
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        // CORREÇÃO APLICADA AQUI:
+        // Passamos 'this' (o próprio IdeiasHostFragment) para o adapter,
+        // em vez de 'requireActivity()'. Isso garante a hierarquia correta de fragments.
+        binding.viewPager.setAdapter(new IdeiasPagerAdapter(this));
+
+        // Conecta os botões ao ViewPager
+        binding.toggleButtonGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (isChecked) {
+                if (checkedId == R.id.btn_publicadas) {
+                    binding.viewPager.setCurrentItem(0, true);
+                } else if (checkedId == R.id.btn_rascunhos) {
+                    binding.viewPager.setCurrentItem(1, true);
+                }
             }
-            @Override public int getItemCount() { return 2; }
         });
 
-        // Tab titles
-        new TabLayoutMediator(binding.tabLayout, binding.viewPager,
-                (tab, pos) -> tab.setText(pos == 0 ? "Publicadas" : "Meus rascunhos")
-        ).attach();
-
-        return binding.getRoot();
+        // Conecta o deslizar do ViewPager aos botões
+        binding.viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+            @Override
+            public void onPageSelected(int position) {
+                super.onPageSelected(position);
+                if (position == 0) {
+                    binding.toggleButtonGroup.check(R.id.btn_publicadas);
+                } else {
+                    binding.toggleButtonGroup.check(R.id.btn_rascunhos);
+                }
+            }
+        });
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
         binding = null;
+    }
+
+    // O Adapter agora recebe um Fragment em vez de uma FragmentActivity
+    private static class IdeiasPagerAdapter extends FragmentStateAdapter {
+        public IdeiasPagerAdapter(@NonNull Fragment fragment) {
+            super(fragment);
+        }
+
+        @NonNull
+        @Override
+        public Fragment createFragment(int position) {
+            if (position == 0) {
+                return new IdeiasFragment();
+            } else {
+                return new MeusRascunhosFragment();
+            }
+        }
+
+        @Override
+        public int getItemCount() {
+            return 2;
+        }
     }
 }

@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?android:colorBackground"
+    android:fillViewport="true"
+    tools:context=".ui.investor.InvestorDetailFragment"> <androidx.constraintlayout.widget.ConstraintLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/investorPhotoImageView"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:layout_marginTop="32dp"
+        android:padding="4dp"
+        android:scaleType="centerCrop"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
+        app:strokeColor="@color/colorPrimary"
+        app:strokeWidth="2dp"
+        tools:src="@drawable/ic_person" />
+
+    <TextView
+        android:id="@+id/investorNameTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:textAppearance="@style/Text.TitleLarge"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/investorPhotoImageView"
+        tools:text="Ana Capital" />
+
+    <TextView
+        android:id="@+id/investorBioTextView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:textAppearance="@style/Text.BodySmall.Muted"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/investorNameTextView"
+        tools:text="Investidora anjo focada em startups de impacto social e ambiental no sul do Brasil." />
+
+    <TextView
+        android:id="@+id/label_tese"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="32dp"
+        android:text="Tese de Investimento"
+        android:textAppearance="@style/Text.TitleMedium"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/investorBioTextView" />
+
+    <TextView
+        android:id="@+id/investorTeseTextView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="24dp"
+        android:textAppearance="@style/Text.BodySmall.Muted"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="@id/label_tese"
+        app:layout_constraintTop_toBottomOf="@id/label_tese"
+        tools:text="Buscamos times fundadores completos e diversos, com soluções B2B que já possuam um MVP validado e as primeiras métricas de tração." />
+
+    <TextView
+        android:id="@+id/label_faixa_investimento"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="Faixa de Investimento (Cheque)"
+        android:textAppearance="@style/Text.TitleMedium"
+        app:layout_constraintStart_toStartOf="@id/label_tese"
+        app:layout_constraintTop_toBottomOf="@id/investorTeseTextView" />
+
+    <TextView
+        android:id="@+id/investorCheckTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textAppearance="@style/Text.BodyMedium"
+        android:textColor="@color/colorPrimary"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="@id/label_faixa_investimento"
+        app:layout_constraintTop_toBottomOf="@id/label_faixa_investimento"
+        tools:text="R$ 50.000 - R$ 300.000" />
+
+    <TextView
+        android:id="@+id/label_areas"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="Áreas de Interesse"
+        android:textAppearance="@style/Text.TitleMedium"
+        app:layout_constraintStart_toStartOf="@id/label_faixa_investimento"
+        app:layout_constraintTop_toBottomOf="@id/investorCheckTextView" />
+
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/chipGroupAreas"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        app:layout_constraintEnd_toEndOf="@id/investorTeseTextView"
+        app:layout_constraintStart_toStartOf="@id/label_areas"
+        app:layout_constraintTop_toBottomOf="@id/label_areas" />
+
+    <TextView
+        android:id="@+id/label_estagios"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="Estágios de Investimento"
+        android:textAppearance="@style/Text.TitleMedium"
+        app:layout_constraintStart_toStartOf="@id/label_areas"
+        app:layout_constraintTop_toBottomOf="@id/chipGroupAreas" />
+
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/chipGroupEstagios"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        app:layout_constraintEnd_toEndOf="@id/chipGroupAreas"
+        app:layout_constraintStart_toStartOf="@id/label_estagios"
+        app:layout_constraintTop_toBottomOf="@id/label_estagios" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/linkedinButton"
+        style="@style/App.Button.Primary"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginTop="32dp"
+        android:layout_marginBottom="32dp"
+        android:paddingVertical="12dp"
+        android:text="Ver Perfil no LinkedIn"
+        app:icon="@drawable/ic_work"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/chipGroupEstagios" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>
