@@ -12,8 +12,10 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.example.startuppulse.common.Result;
+import com.example.startuppulse.ui.login.LoginViewModel;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
@@ -37,22 +39,33 @@ public class LoginActivity extends AppCompatActivity {
     private GoogleSignInClient mGoogleSignInClient;
     private ActivityResultLauncher<Intent> googleSignInLauncher;
     private static final String TAG = "LoginActivity";
+    private LoginViewModel viewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         setTheme(R.style.Theme_StartupPulse);
         super.onCreate(savedInstanceState);
-        Log.d(TAG, "onCreate: Iniciando LoginActivity");
-        setContentView(R.layout.activity_login);
 
-        mAuth = FirebaseAuth.getInstance();
-        dbHelper = new FirestoreHelper();
+        viewModel = new ViewModelProvider(this).get(LoginViewModel.class);
+        viewModel.authState.observe(this, state -> {
+            switch (state) {
+                case LOADING:
+                    // Mostrar ProgressBar
+                    break;
+                case AUTHENTICATED:
+                    // Navegar para MainActivity
+                    break;
+                case ERROR:
+                    // Mostrar mensagem de erro
+                    break;
+            }
+        });
 
-        emailEditText = findViewById(R.id.emailEditText);
-        passwordEditText = findViewById(R.id.passwordEditText);
-        loginButton = findViewById(R.id.loginButton);
-        signUpTextView = findViewById(R.id.signUpTextView);
-        googleButtonLayout = findViewById(R.id.googleButton);
+        binding.loginButton.setOnClickListener(v -> {
+            String email = binding.emailEditText.getText().toString();
+            String password = binding.passwordEditText.getText().toString();
+            viewModel.login(email, password);
+        });
 
         configureGoogleSignIn();
 
