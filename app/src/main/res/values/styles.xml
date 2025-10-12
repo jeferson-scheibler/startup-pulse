@@ -1,5 +1,4 @@
 <resources>
-
     <!-- Shape base -->
     <style name="App.Shape" parent="">
         <item name="cornerFamily">rounded</item>
