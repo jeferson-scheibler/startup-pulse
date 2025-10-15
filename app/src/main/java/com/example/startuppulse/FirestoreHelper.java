@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat;
 import com.example.startuppulse.common.Result;
 import com.example.startuppulse.data.Ideia;
 import com.example.startuppulse.data.Investor;
+import com.example.startuppulse.data.PostIt;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.Priority;

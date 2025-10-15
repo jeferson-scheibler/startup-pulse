@@ -7,14 +7,20 @@ import com.example.startuppulse.data.AuthRepository;
 import com.example.startuppulse.data.ResultCallback;
 import com.google.firebase.auth.FirebaseUser;
 
+import javax.inject.Inject;
+import javax.inject.Inject;
+import dagger.hilt.android.lifecycle.HiltViewModel;
+
+@HiltViewModel
 public class SignUpViewModel extends ViewModel {
 
-    private final AuthRepository authRepository;
+    private final AuthRepository repository;
     private final MutableLiveData<SignUpState> _signUpState = new MutableLiveData<>(new SignUpState(SignUpState.AuthState.IDLE));
     public final LiveData<SignUpState> signUpState = _signUpState;
 
-    public SignUpViewModel() {
-        this.authRepository = AuthRepository.getInstance();
+    @Inject
+    public SignUpViewModel(AuthRepository repository) {
+        this.repository = repository;
     }
 
     public void signUp(String name, String email, String password) {
@@ -34,7 +40,7 @@ public class SignUpViewModel extends ViewModel {
 
         _signUpState.setValue(new SignUpState(SignUpState.AuthState.LOADING));
 
-        authRepository.createUser(name, email, password, new ResultCallback<FirebaseUser>() {
+        repository.createUser(name, email, password, new ResultCallback<FirebaseUser>() {
             @Override
             public void onSuccess(FirebaseUser data) {
                 _signUpState.setValue(new SignUpState(SignUpState.AuthState.SUCCESS));

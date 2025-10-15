@@ -13,213 +13,163 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.RadioGroup;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
-import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider; // Import necessário
 
-import com.example.startuppulse.common.Result;
+import com.example.startuppulse.data.PostIt;
+import com.example.startuppulse.databinding.DialogAddPostitBinding; // Import para View Binding
+import com.example.startuppulse.ui.canvas.CanvasIdeiaViewModel; // Import do ViewModel
 import com.google.android.material.button.MaterialButton;
 
 import java.util.HashMap;
 import java.util.Map;
+import dagger.hilt.android.AndroidEntryPoint;
 
-/**
- * Dialog para adicionar/editar Post-it.
- * Mantém os IDs do layout dialog_add_postit.xml.
- * Compatível com FirestoreHelper baseado em Result<T>.
- */
+@AndroidEntryPoint
 public class AddPostItDialogFragment extends DialogFragment {
 
-    private static final String ARG_IDEIA_ID      = "ideia_id";
     private static final String ARG_ETAPA_CHAVE    = "etapa_chave";
     private static final String ARG_POSTIT_ANTIGO  = "postit_antigo";
-
-    private static final String STATE_TEXT         = "state_text";
-    private static final String STATE_COLOR        = "state_color";
     private static final int    MAX_LEN_TEXT       = 280;
 
-    private EditText editTextPostIt;
-    private RadioGroup radioGroupColors;
-    private MaterialButton btnSalvar, btnCancelar;
-    private TextView tituloDialog;
+    // MODIFICAÇÃO 1: Usar View Binding para segurança e conveniência
+    private DialogAddPostitBinding binding;
+    private CanvasIdeiaViewModel sharedViewModel;
 
-    private String ideiaId;
     private String etapaChave;
-    private PostIt postitParaEditar;   // null quando é adição
+    private PostIt postitParaEditar;
     private boolean isEditMode = false;
+    private String corSelecionada = "#F9F871"; // Cor padrão
 
-    private String corSelecionada = "#F9F871"; // default
-    private FirestoreHelper firestoreHelper;
-
-    public interface AddPostItListener {
-        void onPostItAdded();
-        void onPostItEdited(PostIt postitAntigo, String novoTexto, String novaCor);
-    }
+    // A interface do listener foi completamente removida.
 
     // Fábrica: Adicionar
-    public static AddPostItDialogFragment newInstanceForAdd(String ideiaId, String etapaChave) {
+    public static AddPostItDialogFragment newInstanceForAdd(String etapaChave) {
         AddPostItDialogFragment f = new AddPostItDialogFragment();
         Bundle b = new Bundle();
-        b.putString(ARG_IDEIA_ID, ideiaId);
         b.putString(ARG_ETAPA_CHAVE, etapaChave);
         f.setArguments(b);
         return f;
     }
 
     // Fábrica: Editar
-    public static AddPostItDialogFragment newInstanceForEdit(String ideiaId, String etapaChave, PostIt postit) {
+    public static AddPostItDialogFragment newInstanceForEdit(String etapaChave, PostIt postit) {
         AddPostItDialogFragment f = new AddPostItDialogFragment();
         Bundle b = new Bundle();
-        b.putString(ARG_IDEIA_ID, ideiaId);
         b.putString(ARG_ETAPA_CHAVE, etapaChave);
         b.putSerializable(ARG_POSTIT_ANTIGO, postit);
         f.setArguments(b);
         return f;
     }
 
-    // Busca listener de forma segura (targetFragment é deprecated em versões recentes)
-    @Nullable
-    private AddPostItListener resolveListener() {
-        Fragment tgt = getTargetFragment();
-        if (tgt instanceof AddPostItListener) return (AddPostItListener) tgt;
-        Fragment parent = getParentFragment();
-        if (parent instanceof AddPostItListener) return (AddPostItListener) parent;
-        if (getActivity() instanceof AddPostItListener) return (AddPostItListener) getActivity();
-        return null;
-    }
-
-    @Override public void onCreate(@Nullable Bundle savedInstanceState) {
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        firestoreHelper = new FirestoreHelper();
-
+        // O FirestoreHelper foi removido.
         Bundle args = getArguments();
         if (args != null) {
-            ideiaId     = args.getString(ARG_IDEIA_ID);
             etapaChave  = args.getString(ARG_ETAPA_CHAVE);
             postitParaEditar = (PostIt) args.getSerializable(ARG_POSTIT_ANTIGO);
             isEditMode  = (postitParaEditar != null);
         }
-
         setStyle(STYLE_NO_TITLE, 0);
     }
 
-    @Nullable @Override
-    public View onCreateView(@NonNull LayoutInflater inflater,
-                             @Nullable ViewGroup container,
-                             @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.dialog_add_postit, container, false);
+    @Nullable
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        // Infla o layout usando View Binding
+        binding = DialogAddPostitBinding.inflate(inflater, container, false);
+        return binding.getRoot();
     }
 
-    @Override public void onViewCreated(@NonNull View v, @Nullable Bundle savedInstanceState) {
+    @Override
+    public void onViewCreated(@NonNull View v, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(v, savedInstanceState);
+
+        // MODIFICAÇÃO 2: Obter a instância do ViewModel compartilhado
+        sharedViewModel = new ViewModelProvider(requireParentFragment()).get(CanvasIdeiaViewModel.class);
 
         if (getDialog() != null && getDialog().getWindow() != null) {
             getDialog().getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         }
 
-        tituloDialog     = v.findViewById(R.id.text_dialog_title);
-        editTextPostIt   = v.findViewById(R.id.edit_text_postit);
-        radioGroupColors = v.findViewById(R.id.radio_group_colors);
-        btnSalvar        = v.findViewById(R.id.btn_salvar_postit);
-        btnCancelar      = v.findViewById(R.id.btn_cancelar_postit);
+        binding.editTextPostit.setFilters(new InputFilter[]{new InputFilter.LengthFilter(MAX_LEN_TEXT)});
 
-        // Limite de caracteres no campo de texto (coerente com counterMaxLength=280)
-        editTextPostIt.setFilters(new InputFilter[]{ new InputFilter.LengthFilter(MAX_LEN_TEXT) });
-
-        // Restaura estado (rotações, etc.)
-        if (savedInstanceState != null) {
-            String restoredText  = savedInstanceState.getString(STATE_TEXT, "");
-            String restoredColor = savedInstanceState.getString(STATE_COLOR, corSelecionada);
-            editTextPostIt.setText(restoredText);
-            setSelectedColor(restoredColor);
-        } else if (isEditMode) {
-            tituloDialog.setText("Editar Ponto-Chave");
-            editTextPostIt.setText(safe(postitParaEditar.getTexto()));
-            setSelectedColor(safeColor(postitParaEditar.getCor(), "#F9F871"));
+        // Configura a UI inicial
+        if (isEditMode && postitParaEditar != null) {
+            binding.textDialogTitle.setText("Editar Ponto-Chave");
+            binding.editTextPostit.setText(postitParaEditar.getTexto());
+            setSelectedColor(postitParaEditar.getCor() != null ? postitParaEditar.getCor() : corSelecionada);
         } else {
-            tituloDialog.setText("Adicionar Ponto-Chave");
-            setSelectedColor("#F9F871");
+            binding.textDialogTitle.setText("Adicionar Ponto-Chave");
+            setSelectedColor(corSelecionada);
         }
 
-        // Troca de cor
-        radioGroupColors.setOnCheckedChangeListener((group, checkedId) -> {
+        // Listeners
+        binding.radioGroupColors.setOnCheckedChangeListener((group, checkedId) -> {
             corSelecionada = colorForRadioId(checkedId);
         });
 
-        btnCancelar.setOnClickListener(vw -> dismissAllowingStateLoss());
-        btnSalvar.setOnClickListener(vw -> salvar());
+        binding.btnCancelarPostit.setOnClickListener(vw -> dismissAllowingStateLoss());
+        binding.btnSalvarPostit.setOnClickListener(vw -> salvar());
     }
-
-    @Override public void onSaveInstanceState(@NonNull Bundle outState) {
-        super.onSaveInstanceState(outState);
-        outState.putString(STATE_TEXT, safe(editTextPostIt.getText()));
-        outState.putString(STATE_COLOR, corSelecionada);
-    }
-
-    // ---------- Lógica ----------
 
     private void salvar() {
-        String texto = safe(editTextPostIt.getText()).trim();
+        String texto = binding.editTextPostit.getText().toString().trim();
         if (TextUtils.isEmpty(texto)) {
-            editTextPostIt.setError("O post-it não pode estar vazio.");
+            binding.editTextPostit.setError("O post-it não pode estar vazio.");
             return;
         }
 
-        // evita duplo clique
         setButtonsEnabled(false);
 
-        AddPostItListener callback = resolveListener();
-
+        // MODIFICAÇÃO 3: Chamar o ViewModel em vez do listener ou FirestoreHelper
         if (isEditMode) {
-            // Somente notifica o host; quem edita no Firestore é o Fragment pai (CanvasBlockFragment)
-            if (callback != null) callback.onPostItEdited(postitParaEditar, texto, corSelecionada);
-            closeWithKeyboardHide();
+            sharedViewModel.updatePostIt(etapaChave, postitParaEditar, texto, corSelecionada);
         } else {
-            // Adição -> salva direto no Firestore
-            firestoreHelper.addPostitToIdeia(ideiaId, etapaChave, texto, corSelecionada, (Result<Void> r) -> {
-                if (!isAdded()) return;
-                if (r.isOk()) {
-                    if (callback != null) callback.onPostItAdded();
-                    closeWithKeyboardHide();
-                } else {
-                    Toast.makeText(requireContext(),
-                            "Erro ao salvar: " + r.error.getMessage(),
-                            Toast.LENGTH_LONG).show();
-                    setButtonsEnabled(true);
-                }
-            });
+            sharedViewModel.addPostIt(etapaChave, texto, corSelecionada);
         }
+
+        closeWithKeyboardHide();
+    }
+
+    // --- Lógica de UI e Utilitários (permanecem os mesmos) ---
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        binding = null; // Previne memory leaks com View Binding em Dialogs/Fragments
     }
 
     private void setButtonsEnabled(boolean enabled) {
-        btnSalvar.setEnabled(enabled);
-        btnCancelar.setEnabled(enabled);
-        btnSalvar.setAlpha(enabled ? 1f : .6f);
-        btnCancelar.setAlpha(enabled ? 1f : .6f);
+        binding.btnSalvarPostit.setEnabled(enabled);
+        binding.btnCancelarPostit.setEnabled(enabled);
+        binding.btnSalvarPostit.setAlpha(enabled ? 1f : .6f);
+        binding.btnCancelarPostit.setAlpha(enabled ? 1f : .6f);
     }
 
     private void closeWithKeyboardHide() {
         View current = getDialog() != null ? getDialog().getCurrentFocus() : null;
-        if (current != null) {
-            InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-            if (imm != null) imm.hideSoftInputFromWindow(current.getWindowToken(), 0);
+        if (current != null && getContext() != null) {
+            InputMethodManager imm = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(current.getWindowToken(), 0);
         }
         dismissAllowingStateLoss();
     }
 
-    // ---------- Utilitários de cor/seleção ----------
-
     private static final Map<Integer, String> ID_TO_COLOR = new HashMap<Integer, String>() {{
         put(R.id.radio_yellow, "#F9F871");
         put(R.id.radio_orange, "#FFC75F");
-        put(R.id.radio_pink,   "#FF96AD");
-        put(R.id.radio_blue,   "#84D2F6");
-        put(R.id.radio_green,  "#A9F0D1");
-        put(R.id.radio_white,  "#FFFFFF");
+        put(R.id.radio_pink, "#FF96AD");
+        put(R.id.radio_blue, "#84D2F6");
+        put(R.id.radio_green, "#A9F0D1");
+        put(R.id.radio_white, "#FFFFFF");
     }};
+
     private static final Map<String, Integer> COLOR_TO_ID = new HashMap<String, Integer>() {{
         put("#F9F871", R.id.radio_yellow);
         put("#FFC75F", R.id.radio_orange);
@@ -237,9 +187,6 @@ public class AddPostItDialogFragment extends DialogFragment {
     private void setSelectedColor(@NonNull String color) {
         corSelecionada = color.toUpperCase();
         Integer id = COLOR_TO_ID.get(corSelecionada);
-        radioGroupColors.check(id != null ? id : R.id.radio_yellow);
+        binding.radioGroupColors.check(id != null ? id : R.id.radio_yellow);
     }
-
-    private String safe(CharSequence cs) { return cs == null ? "" : cs.toString(); }
-    private String safeColor(String c, String def) { return TextUtils.isEmpty(c) ? def : c; }
 }

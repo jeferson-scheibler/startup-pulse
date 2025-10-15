@@ -16,6 +16,9 @@ import androidx.navigation.Navigation;
 import com.example.startuppulse.R;
 import com.example.startuppulse.databinding.FragmentSignUpBinding;
 
+import dagger.hilt.android.AndroidEntryPoint;
+
+@AndroidEntryPoint
 public class SignUpFragment extends Fragment {
 
     private FragmentSignUpBinding binding;

@@ -12,7 +12,9 @@ import androidx.viewpager2.adapter.FragmentStateAdapter;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.startuppulse.databinding.FragmentIdeiasHostBinding;
+import dagger.hilt.android.AndroidEntryPoint;
 
+@AndroidEntryPoint
 public class IdeiasHostFragment extends Fragment {
 
     private FragmentIdeiasHostBinding binding;

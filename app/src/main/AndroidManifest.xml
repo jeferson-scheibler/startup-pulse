@@ -10,6 +10,7 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 
     <application
+        android:name=".StartupPulseApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -34,9 +35,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:windowSoftInputMode="adjustResize" /> <activity
-        android:name=".CanvasIdeiaActivity"
-        android:label="@string/adicionar_nova_ideia" />
+            android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".CanvasMentorActivity"

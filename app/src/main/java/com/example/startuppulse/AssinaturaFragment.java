@@ -21,7 +21,9 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import dagger.hilt.android.AndroidEntryPoint;
 
+@AndroidEntryPoint
 public class AssinaturaFragment extends Fragment {
 
     private TextView tvNomePlano, tvValidadePlano;

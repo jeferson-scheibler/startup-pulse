@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,6 +14,9 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.navigation.NavController;
+import androidx.navigation.Navigation;
+import androidx.navigation.fragment.NavHostFragment;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -29,6 +33,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import dagger.hilt.android.AndroidEntryPoint;
+
+@AndroidEntryPoint
 public class IdeiasFragment extends Fragment implements IdeiasAdapter.OnIdeiaClickListener {
 
     private FragmentIdeiasBinding binding;
@@ -38,6 +45,7 @@ public class IdeiasFragment extends Fragment implements IdeiasAdapter.OnIdeiaCli
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Map<String, Runnable> pendingDeletes = new HashMap<>();
     private static final long DELETE_DELAY_MS = 3500L;
+    private NavController navController;
 
     @Nullable
     @Override
@@ -49,6 +57,12 @@ public class IdeiasFragment extends Fragment implements IdeiasAdapter.OnIdeiaCli
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        try {
+            navController = NavHostFragment.findNavController(this);
+        } catch (IllegalStateException e) {
+            // Loga o erro caso o NavController ainda não seja encontrado, para facilitar o debug.
+            Log.e("IdeiasFragment", "NavController não encontrado", e);
+        }
 
         viewModel = new ViewModelProvider(requireParentFragment()).get(IdeiasViewModel.class);
 
@@ -67,19 +81,34 @@ public class IdeiasFragment extends Fragment implements IdeiasAdapter.OnIdeiaCli
     }
 
     private void setupObservers() {
-        viewModel.publicIdeias.observe(getViewLifecycleOwner(), ideias -> {
-            if (ideias != null) {
-                // CORRIGIDO: Usamos submitList() para atualizar a lista.
-                // O ListAdapter cuidará das animações e da performance.
-                ideiasAdapter.submitList(ideias);
+        viewModel.publicIdeias.observe(getViewLifecycleOwner(), result -> {
+            if (result == null) return;
 
+            if (result.isOk()) {
+                // Sucesso: extrai a lista de dados.
+                List<Ideia> ideias = result.data;
+                if (ideias == null) {
+                    ideias = new ArrayList<>(); // Garante que a lista nunca seja nula.
+                }
+
+                ideiasAdapter.submitList(ideias);
                 binding.viewEmptyStateIdeias.setVisibility(ideias.isEmpty() ? View.VISIBLE : View.GONE);
                 binding.recyclerViewIdeias.setVisibility(ideias.isEmpty() ? View.GONE : View.VISIBLE);
+                binding.errorState.setVisibility(View.GONE); // Esconde o estado de erro
+
+            } else {
+                // Erro: mostra uma mensagem de erro e esconde a lista.
+                Log.e("IdeiasFragment", "Erro ao carregar ideias públicas", result.error);
+                ideiasAdapter.submitList(new ArrayList<>()); // Limpa a lista
+                binding.viewEmptyStateIdeias.setVisibility(View.GONE);
+                binding.recyclerViewIdeias.setVisibility(View.GONE);
+                binding.errorState.setVisibility(View.VISIBLE); // Mostra o estado de erro
+                binding.errorText.setText("Não foi possível carregar as ideias. Verifique sua conexão.");
             }
         });
 
         viewModel.isLoading.observe(getViewLifecycleOwner(), isLoading -> {
-            if (binding.swipeRefreshLayout.isRefreshing() != isLoading) {
+            if (binding != null && binding.swipeRefreshLayout.isRefreshing() != isLoading) {
                 binding.swipeRefreshLayout.setRefreshing(isLoading);
             }
         });
@@ -87,7 +116,6 @@ public class IdeiasFragment extends Fragment implements IdeiasAdapter.OnIdeiaCli
 
     @Override
     public void onIdeiaClick(Ideia ideia) {
-        // Sua lógica de clique está correta e permanece a mesma.
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         String uid = currentUser != null ? currentUser.getUid() : null;
 
@@ -95,24 +123,46 @@ public class IdeiasFragment extends Fragment implements IdeiasAdapter.OnIdeiaCli
         boolean isMentor = uid != null && ideia.getMentorId() != null && uid.equals(ideia.getMentorId());
 
         if (isOwner || isMentor) {
-            Intent intent = new Intent(getActivity(), CanvasIdeiaActivity.class);
-            intent.putExtra("ideia_id", ideia.getId());
-            startActivity(intent);
+            // MODO EDIÇÃO: Navega para o canvas passando o ID da ideia.
+            Bundle args = new Bundle();
+            args.putString("ideiaId", ideia.getId());
+            navController.navigate(R.id.action_global_to_canvasIdeiaFragment, args);
             return;
         }
 
+        // MODO LEITURA: Verifica o limite de acesso diário.
         LimiteHelper.verificarAcessoIdeia(requireContext(), new LimiteHelper.LimiteCallback() {
             @Override
             public void onPermitido() {
-                Intent intent = new Intent(getActivity(), CanvasIdeiaActivity.class);
-                intent.putExtra("ideia_id", ideia.getId());
-                intent.putExtra("isReadOnly", true);
-                startActivity(intent);
+                Bundle args = new Bundle();
+                args.putString("ideiaId", ideia.getId());
+                args.putBoolean("isReadOnly", true); // Passa o argumento de "apenas leitura"
+                navController.navigate(R.id.action_global_to_canvasIdeiaFragment, args);
             }
 
             @Override
             public void onNegado(String mensagem) {
-                // ... (sua lógica de negação com dialog)
+                // A sua lógica original para mostrar o diálogo de limite de acesso continua aqui.
+                FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+                if (user == null) {
+                    Snackbar.make(binding.getRoot(), mensagem, Snackbar.LENGTH_LONG).show();
+                    return;
+                }
+                String uid = user.getUid();
+                LimiteHelper.getProximaDataAcessoFormatada(uid, dataFormatada -> {
+                    if(isAdded()) {
+                        new android.app.AlertDialog.Builder(requireContext())
+                                .setTitle("Limite Máximo de Acesso Diário")
+                                .setMessage(
+                                        "Você já acessou uma ideia hoje.\n\n" +
+                                                "Limite Diário: 1\n\n" +
+                                                "Próximo acesso liberado: " + dataFormatada + "\n\n" +
+                                                "Deseja acessar ideias ilimitadas?\nTorne-se Premium."
+                                )
+                                .setPositiveButton("OK", null)
+                                .show();
+                    }
+                });
             }
         });
     }

@@ -1,3 +1,5 @@
+// Em: app/src/main/java/com/example/startuppulse/IdeiaStatusFragment.java
+
 package com.example.startuppulse;
 
 import android.Manifest;
@@ -8,6 +10,7 @@ import android.content.res.ColorStateList;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.style.StyleSpan;
@@ -23,51 +26,37 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 
+import com.example.startuppulse.data.Avaliacao;
 import com.example.startuppulse.data.Ideia;
-import com.example.startuppulse.databinding.FragmentIdeiaStatusBinding; // Importar o ViewBinding
+import com.example.startuppulse.databinding.FragmentIdeiaStatusBinding;
+import com.example.startuppulse.ui.canvas.CanvasIdeiaViewModel;
 import com.example.startuppulse.util.PdfGenerator;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
 
-import java.util.List; // Import necessário
+import java.util.List;
 import java.util.Locale;
+import dagger.hilt.android.AndroidEntryPoint;
 
-/**
- * Fragmento para exibir o status de uma ideia publicada, incluindo o mentor
- * associado e o estado da avaliação.
- */
+@AndroidEntryPoint
 public class IdeiaStatusFragment extends Fragment {
 
-    private FragmentIdeiaStatusBinding binding; // Objeto de ViewBinding
-    private Ideia ideia;
-    private FirestoreHelper firestoreHelper;
+    private FragmentIdeiaStatusBinding binding;
+    private CanvasIdeiaViewModel sharedViewModel;
+    private Ideia currentIdeia; // Mantém uma referência local para facilitar o acesso
 
+    // Launcher para permissão de escrita (para o PDF)
     private final ActivityResultLauncher<String> requestPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
                 if (isGranted) {
-                    if (ideia != null) {
-                        gerarPdf();
-                    }
+                    gerarPdf();
                 } else {
                     Toast.makeText(getContext(), "Permissão para salvar arquivos é necessária.", Toast.LENGTH_LONG).show();
                 }
             });
-    public static IdeiaStatusFragment newInstance(Ideia ideia) {
-        IdeiaStatusFragment fragment = new IdeiaStatusFragment();
-        Bundle args = new Bundle();
-        args.putSerializable("ideia", ideia);
-        fragment.setArguments(args);
-        return fragment;
-    }
 
-    @Override
-    public void onCreate(@Nullable Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        firestoreHelper = new FirestoreHelper();
-        if (getArguments() != null) {
-            ideia = (Ideia) getArguments().getSerializable("ideia");
-        }
+    public IdeiaStatusFragment() {
+        // Construtor vazio obrigatório
     }
 
     @Nullable
@@ -80,102 +69,80 @@ public class IdeiaStatusFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        if (ideia == null || !isAdded()) {
-            return;
-        }
+        sharedViewModel = new ViewModelProvider(requireParentFragment()).get(CanvasIdeiaViewModel.class);
 
+        setupClickListeners();
+        setupObservers();
+    }
+
+    private void setupClickListeners() {
         binding.btnDownloadPdf.setOnClickListener(v -> verificarPermissaoEGerarPdf());
-
         binding.btnPrepararInvestidores.setOnClickListener(v -> {
-            if (ideia != null && ideia.getId() != null) {
+            if (currentIdeia != null && currentIdeia.getId() != null) {
                 Intent intent = new Intent(getActivity(), PreparacaoInvestidorActivity.class);
-                intent.putExtra("IDEIA_ID", ideia.getId());
+                intent.putExtra("IDEIA_ID", currentIdeia.getId());
                 startActivity(intent);
-            } else {
-                Toast.makeText(getContext(), "Erro: ID da ideia não encontrado.", Toast.LENGTH_SHORT).show();
             }
         });
-
-        updateUI();
+        binding.btnProcurarMentor.setOnClickListener(v -> tentarNovoMatchmaking());
+        binding.btnVerFeedback.setOnClickListener(v -> showFeedbackDialog());
     }
 
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        binding = null;
+    private void setupObservers() {
+        sharedViewModel.ideia.observe(getViewLifecycleOwner(), ideia -> {
+            if (ideia == null || !isAdded()) return;
+            this.currentIdeia = ideia; // Atualiza a referência local
+            updateUI(ideia);
+        });
+
+        // Observa o nome do mentor que o ViewModel buscará
+        sharedViewModel.mentorNome.observe(getViewLifecycleOwner(), nome -> {
+            if (binding != null) {
+                binding.textMentorName.setText(nome != null ? nome : "Mentor não encontrado");
+            }
+        });
     }
 
-    private void updateUI() {
-        // --- Dados Básicos da Ideia ---
+    private void updateUI(Ideia ideia) {
         binding.textIdeiaTitle.setText(ideia.getNome());
         binding.textIdeiaDescription.setText(ideia.getDescricao());
 
-        // --- Status do Mentor ---
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        boolean isOwner = user != null && user.getUid().equals(ideia.getOwnerId());
-
+        boolean isOwner = sharedViewModel.isCurrentUserOwner();
         boolean hasMentor = ideia.getMentorId() != null && !ideia.getMentorId().isEmpty();
-        binding.btnProcurarMentor.setVisibility(View.GONE);
 
+        // --- Lógica do Mentor ---
+        binding.btnProcurarMentor.setVisibility(View.GONE);
         if (hasMentor) {
             int colorActive = ContextCompat.getColor(requireContext(), R.color.primary_color);
             binding.cardMentor.setStrokeColor(colorActive);
             binding.iconMentor.setImageTintList(ColorStateList.valueOf(colorActive));
-
-            // Busca o nome do mentor
-            firestoreHelper.findMentorById(ideia.getMentorId(), r -> {
-                if (isAdded() && r.isOk() && r.data != null) {
-                    binding.textMentorName.setText(r.data.getNome());
-                } else {
-                    binding.textMentorName.setText("Mentor não encontrado");
-                }
-            });
         } else {
             binding.textMentorName.setText("A procurar o mentor ideal...");
             if (isOwner) {
                 binding.btnProcurarMentor.setVisibility(View.VISIBLE);
-                binding.btnProcurarMentor.setOnClickListener(v -> tentarNovoMatchmaking());
             }
         }
 
-        String statusAvaliacao = ideia.getAvaliacaoStatus();
-        boolean isAvaliada = "Avaliada".equals(statusAvaliacao);
-        boolean isEmAvaliacao = "Pendente".equals(statusAvaliacao);
-
-        if (isAvaliada || isEmAvaliacao) {
-            binding.btnDownloadPdf.setVisibility(View.VISIBLE);
-        } else {
-            binding.btnDownloadPdf.setVisibility(View.GONE);
-        }
-
-        if (isAvaliada && !ideia.isProntaParaInvestidores()) {
-            // Só mostra o botão se a ideia foi avaliada E AINDA NÃO está pronta para investidores
-            binding.btnPrepararInvestidores.setVisibility(View.VISIBLE);
-        } else {
-            binding.btnPrepararInvestidores.setVisibility(View.GONE);
-        }
-
-        // Se a ideia já estiver pronta, podemos mostrar uma mensagem de sucesso
-        if (ideia.isProntaParaInvestidores()) {
-            binding.textAvaliacaoStatus.setText("Ideia Pronta para Investidores!");
-            binding.textAvaliacaoStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.green_success));
-        }
-
+        // --- Lógica da Avaliação ---
+        boolean isAvaliada = "Avaliada".equals(ideia.getAvaliacaoStatus());
         if (isAvaliada) {
             int colorSuccess = ContextCompat.getColor(requireContext(), R.color.green_success);
             binding.cardAvaliacao.setStrokeColor(colorSuccess);
             binding.iconAvaliacao.setImageTintList(ColorStateList.valueOf(colorSuccess));
             binding.textAvaliacaoStatus.setText("Ideia Avaliada!");
-
-            if (ideia.getAvaliacoes() != null && !ideia.getAvaliacoes().isEmpty()) {
-                binding.btnVerFeedback.setVisibility(View.VISIBLE);
-                binding.btnVerFeedback.setOnClickListener(v -> showFeedbackDialog());
-            } else {
-                binding.btnVerFeedback.setVisibility(View.GONE);
-            }
+            binding.btnVerFeedback.setVisibility(ideia.getAvaliacoes() != null && !ideia.getAvaliacoes().isEmpty() ? View.VISIBLE : View.GONE);
         } else {
             binding.textAvaliacaoStatus.setText("Aguardando avaliação do mentor");
             binding.btnVerFeedback.setVisibility(View.GONE);
+        }
+
+        // --- Lógica dos Botões de Ação ---
+        binding.btnDownloadPdf.setVisibility(isAvaliada ? View.VISIBLE : View.GONE);
+        binding.btnPrepararInvestidores.setVisibility(isAvaliada && !ideia.isProntaParaInvestidores() ? View.VISIBLE : View.GONE);
+
+        if (ideia.isProntaParaInvestidores()) {
+            binding.textAvaliacaoStatus.setText("Ideia Pronta para Investidores!");
+            binding.textAvaliacaoStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.green_success));
         }
 
         // --- Animação Lottie ---
@@ -190,100 +157,47 @@ public class IdeiaStatusFragment extends Fragment {
     }
 
     private void tentarNovoMatchmaking() {
-        // 1. Verificar permissão de localização
+        // A lógica de permissão e GPS permanece no Fragment, pois é relacionada à UI
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // Se não tiver permissão, solicite-a.
-            // O ideal é usar um ActivityResultLauncher aqui, mas por simplicidade, notificamos.
-            Toast.makeText(getContext(), "Permissão de localização é necessária para encontrar um mentor.", Toast.LENGTH_LONG).show();
-            // Você pode adicionar um launcher para pedir a permissão aqui.
+            Toast.makeText(getContext(), "Permissão de localização é necessária.", Toast.LENGTH_LONG).show();
+            // Lançar um launcher para pedir permissão seria o ideal aqui.
             return;
         }
-
-        // 2. Verificar se o GPS está ligado
         LocationManager locationManager = (LocationManager) requireContext().getSystemService(Context.LOCATION_SERVICE);
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             new AlertDialog.Builder(requireContext())
                     .setTitle("GPS Desativado")
-                    .setMessage("Para encontrar o mentor ideal, precisamos da sua localização. Por favor, ative o GPS.")
+                    .setMessage("Para encontrar um mentor, ative o GPS.")
                     .setPositiveButton("Ativar GPS", (dialog, which) -> startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)))
                     .setNegativeButton("Cancelar", null)
                     .show();
             return;
         }
-
-        // 3. Se tudo estiver OK, iniciar a busca
-        binding.btnProcurarMentor.setEnabled(false); // Desativa o botão para evitar cliques duplos
-
-        firestoreHelper.realizarMatchmakingParaIdeia(requireContext(), ideia, r -> {
-            // Garante que o fragmento ainda está "vivo" antes de atualizar a UI
-            if (!isAdded()) {
-                return;
-            }
-
-            binding.btnProcurarMentor.setEnabled(true);
-
-            if (r.isOk() && r.data != null) {
-                Toast.makeText(getContext(), "Sucesso! Um novo mentor foi vinculado à sua ideia.", Toast.LENGTH_LONG).show();
-                // A UI será atualizada automaticamente pelo listener da Activity que hospeda este fragmento.
-                // Se não houver listener, você precisaria chamar `updateUI()` aqui com a ideia atualizada.
-            } else {
-                // Mostra o diálogo que já criamos, dando a opção de tentar novamente.
-                new AlertDialog.Builder(requireContext())
-                        .setTitle("Nenhum Mentor Encontrado")
-                        .setMessage("Não encontramos um mentor compatível no momento. Você pode tentar novamente mais tarde.")
-                        .setPositiveButton("Entendi", null)
-                        .show();
-            }
-        });
+        binding.btnProcurarMentor.setEnabled(false);
+        Toast.makeText(getContext(), "Procurando novo mentor...", Toast.LENGTH_SHORT).show();
+        // Delega a ação para o ViewModel
+        sharedViewModel.procurarNovoMentor(requireContext());
+        // Re-habilita o botão após um tempo para evitar spam
+        new Handler().postDelayed(() -> {
+            if(isAdded()) binding.btnProcurarMentor.setEnabled(true);
+        }, 5000); // 5 segundos
     }
 
-    public void atualizarDadosIdeia(Ideia ideiaAtualizada) {
-        this.ideia = ideiaAtualizada;
-        // Se a view já foi criada, atualiza a UI imediatamente.
-        if (binding != null) {
-            updateUI();
-        }
-    }
+    private void showFeedbackDialog() {
+        if (!isAdded() || currentIdeia == null) return;
+        List<Avaliacao> avaliacoes = currentIdeia.getAvaliacoes();
+        if (avaliacoes == null || avaliacoes.isEmpty()) return;
 
- private void showFeedbackDialog() {
-        if (!isAdded() || ideia == null) return;
+        String mentorNome = sharedViewModel.mentorNome.getValue();
+        if (mentorNome == null) mentorNome = "Mentor";
 
-        List<Avaliacao> avaliacoes = ideia.getAvaliacoes();
-
-        if (avaliacoes == null || avaliacoes.isEmpty()) {
-            Toast.makeText(getContext(), "Nenhum detalhe de feedback encontrado.", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Busca o nome do mentor para usar no título
-        final String[] mentorNome = {"Mentor"}; // Fallback
-        if (ideia.getMentorId() != null && !ideia.getMentorId().isEmpty()) {
-            firestoreHelper.findMentorById(ideia.getMentorId(), r -> {
-                if (r.isOk() && r.data != null) {
-                    mentorNome[0] = r.data.getNome();
-                }
-                // Mostra o diálogo depois de tentar obter o nome
-                exibirDialogoComFeedback(mentorNome[0], avaliacoes);
-            });
-        } else {
-            exibirDialogoComFeedback(mentorNome[0], avaliacoes);
-        }
-    }
-
-    private void exibirDialogoComFeedback(String mentorNome, List<Avaliacao> avaliacoes) {
         SpannableStringBuilder formattedFeedback = new SpannableStringBuilder();
-
         for (Avaliacao criterio : avaliacoes) {
             String header = criterio.getCriterio() + String.format(Locale.getDefault(), ": %.1f/10\n", criterio.getNota());
             int start = formattedFeedback.length();
             formattedFeedback.append(header);
             formattedFeedback.setSpan(new StyleSpan(android.graphics.Typeface.BOLD), start, formattedFeedback.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-
-            if (criterio.getFeedback() != null && !criterio.getFeedback().trim().isEmpty()) {
-                formattedFeedback.append(criterio.getFeedback()).append("\n\n");
-            } else {
-                formattedFeedback.append("Nenhum feedback adicional.\n\n");
-            }
+            formattedFeedback.append(criterio.getFeedback() != null && !criterio.getFeedback().trim().isEmpty() ? criterio.getFeedback() : "Nenhum feedback adicional.").append("\n\n");
         }
 
         new AlertDialog.Builder(requireContext())
@@ -293,14 +207,10 @@ public class IdeiaStatusFragment extends Fragment {
                 .show();
     }
 
-
     private void verificarPermissaoEGerarPdf() {
-        if (getContext() == null) return; // Checagem de segurança
-
+        if (getContext() == null) return;
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            if (ContextCompat.checkSelfPermission(
-                    getContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
-                    PackageManager.PERMISSION_GRANTED) {
+            if (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
                 gerarPdf();
             } else {
                 requestPermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE);
@@ -311,20 +221,22 @@ public class IdeiaStatusFragment extends Fragment {
     }
 
     private void gerarPdf() {
-        if (getContext() == null) return; // Checagem de segurança
-
-        // Exibe um feedback para o usuário
+        if (getContext() == null || currentIdeia == null) return;
         Toast.makeText(getContext(), "Gerando PDF...", Toast.LENGTH_SHORT).show();
-
-        PdfGenerator.gerarCanvas(getContext(), ideia, (success, message) -> {
+        PdfGenerator.gerarCanvas(getContext(), currentIdeia, (success, message) -> {
             if (getActivity() != null) {
                 getActivity().runOnUiThread(() -> {
                     if (!success) {
                         Toast.makeText(getContext(), "Erro: " + message, Toast.LENGTH_LONG).show();
                     }
-                    // A mensagem de sucesso já é mostrada dentro do PdfGenerator.
                 });
             }
         });
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        binding = null;
     }
 }
