@@ -18,6 +18,7 @@ public class Investor implements Serializable { // Serializable para passar entr
 
     // Getters
     public String getId() { return id; }
+    public String setId() { return id; }
     public String getNome() { return nome; }
     public String getFotoUrl() { return fotoUrl; }
     public String getBio() { return bio; }

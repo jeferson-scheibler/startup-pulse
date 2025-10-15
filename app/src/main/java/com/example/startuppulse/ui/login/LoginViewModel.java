@@ -8,15 +8,18 @@ import com.example.startuppulse.data.AuthRepository;
 import com.example.startuppulse.data.ResultCallback;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.firebase.auth.FirebaseUser;
-
+import dagger.hilt.android.lifecycle.HiltViewModel;
+import javax.inject.Inject;
+@HiltViewModel
 public class LoginViewModel extends ViewModel {
 
     private final AuthRepository authRepository;
     private final MutableLiveData<LoginState> _loginState = new MutableLiveData<>(new LoginState(LoginState.AuthState.IDLE));
     public final LiveData<LoginState> loginState = _loginState;
 
-    public LoginViewModel() {
-        this.authRepository = AuthRepository.getInstance();
+    @Inject
+    public LoginViewModel(AuthRepository authRepository) {
+        this.authRepository = authRepository;
         checkIfUserIsAuthenticated();
     }
 

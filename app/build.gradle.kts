@@ -1,13 +1,14 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.google.gms.google.services)
-    // ADICIONADO: Aplica o plugin Safe Args
     alias(libs.plugins.androidx.navigation.safeargs)
+    alias(libs.plugins.hilt)
 }
 
 android {
     namespace = "com.example.startuppulse"
     compileSdk = 36
+
 
     defaultConfig {
         applicationId = "com.example.startuppulse"
@@ -41,8 +42,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
         isCoreLibraryDesugaringEnabled = true
     }
 
@@ -90,14 +91,16 @@ dependencies {
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.converter.gson)
 
-    // CORRIGIDO: Dependências de Navegação via catálogo
     implementation(libs.androidx.navigation.fragment)
     implementation(libs.androidx.navigation.ui)
+    implementation(libs.hilt.android)
+    annotationProcessor(libs.hilt.compiler)
 
     implementation("com.google.firebase:firebase-storage")
 
     // Desugaring
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.2")
+    implementation(libs.androidx.lifecycle.livedata.ktx)
 
     // Testes
     testImplementation(libs.junit)
