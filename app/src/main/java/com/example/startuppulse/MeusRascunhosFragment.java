@@ -4,6 +4,7 @@ import android.graphics.Canvas;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,6 +16,9 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.navigation.NavController;
+import androidx.navigation.Navigation;
+import androidx.navigation.fragment.NavHostFragment;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -24,11 +28,15 @@ import com.example.startuppulse.databinding.FragmentMeusRascunhosBinding;
 import com.example.startuppulse.ui.ideias.IdeiasViewModel;
 import com.google.android.material.snackbar.Snackbar;
 
+import dagger.hilt.android.AndroidEntryPoint;
+
+@AndroidEntryPoint
 public class MeusRascunhosFragment extends Fragment implements IdeiasAdapter.OnIdeiaClickListener {
 
     private FragmentMeusRascunhosBinding binding;
     private IdeiasViewModel viewModel;
     private IdeiasAdapter ideiasAdapter;
+    private NavController navController;
 
     @Nullable
     @Override
@@ -42,10 +50,15 @@ public class MeusRascunhosFragment extends Fragment implements IdeiasAdapter.OnI
         super.onViewCreated(view, savedInstanceState);
 
         viewModel = new ViewModelProvider(requireParentFragment()).get(IdeiasViewModel.class);
+        try {
+            navController = NavHostFragment.findNavController(this);
+        } catch (IllegalStateException e) {
+            Log.e("MeusRascunhosFragment", "NavController não encontrado", e);
+        }
 
         setupRecyclerView();
         setupObservers();
-        attachSwipeToDelete(); // Este método agora conterá toda a lógica
+        attachSwipeToDelete();
 
         binding.swipeRefreshLayout.setOnRefreshListener(() -> viewModel.refresh());
     }
@@ -74,9 +87,12 @@ public class MeusRascunhosFragment extends Fragment implements IdeiasAdapter.OnI
 
     @Override
     public void onIdeiaClick(Ideia ideia) {
-        Intent intent = new Intent(requireActivity(), CanvasIdeiaActivity.class);
-        intent.putExtra("ideia_id", ideia.getId());
-        startActivity(intent);
+        if (navController != null) {
+            Bundle args = new Bundle();
+            args.putString("ideiaId", ideia.getId());
+            // A flag 'isReadOnly' é false por padrão, o que está correto para um rascunho.
+            navController.navigate(R.id.action_global_to_canvasIdeiaFragment, args);
+        }
     }
 
     private void attachSwipeToDelete() {

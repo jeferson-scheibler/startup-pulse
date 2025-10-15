@@ -53,4 +53,23 @@
         android:label="Assinatura"
         tools:layout="@layout/fragment_assinatura" />
 
+    <fragment
+        android:id="@+id/canvasIdeiaFragment"
+        android:name="com.example.startuppulse.ui.canvas.CanvasIdeiaFragment"
+        android:label="Canvas da Ideia"
+        tools:layout="@layout/fragment_canvas_ideia">
+        <argument
+            android:name="ideiaId"
+            app:argType="string"
+            app:nullable="true"
+            android:defaultValue="@null" />
+        <argument
+            android:name="isReadOnly"
+            app:argType="boolean"
+            android:defaultValue="false" />
+    </fragment>
+
+    <action android:id="@+id/action_global_to_canvasIdeiaFragment"
+        app:destination="@id/canvasIdeiaFragment" />
+
 </navigation>

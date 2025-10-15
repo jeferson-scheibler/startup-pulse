@@ -1,5 +1,6 @@
 package com.example.startuppulse;
 
+import android.annotation.SuppressLint;
 import android.content.res.ColorStateList;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -18,17 +19,13 @@ import com.google.firebase.auth.FirebaseUser;
 
 import java.util.Objects;
 
-// O Adapter agora só precisa da lista de ideias, que será gerenciada pelo ListAdapter.
 public class IdeiasAdapter extends ListAdapter<Ideia, IdeiasAdapter.IdeiaViewHolder> {
 
-    // A interface foi simplificada. O Fragment decidirá o que fazer com o clique.
     public interface OnIdeiaClickListener {
         void onIdeiaClick(Ideia ideia);
     }
 
     private final OnIdeiaClickListener clickListener;
-
-    // Construtor limpo: só precisa do listener de clique.
     public IdeiasAdapter(@NonNull OnIdeiaClickListener clickListener) {
         super(DIFF_CALLBACK);
         this.clickListener = clickListener;
@@ -47,12 +44,10 @@ public class IdeiasAdapter extends ListAdapter<Ideia, IdeiasAdapter.IdeiaViewHol
         holder.bind(ideia, clickListener);
     }
 
-    // Método público para que o Fragment possa pegar a ideia em uma certa posição (para o swipe)
     public Ideia getIdeiaAt(int position) {
         return getItem(position);
     }
 
-    // ViewHolder permanece similar, pois sua responsabilidade é popular a view.
     static class IdeiaViewHolder extends RecyclerView.ViewHolder {
         TextView titulo, autor;
         View highlightView;
@@ -66,6 +61,7 @@ public class IdeiasAdapter extends ListAdapter<Ideia, IdeiasAdapter.IdeiaViewHol
             statusIcon = itemView.findViewById(R.id.icon_status_avaliacao);
         }
 
+        @SuppressLint("SetTextI18n")
         void bind(final Ideia ideia, final OnIdeiaClickListener listener) {
             if (ideia == null) return;
 
@@ -104,7 +100,6 @@ public class IdeiasAdapter extends ListAdapter<Ideia, IdeiasAdapter.IdeiaViewHol
         }
     }
 
-    // O DiffUtil.ItemCallback é o coração do ListAdapter, garantindo animações eficientes.
     private static final DiffUtil.ItemCallback<Ideia> DIFF_CALLBACK = new DiffUtil.ItemCallback<Ideia>() {
         @Override
         public boolean areItemsTheSame(@NonNull Ideia oldItem, @NonNull Ideia newItem) {

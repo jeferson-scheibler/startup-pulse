@@ -21,7 +21,9 @@ import com.google.firebase.auth.FirebaseUser;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import dagger.hilt.android.AndroidEntryPoint;
 
+@AndroidEntryPoint
 public class InvestidoresFragment extends Fragment implements InvestorAdapter.OnInvestorClickListener {
 
     private FragmentInvestidoresBinding binding; // Usando View Binding

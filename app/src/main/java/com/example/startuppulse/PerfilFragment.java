@@ -13,29 +13,31 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
+// NOVO IMPORT: Para encontrar o NavController principal
+import androidx.navigation.fragment.NavHostFragment;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.example.startuppulse.data.User;
-import com.example.startuppulse.databinding.FragmentPerfilBinding; // Importe o binding
-import com.example.startuppulse.ui.perfil.PerfilViewModel; // Importe o ViewModel
+import com.example.startuppulse.databinding.FragmentPerfilBinding;
+import com.example.startuppulse.ui.perfil.PerfilViewModel;
 
 import java.util.Locale;
-import java.util.concurrent.TimeUnit;
 
+import dagger.hilt.android.AndroidEntryPoint;
+
+@AndroidEntryPoint
 public class PerfilFragment extends Fragment {
 
-    private static final String TAG = "PerfilFragment";
-
-    // 1. Declare o binding e o ViewModel
     private FragmentPerfilBinding binding;
     private PerfilViewModel viewModel;
-    private NavController navController;
+    // Teremos dois NavControllers: um para navegação interna (assinatura)
+    private NavController localNavController;
+    // e um para navegação global (logout)
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        // 2. Infla o layout com View Binding
         binding = FragmentPerfilBinding.inflate(inflater, container, false);
         return binding.getRoot();
     }
@@ -44,26 +46,18 @@ public class PerfilFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // 3. Inicializa o ViewModel e o NavController
         viewModel = new ViewModelProvider(this).get(PerfilViewModel.class);
-        navController = Navigation.findNavController(view);
+
+        localNavController = Navigation.findNavController(view);
 
         setupObservers();
         setupClickListeners();
     }
 
     private void setupObservers() {
-        // Observa os dados do perfil
         viewModel.userProfile.observe(getViewLifecycleOwner(), user -> {
             if (user != null && binding != null) {
                 populateUi(user);
-            }
-        });
-
-        // Observa o evento de logout para navegar para a tela de login
-        viewModel.navigateToLogin.observe(getViewLifecycleOwner(), shouldNavigate -> {
-            if (shouldNavigate) {
-                irParaLogin();
             }
         });
     }
@@ -72,14 +66,12 @@ public class PerfilFragment extends Fragment {
         binding.btnSair.setOnClickListener(v -> viewModel.logout());
 
         binding.btnGerenciarAssinatura.setOnClickListener(v -> {
-            // CORRIGIDO: Usa o NavController para navegar para a tela de assinatura
-            // Você precisará adicionar esta ação ao seu nav_graph
-            navController.navigate(R.id.action_perfilFragment_to_assinaturaFragment);
+            // Usa o localNavController para a ação dentro do mesmo gráfico
+            localNavController.navigate(R.id.action_perfilFragment_to_assinaturaFragment);
         });
     }
 
     private void populateUi(User user) {
-        // Popula a UI usando o objeto User e o binding
         binding.textViewNomePerfil.setText(TextUtils.isEmpty(user.getNome()) ? "Sem nome" : user.getNome());
         binding.textViewEmailPerfil.setText(TextUtils.isEmpty(user.getEmail()) ? "—" : user.getEmail());
 
@@ -93,7 +85,6 @@ public class PerfilFragment extends Fragment {
                     .into(binding.imageViewPerfil);
         }
 
-        // Lógica do Plano
         if (user.isPremium()) {
             binding.textViewNomePlano.setText("Plano Premium");
             binding.textViewValidadePlano.setText("Válido até " + user.getValidadePlano());
@@ -104,12 +95,10 @@ public class PerfilFragment extends Fragment {
             binding.chipPremium.setVisibility(View.GONE);
         }
 
-        // Lógica dos Stats
         binding.statPublicadas.setText(String.valueOf(user.getPublicadasCount()));
         binding.statSeguindo.setText(String.valueOf(user.getSeguindoCount()));
         binding.statDias.setText(String.valueOf(user.getDiasDeConta()));
 
-        // Lógica do Chip "Membro desde"
         long dias = user.getDiasDeConta();
         String textoChip;
         if (dias < 30) {
@@ -122,17 +111,9 @@ public class PerfilFragment extends Fragment {
         binding.chipMemberSince.setText(textoChip);
     }
 
-    private void irParaLogin() {
-        // CORRIGIDO: Usa o NavController para voltar ao início do gráfico de navegação (login)
-        // Você precisará de uma ação global no seu nav_graph principal para isso
-        if (isAdded()) {
-            navController.navigate(R.id.action_global_return_to_login);
-        }
-    }
-
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        binding = null; // Previne memory leaks
+        binding = null;
     }
-}
+    }

@@ -36,7 +36,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import dagger.hilt.android.AndroidEntryPoint;
 
+@AndroidEntryPoint
 public class AmbienteCheckFragment extends DialogFragment implements SensorEventListener {
 
     public interface AmbienteCheckListener {

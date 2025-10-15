@@ -1,6 +1,5 @@
 package com.example.startuppulse;
 
-import android.content.Context;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
@@ -11,54 +10,40 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
-import com.example.startuppulse.data.Ideia;
+// Imports para a nova arquitetura
 import com.example.startuppulse.databinding.FragmentCanvasEquipeBinding;
+import com.example.startuppulse.ui.canvas.CanvasIdeiaViewModel;
+
 import java.util.ArrayList;
 
+import dagger.hilt.android.AndroidEntryPoint;
+
+@AndroidEntryPoint
 public class CanvasEquipeFragment extends Fragment {
 
-    // --- Interfaces e Constantes ---
-    public interface EquipeListener {
-        void onEquipeChanged(); // Notifica a Activity que a lista de membros mudou
-    }
+    // A interface EquipeListener foi removida. O ViewModel lida com a comunicação.
 
-    // --- Propriedades ---
     private FragmentCanvasEquipeBinding binding;
+    private CanvasIdeiaViewModel sharedViewModel; // O ViewModel compartilhado
     private EquipeAdapter adapter;
-    private Ideia ideia;
-    private boolean isReadOnly = false;
-    private EquipeListener listener;
 
-    public static CanvasEquipeFragment newInstance(Ideia ideia, boolean isReadOnly) {
-        CanvasEquipeFragment fragment = new CanvasEquipeFragment();
-        Bundle args = new Bundle();
-        args.putSerializable("ideia", ideia);
-        args.putBoolean("isReadOnly", isReadOnly);
-        fragment.setArguments(args);
-        return fragment;
+    /**
+     * O método newInstance foi removido, pois o CanvasPagerAdapter agora
+     * pode simplesmente chamar 'new CanvasEquipeFragment()'.
+     */
+    public CanvasEquipeFragment() {
+        // Construtor público vazio é obrigatório.
     }
 
-    @Override
-    public void onAttach(@NonNull Context context) {
-        super.onAttach(context);
-        // Garante que a Activity implementa o listener
-        if (context instanceof EquipeListener) {
-            listener = (EquipeListener) context;
-        } else {
-            // Se a Activity que hospeda este fragmento não implementar o listener, algo está errado.
-            // Para evitar crashes, podemos apenas logar um aviso.
-            // throw new RuntimeException(context + " deve implementar EquipeListener");
-        }
-    }
+    // O método onAttach foi removido, pois não usamos mais o listener.
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (getArguments() != null) {
-            isReadOnly = getArguments().getBoolean("isReadOnly", false);
-        }
+        // A lógica de getArguments foi removida.
     }
 
     @Nullable
@@ -71,48 +56,56 @@ public class CanvasEquipeFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        if (getActivity() instanceof CanvasIdeiaActivity) {
-            this.ideia = ((CanvasIdeiaActivity) getActivity()).getIdeiaAtual();
-        }
-        if (this.ideia == null) {
-            // Lógica de segurança caso algo corra mal
-            return;
-        }
+
+        // Ponto-chave: Obtém a instância do ViewModel COMPARTILHADO do fragment pai.
+        sharedViewModel = new ViewModelProvider(requireParentFragment()).get(CanvasIdeiaViewModel.class);
+
         setupRecyclerView();
-        binding.fabAddMembro.setVisibility(isReadOnly ? View.GONE : View.VISIBLE);
+        setupObservers(); // A UI agora é configurada pelos observers.
+
         binding.fabAddMembro.setOnClickListener(v -> showMembroDialog(null));
     }
 
     private void setupRecyclerView() {
-        if (ideia != null && ideia.getEquipe() == null) {
-            ideia.setEquipe(new ArrayList<>());
-        }
         binding.recyclerViewEquipe.setLayoutManager(new LinearLayoutManager(getContext()));
-        // Passa um listener para o adapter para capturar cliques nos itens
-        adapter = new EquipeAdapter(ideia.getEquipe(), membro -> {
-            if (!isReadOnly) {
+        // CORREÇÃO DO ERRO LAMBDA: O listener é passado corretamente para o novo construtor do adapter.
+        adapter = new EquipeAdapter(membro -> {
+            if (!Boolean.TRUE.equals(sharedViewModel.isReadOnly.getValue())) {
                 showMembroDialog(membro);
             }
         });
         binding.recyclerViewEquipe.setAdapter(adapter);
-        checkEmptyState();
     }
 
-    /**
-     * Mostra o diálogo para adicionar ou editar um membro da equipe.
-     * @param membroExistente O membro a ser editado, ou null para adicionar um novo.
-     */
+    private void setupObservers() {
+        // Observa o objeto Ideia. Quando ele muda, a lista da equipe é atualizada no adapter.
+        sharedViewModel.ideia.observe(getViewLifecycleOwner(), ideia -> {
+            if (ideia != null) {
+                // Usa o método 'updateEquipe' que chama 'submitList' para máxima performance.
+                adapter.updateEquipe(ideia.getEquipe());
+                checkEmptyState();
+            }
+        });
+
+        // Observa o estado de 'somente leitura' para controlar a UI.
+        sharedViewModel.isReadOnly.observe(getViewLifecycleOwner(), isReadOnly -> {
+            if (isReadOnly != null) {
+                binding.fabAddMembro.setVisibility(isReadOnly ? View.GONE : View.VISIBLE);
+            }
+        });
+    }
+
     private void showMembroDialog(@Nullable MembroEquipe membroExistente) {
         LayoutInflater inflater = requireActivity().getLayoutInflater();
         View dialogView = inflater.inflate(R.layout.dialog_add_membro, null);
 
+        // CORREÇÃO DOS ERROS DE SÍMBOLO: As views são declaradas e usadas dentro deste escopo.
         final EditText nomeInput = dialogView.findViewById(R.id.edit_text_nome_membro);
         final EditText funcaoInput = dialogView.findViewById(R.id.edit_text_funcao_membro);
         final EditText linkedinInput = dialogView.findViewById(R.id.edit_text_linkedin_membro);
 
         String dialogTitle = (membroExistente == null) ? "Adicionar Membro" : "Editar Membro";
 
-        // Se estiver a editar, preenche os campos com os dados existentes
         if (membroExistente != null) {
             nomeInput.setText(membroExistente.getNome());
             funcaoInput.setText(membroExistente.getFuncao());
@@ -122,7 +115,7 @@ public class CanvasEquipeFragment extends Fragment {
         AlertDialog dialog = new AlertDialog.Builder(requireContext())
                 .setTitle(dialogTitle)
                 .setView(dialogView)
-                .setPositiveButton("Salvar", null) // Definimos o listener depois para controlar o fecho
+                .setPositiveButton("Salvar", null)
                 .setNegativeButton("Cancelar", null)
                 .create();
 
@@ -140,61 +133,39 @@ public class CanvasEquipeFragment extends Fragment {
                     funcaoInput.setError("A função é obrigatória");
                     return;
                 }
-
-                // --- VALIDAÇÃO DO LINKEDIN ---
                 if (!linkedin.isEmpty() && !isValidLinkedInUrl(linkedin)) {
-                    linkedinInput.setError("Insira um link válido do LinkedIn (ex: https://linkedin.com/in/perfil)");
+                    linkedinInput.setError("Insira um link válido do LinkedIn");
                     return;
                 }
 
-                // Se a validação passar, continua com a lógica de salvar
+                // Delega a lógica de negócio para o ViewModel.
                 if (membroExistente == null) {
-                    MembroEquipe novoMembro = new MembroEquipe();
-                    novoMembro.setNome(nome);
-                    novoMembro.setFuncao(funcao);
-                    novoMembro.setLinkedinUrl(linkedin);
-                    ideia.getEquipe().add(novoMembro);
+                    sharedViewModel.addMembroEquipe(new MembroEquipe(nome, funcao, linkedin));
                 } else {
-                    membroExistente.setNome(nome);
-                    membroExistente.setFuncao(funcao);
-                    membroExistente.setLinkedinUrl(linkedin);
+                    sharedViewModel.updateMembroEquipe(membroExistente, nome, funcao, linkedin);
                 }
 
-                adapter.notifyDataSetChanged();
-                checkEmptyState();
-                if (listener != null) {
-                    listener.onEquipeChanged();
-                }
-
-                dialog.dismiss(); // Fecha o diálogo apenas se tudo estiver correto
+                dialog.dismiss();
             });
         });
 
         dialog.show();
     }
 
-    /**
-     * Valida se uma string é um URL válido do LinkedIn.
-     * Aceita http, https, www e a ausência destes.
-     * @param url A string a ser validada.
-     * @return true se for um link válido, false caso contrário.
-     */
-    private boolean isValidLinkedInUrl(String url) {
-        if (url == null) {
-            return false;
-        }
-        // Padrão Regex para validar os formatos mais comuns de URL do LinkedIn
-        String regex = "^((https|http):\\/\\/)?(www\\.)?linkedin\\.com\\/in\\/[a-zA-Z0-9_-]+(\\/)?$";
-        return url.matches(regex);
-    }
     private void checkEmptyState() {
-        if (ideia.getEquipe() == null || ideia.getEquipe().isEmpty()) {
+        if (adapter.getItemCount() == 0) {
             binding.recyclerViewEquipe.setVisibility(View.GONE);
             binding.viewEmptyStateEquipe.setVisibility(View.VISIBLE);
         } else {
             binding.recyclerViewEquipe.setVisibility(View.VISIBLE);
             binding.viewEmptyStateEquipe.setVisibility(View.GONE);
         }
+    }
+
+    private boolean isValidLinkedInUrl(String url) {
+        if (url == null) return false;
+        String regex = "^((https|http):\\/\\/)?(www\\.)?linkedin\\.com\\/in\\/[a-zA-Z0-9_-]+(\\/)?$";
+        return url.matches(regex);
     }
 
     @Override

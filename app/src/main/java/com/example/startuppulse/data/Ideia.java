@@ -1,9 +1,7 @@
 package com.example.startuppulse.data;
 
-import com.example.startuppulse.Avaliacao;
 import com.example.startuppulse.MembroEquipe;
 import com.example.startuppulse.Metrica;
-import com.example.startuppulse.PostIt;
 import com.google.firebase.firestore.ServerTimestamp;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -36,6 +34,7 @@ public class Ideia implements Serializable {
     private List<Avaliacao> avaliacoes; // << ALTERAÇÃO CRÍTICA APLICADA AQUI
     private List<String> areasNecessarias;
     private String matchmakingLog;
+    private Status status;
 
     @ServerTimestamp
     private Date timestamp;
@@ -43,7 +42,6 @@ public class Ideia implements Serializable {
     private List<MembroEquipe> equipe;
     private List<Metrica> metricas;
     private String pitchDeckUrl;
-    private Status status;
     private boolean prontaParaInvestidores = false;
     private Date ultimaBuscaMentorTimestamp;
 

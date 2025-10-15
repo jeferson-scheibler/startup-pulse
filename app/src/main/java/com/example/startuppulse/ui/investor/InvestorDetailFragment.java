@@ -19,7 +19,9 @@ import com.example.startuppulse.databinding.FragmentInvestorDetailBinding;
 import com.google.android.material.chip.Chip;
 
 import java.util.List;
+import dagger.hilt.android.AndroidEntryPoint;
 
+@AndroidEntryPoint
 public class InvestorDetailFragment extends Fragment {
 
     private FragmentInvestorDetailBinding binding;

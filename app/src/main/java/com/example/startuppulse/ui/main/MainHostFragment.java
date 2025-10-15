@@ -17,20 +17,20 @@ import androidx.fragment.app.Fragment;
 import androidx.navigation.NavController;
 import androidx.navigation.fragment.NavHostFragment;
 
-import com.example.startuppulse.CanvasIdeiaActivity;
 import com.example.startuppulse.CanvasMentorActivity;
 import com.example.startuppulse.R;
-import com.example.startuppulse.data.Ideia;
 import com.example.startuppulse.Mentor;
 import com.example.startuppulse.databinding.FragmentMainHostBinding;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
+import dagger.hilt.android.AndroidEntryPoint;
 
+@AndroidEntryPoint
 public class MainHostFragment extends Fragment {
 
     private FragmentMainHostBinding binding;
-    private NavController navController; // Mantém a referência
+    private NavController navController;
 
     private boolean isMentor = false;
     private FirebaseUser currentUser;
@@ -65,6 +65,26 @@ public class MainHostFragment extends Fragment {
         verificarSeUsuarioEhMentor();
         setupButtonClickListeners();
         setupFabListeners();
+
+        navController.addOnDestinationChangedListener((controller, destination, arguments) -> {
+            int destinationId = destination.getId(); // Obtém o ID do destino atual
+
+            if (destinationId == R.id.ideiasFragment) {
+                binding.fabAddIdea.show();
+                binding.fabAddMentor.hide();
+            } else if (destinationId == R.id.mentoresFragment) {
+                binding.fabAddIdea.hide();
+                if (!isMentor) {
+                    binding.fabAddMentor.show();
+                } else {
+                    binding.fabAddMentor.hide();
+                }
+            } else {
+                // Para todas as outras telas, esconde ambos os FABs.
+                binding.fabAddIdea.hide();
+                binding.fabAddMentor.hide();
+            }
+        });
 
         // Estado inicial
         updateButtonState(binding.navButtonIdeias);
@@ -129,18 +149,10 @@ public class MainHostFragment extends Fragment {
         });
     }
 
-    // (O resto da sua classe: setupFabListeners, updateButtonState, etc., continua igual)
-    // ...
     private void setupFabListeners() {
         binding.fabAddIdea.setOnClickListener(v -> {
-            Intent intent = new Intent(requireActivity(), CanvasIdeiaActivity.class);
-            Ideia novaIdeia = new Ideia();
-            if (currentUser != null) {
-                novaIdeia.setOwnerId(currentUser.getUid());
-                novaIdeia.setAutorNome(currentUser.getDisplayName());
-            }
-            intent.putExtra("ideia", novaIdeia);
-            startActivity(intent);
+            // Navega para a criação de uma nova ideia (sem passar um ideiaId).
+            navController.navigate(R.id.action_global_to_canvasIdeiaFragment);
         });
 
         binding.fabAddMentor.setOnClickListener(v -> {
@@ -154,7 +166,6 @@ public class MainHostFragment extends Fragment {
             startActivity(intent);
         });
     }
-
     private void updateButtonState(View selectedButton) {
         binding.navButtonIdeias.setSelected(false);
         binding.navButtonMentores.setSelected(false);

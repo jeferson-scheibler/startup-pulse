@@ -15,6 +15,8 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.example.startuppulse.data.Avaliacao;
 import com.example.startuppulse.databinding.ActivityAvaliacaoBinding; // Import ViewBinding
 import com.google.android.material.slider.Slider;
 import com.google.firebase.auth.FirebaseAuth;

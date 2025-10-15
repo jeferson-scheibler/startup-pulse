@@ -1,4 +1,4 @@
-package com.example.startuppulse;
+package com.example.startuppulse.data;
 
 import com.google.firebase.firestore.PropertyName;
 import java.io.Serializable;
