@@ -1,69 +1,39 @@
+// app/src/main/java/com/example/startuppulse/MentoresAdapter.java
+
 package com.example.startuppulse;
 
 import android.content.res.Resources;
 import android.graphics.drawable.BitmapDrawable;
-import android.util.TypedValue;
+import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
-
 import androidx.annotation.NonNull;
+import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
+import com.example.startuppulse.data.Mentor;
 import com.example.startuppulse.util.AvatarUtils;
 import com.google.android.material.chip.Chip;
-
+import com.google.android.material.chip.ChipGroup;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Adapter para a lista de mentores, utilizando ListAdapter para performance e DiffUtil para
+ * animações eficientes de atualização de lista.
+ * Atualizado para ser compatível com o modelo de dados Mentor refatorado.
+ */
 public class MentoresAdapter extends ListAdapter<Mentor, MentoresAdapter.MentorViewHolder> {
 
-    public interface OnMentorClickListener {
-        void onMentorClick(Mentor mentor);
-    }
-
-    private final OnMentorClickListener listener;
-
-    // DiffUtil: identifica item pelo ID e verifica mudanças relevantes (inclui verificado e áreas)
-    private static final DiffUtil.ItemCallback<Mentor> DIFF = new DiffUtil.ItemCallback<Mentor>() {
-        @Override
-        public boolean areItemsTheSame(@NonNull Mentor oldItem, @NonNull Mentor newItem) {
-            return notNullEq(oldItem.getId(), newItem.getId());
-        }
-
-        @Override
-        public boolean areContentsTheSame(@NonNull Mentor oldItem, @NonNull Mentor newItem) {
-            return notNullEq(oldItem.getNome(), newItem.getNome())
-                    && oldItem.isVerificado() == newItem.isVerificado()
-                    && notNullEq(oldItem.getImagem(), newItem.getImagem())
-                    && listEquals(oldItem.getAreas(), newItem.getAreas());
-        }
-
-        private boolean notNullEq(String a, String b) {
-            return Objects.equals(a, b);
-        }
-
-        private boolean listEquals(List<String> a, List<String> b) {
-            if (a == null) a = new ArrayList<>();
-            if (b == null) b = new ArrayList<>();
-            if (a.size() != b.size()) return false;
-            for (int i = 0; i < a.size(); i++) {
-                if (!Objects.equals(a.get(i), b.get(i))) return false;
-            }
-            return true;
-        }
-    };
-
-    public MentoresAdapter(OnMentorClickListener listener) {
-        super(DIFF);
-        this.listener = listener;
+    public MentoresAdapter() {
+        super(DIFF_CALLBACK);
     }
 
     @NonNull
@@ -76,114 +46,115 @@ public class MentoresAdapter extends ListAdapter<Mentor, MentoresAdapter.MentorV
 
     @Override
     public void onBindViewHolder(@NonNull MentorViewHolder holder, int position) {
-        holder.bind(getItem(position), listener);
+        Mentor mentor = getItem(position);
+        if (mentor != null) {
+            holder.bind(mentor);
+        }
     }
 
-    // ---------------- ViewHolder ----------------
+    // --- ViewHolder ---
     static class MentorViewHolder extends RecyclerView.ViewHolder {
         TextView nome;
         ImageView image, imageArrow, iconVerificado;
-        com.google.android.material.chip.ChipGroup chipGroupAreas;
+        ChipGroup chipGroupAreas;
 
         MentorViewHolder(@NonNull View itemView) {
             super(itemView);
-            nome           = itemView.findViewById(R.id.textViewNome);
-            image          = itemView.findViewById(R.id.imageViewMentor);
-            imageArrow     = itemView.findViewById(R.id.imageViewArrow);
+            nome = itemView.findViewById(R.id.textViewNome);
+            image = itemView.findViewById(R.id.imageViewMentor);
+            imageArrow = itemView.findViewById(R.id.imageViewArrow);
             iconVerificado = itemView.findViewById(R.id.iconVerificado);
             chipGroupAreas = itemView.findViewById(R.id.chipGroupAreas);
         }
 
-        void bind(final Mentor mentor, final OnMentorClickListener listener) {
-            if (mentor == null) return;
-
-            // Nome (safe) + a11y do item
-            String safeName = mentor.getNome() == null ? "" : mentor.getNome();
+        void bind(final Mentor mentor) {
+            // Nome (com tratamento para nulo)
+            String safeName = mentor.getName() != null ? mentor.getName() : "";
             nome.setText(safeName);
             itemView.setContentDescription("Mentor " + safeName);
 
-            // Avatar (com fallback gerado por letra)
-            String fotoUrl = mentor.getImagem();
-            Resources r = itemView.getResources();
-            int px = (int) (56 * r.getDisplayMetrics().density); // tamanho base para fallback
+            // Avatar (com fallback gerado a partir da primeira letra do nome)
+            String fotoUrl = mentor.getImageUrl();
+            Resources res = itemView.getResources();
+            int px = (int) (56 * res.getDisplayMetrics().density); // 56dp
             BitmapDrawable fallback = new BitmapDrawable(
-                    r, AvatarUtils.circleLetter(safeName, px, 0xFF455A64, 0xFFFFFFFF)
+                    res, AvatarUtils.circleLetter(safeName, px, 0xFF455A64, 0xFFFFFFFF)
             );
 
-            if (fotoUrl != null && !fotoUrl.isEmpty()) {
-                Glide.with(itemView.getContext())
-                        .load(fotoUrl)
-                        .placeholder(R.drawable.ic_person)
-                        .error(fallback)
-                        .fallback(fallback)
-                        .transition(DrawableTransitionOptions.withCrossFade())
-                        .circleCrop()
-                        .into(image);
-            } else {
-                image.setImageDrawable(fallback);
-            }
-            image.setContentDescription("Avatar do mentor " + safeName);
+            Glide.with(itemView.getContext())
+                    .load(fotoUrl)
+                    .placeholder(R.drawable.ic_person)
+                    .error(fallback) // Mostra o fallback em caso de erro no load
+                    .fallback(fallback) // Mostra o fallback se a URL for nula
+                    .transition(DrawableTransitionOptions.withCrossFade())
+                    .circleCrop()
+                    .into(image);
 
-            // Chevron (tint já pode vir do XML; manter simples aqui)
-            imageArrow.setImageResource(R.drawable.ic_chevron_right);
-            imageArrow.setContentDescription(itemView.getContext()
-                    .getString(R.string.ver_detalhes_mentor_content_desc));
+            // Selo de verificado
+            iconVerificado.setVisibility(mentor.isVerified() ? View.VISIBLE : View.GONE);
 
-            // Selo verificado
-            iconVerificado.setVisibility(mentor.isVerificado() ? View.VISIBLE : View.GONE);
+            // Chips com áreas de atuação
+            setupAreaChips(mentor.getAreas());
 
+            // Listener de clique para navegar para os detalhes
+            itemView.setOnClickListener(v -> {
+                Bundle bundle = new Bundle();
+                bundle.putString("mentorId", mentor.getId()); // Correção: Usar o método correto
+
+                try {
+                    Navigation.findNavController(v).navigate(R.id.action_mentoresFragment_to_mentorDetailFragment, bundle);
+                } catch (Exception e) {
+                    // Logar o erro pode ser útil para depuração em cenários complexos
+                    e.printStackTrace();
+                }
+            });
+        }
+
+        private void setupAreaChips(List<String> areas) {
             chipGroupAreas.removeAllViews();
-            List<String> areas = mentor.getAreas();
             if (areas != null && !areas.isEmpty()) {
-                final int MAX = 1; // mostra UM chip + “+N”
-                int shown = Math.min(MAX, areas.size());
+                chipGroupAreas.setVisibility(View.VISIBLE);
+                final int MAX_CHIPS = 1;
+                int chipsToShow = Math.min(MAX_CHIPS, areas.size());
 
-                for (int i = 0; i < shown; i++) {
-                    android.view.ContextThemeWrapper themed =
-                            new android.view.ContextThemeWrapper(itemView.getContext(),
-                                    R.style.Widget_StartupPulse_Chip_Area_Compact);
-                    com.google.android.material.chip.Chip chip = new com.google.android.material.chip.Chip(themed);
-                    chip.setText(areas.get(i));
-                    chip.setCheckable(false);
-                    chip.setClickable(false);
-                    chip.setChipIconResource(R.drawable.ic_tag);
-                    chip.setChipBackgroundColorResource(R.color.colorSurface);
-                    chip.setChipStrokeColorResource(R.color.colorDivider);
-                    chip.setChipStrokeWidth(
-                            itemView.getResources().getDisplayMetrics().density * 1f // 1dp
-                    );
-                    chip.setTextColor(itemView.getResources().getColor(R.color.colorOnSurface));
-                    chip.setChipIconTintResource(R.color.colorPrimary);
-                    chip.setIconStartPadding(4f);
-                    chip.setTextStartPadding(2f);
-                    chipGroupAreas.addView(chip);
+                for (int i = 0; i < chipsToShow; i++) {
+                    chipGroupAreas.addView(createChip(areas.get(i)));
                 }
 
-                int remaining = areas.size() - shown;
+                int remaining = areas.size() - chipsToShow;
                 if (remaining > 0) {
-                    android.view.ContextThemeWrapper themed =
-                            new android.view.ContextThemeWrapper(itemView.getContext(),
-                                    R.style.Widget_StartupPulse_Chip_Area_Compact);
-                    com.google.android.material.chip.Chip more = new com.google.android.material.chip.Chip(themed);
-                    more.setText("+" + remaining);
-                    more.setCheckable(false);
-                    more.setClickable(false);
-                    more.setChipBackgroundColorResource(R.color.colorSurface);
-                    more.setChipStrokeColorResource(R.color.colorDivider);
-                    more.setChipStrokeWidth(
-                            itemView.getResources().getDisplayMetrics().density * 1f
-                    );
-                    more.setTextColor(itemView.getResources().getColor(R.color.colorOnSurface));
-                    chipGroupAreas.addView(more);
+                    chipGroupAreas.addView(createChip("+" + remaining));
                 }
             } else {
                 chipGroupAreas.setVisibility(View.GONE);
             }
+        }
 
-            // Clique abre detalhes
-            itemView.setOnClickListener(v -> {
-                if (listener != null) listener.onMentorClick(mentor);
-            });
+        private Chip createChip(String text) {
+            android.view.ContextThemeWrapper themedContext = new android.view.ContextThemeWrapper(itemView.getContext(),
+                    R.style.Widget_StartupPulse_Chip_Area_Compact);
+            Chip chip = new Chip(themedContext);
+            chip.setText(text);
+            chip.setClickable(false); // Apenas visual
+            return chip;
         }
     }
+
+    // --- DiffUtil Callback ---
+    private static final DiffUtil.ItemCallback<Mentor> DIFF_CALLBACK = new DiffUtil.ItemCallback<Mentor>() {
+        @Override
+        public boolean areItemsTheSame(@NonNull Mentor oldItem, @NonNull Mentor newItem) {
+            // Itens são os mesmos se os IDs forem iguais
+            return Objects.equals(oldItem.getId(), newItem.getId());
+        }
+
+        @Override
+        public boolean areContentsTheSame(@NonNull Mentor oldItem, @NonNull Mentor newItem) {
+            // Conteúdo é o mesmo se esses campos não mudaram
+            return Objects.equals(oldItem.getName(), newItem.getName())
+                    && oldItem.isVerified() == newItem.isVerified()
+                    && Objects.equals(oldItem.getImageUrl(), newItem.getImageUrl())
+                    && Objects.equals(oldItem.getAreas(), newItem.getAreas());
+        }
+    };
 }

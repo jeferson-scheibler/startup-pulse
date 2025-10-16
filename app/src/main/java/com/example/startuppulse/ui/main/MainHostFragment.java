@@ -1,6 +1,7 @@
+// app/src/main/java/com/example/startuppulse/ui/main/MainHostFragment.java
+
 package com.example.startuppulse.ui.main;
 
-import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.os.Bundle;
 import android.util.Log;
@@ -17,9 +18,7 @@ import androidx.fragment.app.Fragment;
 import androidx.navigation.NavController;
 import androidx.navigation.fragment.NavHostFragment;
 
-import com.example.startuppulse.CanvasMentorActivity;
 import com.example.startuppulse.R;
-import com.example.startuppulse.Mentor;
 import com.example.startuppulse.databinding.FragmentMainHostBinding;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -51,65 +50,58 @@ public class MainHostFragment extends Fragment {
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser == null) return;
 
-        // CORRIGIDO: Forma mais robusta de obter o NavController.
-        // O NavHostFragment é o próprio container que definimos no XML.
         NavHostFragment navHostFragment = (NavHostFragment) getChildFragmentManager().findFragmentById(R.id.fragment_container);
         if (navHostFragment != null) {
             navController = navHostFragment.getNavController();
         } else {
-            // Se o NavController não for encontrado, logamos um erro para saber o que aconteceu.
             Log.e("MainHostFragment", "NavController não encontrado!");
-            return; // Impede que o resto do código execute e cause um crash.
+            return;
         }
 
         verificarSeUsuarioEhMentor();
         setupButtonClickListeners();
-        setupFabListeners();
+        setupFabListeners(); // Vamos corrigir este método
 
         navController.addOnDestinationChangedListener((controller, destination, arguments) -> {
-            int destinationId = destination.getId(); // Obtém o ID do destino atual
-
-            if (destinationId == R.id.ideiasFragment) {
-                binding.fabAddIdea.show();
-                binding.fabAddMentor.hide();
-            } else if (destinationId == R.id.mentoresFragment) {
-                binding.fabAddIdea.hide();
-                if (!isMentor) {
-                    binding.fabAddMentor.show();
-                } else {
-                    binding.fabAddMentor.hide();
-                }
-            } else {
-                // Para todas as outras telas, esconde ambos os FABs.
-                binding.fabAddIdea.hide();
-                binding.fabAddMentor.hide();
-            }
+            handleFabVisibility(destination.getId());
         });
 
         // Estado inicial
         updateButtonState(binding.navButtonIdeias);
     }
 
+    private void handleFabVisibility(int destinationId) {
+        if (destinationId == R.id.ideiasFragment) {
+            binding.fabAddIdea.show();
+            binding.fabAddMentor.hide();
+        } else if (destinationId == R.id.mentoresFragment) {
+            binding.fabAddIdea.hide();
+            // Mostra o FAB "Seja um Mentor" apenas se o usuário AINDA NÃO for um mentor
+            if (!isMentor) {
+                binding.fabAddMentor.show();
+            } else {
+                binding.fabAddMentor.hide();
+            }
+        } else {
+            // Esconde ambos os FABs em todas as outras telas (Perfil, Investidores, etc.)
+            binding.fabAddIdea.hide();
+            binding.fabAddMentor.hide();
+        }
+    }
+
+
     private void setupWindowInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(binding.getRoot(), (v, windowInsets) -> {
-            // Pega os insets (espaços) das barras do sistema (topo e rodapé)
             Insets systemBars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
-
-            // Aplica o padding ao contêiner raiz do seu fragment
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, 0);
-
-            // Ajusta a margem inferior da sua barra de navegação customizada
-            // para que ela não fique colada no fundo da tela.
             ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) binding.bottomNavContainer.getLayoutParams();
-            params.bottomMargin = systemBars.bottom + (int) (16 * getResources().getDisplayMetrics().density); // 16dp de margem
+            params.bottomMargin = systemBars.bottom + (int) (16 * getResources().getDisplayMetrics().density);
             binding.bottomNavContainer.setLayoutParams(params);
-
             return WindowInsetsCompat.CONSUMED;
         });
     }
 
     private void setupButtonClickListeners() {
-        // Adiciona uma verificação para garantir que o navController não é nulo antes de usá-lo.
         if (navController == null) return;
 
         binding.navButtonIdeias.setOnClickListener(v -> {
@@ -117,8 +109,6 @@ public class MainHostFragment extends Fragment {
                 navController.navigate(R.id.ideiasFragment);
             }
             updateButtonState(v);
-            binding.fabAddIdea.setVisibility(View.VISIBLE);
-            binding.fabAddMentor.setVisibility(View.GONE);
         });
 
         binding.navButtonMentores.setOnClickListener(v -> {
@@ -126,8 +116,6 @@ public class MainHostFragment extends Fragment {
                 navController.navigate(R.id.mentoresFragment);
             }
             updateButtonState(v);
-            binding.fabAddIdea.setVisibility(View.GONE);
-            binding.fabAddMentor.setVisibility(isMentor ? View.GONE : View.VISIBLE);
         });
 
         binding.navButtonInvestidores.setOnClickListener(v -> {
@@ -135,8 +123,6 @@ public class MainHostFragment extends Fragment {
                 navController.navigate(R.id.investidoresFragment);
             }
             updateButtonState(v);
-            binding.fabAddIdea.setVisibility(View.GONE);
-            binding.fabAddMentor.setVisibility(View.GONE);
         });
 
         binding.navButtonPerfil.setOnClickListener(v -> {
@@ -144,28 +130,24 @@ public class MainHostFragment extends Fragment {
                 navController.navigate(R.id.perfilFragment);
             }
             updateButtonState(v);
-            binding.fabAddIdea.setVisibility(View.GONE);
-            binding.fabAddMentor.setVisibility(View.GONE);
         });
     }
 
     private void setupFabListeners() {
         binding.fabAddIdea.setOnClickListener(v -> {
-            // Navega para a criação de uma nova ideia (sem passar um ideiaId).
+            // Navega para a criação de uma nova ideia
             navController.navigate(R.id.action_global_to_canvasIdeiaFragment);
         });
 
+        // ===== AQUI ESTÁ A CORREÇÃO =====
         binding.fabAddMentor.setOnClickListener(v -> {
-            Intent intent = new Intent(requireActivity(), CanvasMentorActivity.class);
-            Mentor novoMentor = new Mentor();
-            if (currentUser != null) {
-                novoMentor.setId(currentUser.getUid());
-                novoMentor.setNome(currentUser.getDisplayName());
-            }
-            intent.putExtra("mentor", novoMentor);
-            startActivity(intent);
+            // A navegação agora é feita pelo NavController para o CanvasMentorFragment.
+            // Note que não há uma "action" global definida, então navegamos diretamente para o ID do fragmento.
+            // Isso funciona porque estamos no mesmo grafo de navegação (main_nav_graph).
+            navController.navigate(R.id.canvasMentorFragment);
         });
     }
+
     private void updateButtonState(View selectedButton) {
         binding.navButtonIdeias.setSelected(false);
         binding.navButtonMentores.setSelected(false);
@@ -206,7 +188,13 @@ public class MainHostFragment extends Fragment {
     private void verificarSeUsuarioEhMentor() {
         if (currentUser == null) return;
         FirebaseFirestore.getInstance().collection("mentores").document(currentUser.getUid()).get()
-                .addOnSuccessListener(documentSnapshot -> isMentor = documentSnapshot.exists());
+                .addOnSuccessListener(documentSnapshot -> {
+                    isMentor = documentSnapshot.exists();
+                    // Após verificar, atualiza a visibilidade do FAB caso a tela de mentores já esteja visível
+                    if (navController.getCurrentDestination() != null && navController.getCurrentDestination().getId() == R.id.mentoresFragment) {
+                        handleFabVisibility(R.id.mentoresFragment);
+                    }
+                });
     }
 
     @Override

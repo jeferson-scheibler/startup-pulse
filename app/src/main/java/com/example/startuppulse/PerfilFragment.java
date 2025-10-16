@@ -18,6 +18,7 @@ import androidx.navigation.fragment.NavHostFragment;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
+import com.example.startuppulse.common.Result;
 import com.example.startuppulse.data.User;
 import com.example.startuppulse.databinding.FragmentPerfilBinding;
 import com.example.startuppulse.ui.perfil.PerfilViewModel;
@@ -31,9 +32,7 @@ public class PerfilFragment extends Fragment {
 
     private FragmentPerfilBinding binding;
     private PerfilViewModel viewModel;
-    // Teremos dois NavControllers: um para navegação interna (assinatura)
     private NavController localNavController;
-    // e um para navegação global (logout)
 
     @Nullable
     @Override
@@ -45,30 +44,47 @@ public class PerfilFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-
         viewModel = new ViewModelProvider(this).get(PerfilViewModel.class);
-
-        localNavController = Navigation.findNavController(view);
 
         setupObservers();
         setupClickListeners();
     }
-
     private void setupObservers() {
-        viewModel.userProfile.observe(getViewLifecycleOwner(), user -> {
-            if (user != null && binding != null) {
-                populateUi(user);
+        viewModel.userProfileResult.observe(getViewLifecycleOwner(), result -> {
+            if (binding == null) return;
+
+            if (result instanceof Result.Success) {
+                // Se for sucesso, DESEMBRULHA o objeto User antes de chamar populateUi
+                User user = ((Result.Success<User>) result).data;
+                if (user != null) {
+                    populateUi(user);
+                }
+            } else if (result instanceof Result.Error) {
+                String errorMsg = ((Result.Error<User>) result).error.getMessage();
+                Toast.makeText(getContext(), "Erro: " + errorMsg, Toast.LENGTH_LONG).show();
+            }
+        });
+
+        viewModel.isMentor.observe(getViewLifecycleOwner(), isMentor -> {
+            if (binding != null) {
+                binding.buttonTornarMentor.setVisibility(isMentor ? View.GONE : View.VISIBLE);
             }
         });
     }
 
     private void setupClickListeners() {
+        NavController navController = NavHostFragment.findNavController(this);
+
         binding.btnSair.setOnClickListener(v -> viewModel.logout());
 
-        binding.btnGerenciarAssinatura.setOnClickListener(v -> {
-            // Usa o localNavController para a ação dentro do mesmo gráfico
-            localNavController.navigate(R.id.action_perfilFragment_to_assinaturaFragment);
-        });
+        binding.btnGerenciarAssinatura.setOnClickListener(v ->
+                navController.navigate(R.id.action_perfilFragment_to_assinaturaFragment)
+        );
+
+        // A navegação para se tornar um mentor continua a mesma
+        binding.buttonTornarMentor.setOnClickListener(v ->
+                navController.navigate(R.id.action_perfilFragment_to_canvasMentorFragment)
+        );
     }
 
     private void populateUi(User user) {

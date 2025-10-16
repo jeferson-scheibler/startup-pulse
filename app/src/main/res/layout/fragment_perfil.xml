@@ -349,6 +349,15 @@
                 app:icon="@drawable/ic_help"
                 app:iconPadding="10dp"
                 android:textAllCaps="false"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_tornar_mentor"
+                style="@style/App.Button.Outlined.LessRounded"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Tornar-se um Mentor"
+                app:icon="@drawable/ic_mentor" />
         </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>

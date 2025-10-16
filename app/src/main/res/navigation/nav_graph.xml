@@ -3,11 +3,13 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph"
-    app:startDestination="@id/mainHostFragment"> <fragment
-    android:id="@+id/mainHostFragment"
-    android:name="com.example.startuppulse.ui.main.MainHostFragment"
-    android:label="fragment_main_host"
-    tools:layout="@layout/fragment_main_host" />
+    app:startDestination="@id/mainHostFragment">
+
+    <fragment
+        android:id="@+id/mainHostFragment"
+        android:name="com.example.startuppulse.ui.main.MainHostFragment"
+        android:label="fragment_main_host"
+        tools:layout="@layout/fragment_main_host" />
 
     <fragment
         android:id="@+id/loginFragment"

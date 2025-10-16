@@ -3,6 +3,8 @@ package com.example.startuppulse.ui.signup;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
+
+import com.example.startuppulse.common.Result;
 import com.example.startuppulse.data.AuthRepository;
 import com.example.startuppulse.data.ResultCallback;
 import com.google.firebase.auth.FirebaseUser;
@@ -40,15 +42,12 @@ public class SignUpViewModel extends ViewModel {
 
         _signUpState.setValue(new SignUpState(SignUpState.AuthState.LOADING));
 
-        repository.createUser(name, email, password, new ResultCallback<FirebaseUser>() {
-            @Override
-            public void onSuccess(FirebaseUser data) {
+        repository.createUser(name, email, password, result -> {
+            if (result instanceof Result.Success) {
                 _signUpState.setValue(new SignUpState(SignUpState.AuthState.SUCCESS));
             }
-
-            @Override
-            public void onError(Exception e) {
-                _signUpState.setValue(new SignUpState("Falha no cadastro: " + e.getMessage()));
+            if (result instanceof Result.Error) {
+                _signUpState.setValue(new SignUpState(SignUpState.AuthState.ERROR));
             }
         });
     }

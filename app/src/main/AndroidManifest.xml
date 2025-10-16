@@ -38,17 +38,8 @@
             android:windowSoftInputMode="adjustResize" />
 
         <activity
-            android:name=".CanvasMentorActivity"
-            android:label="@string/mentores" />
-
-        <activity
             android:name=".AvaliacaoActivity"
             android:label="@string/avaliacao_titulo" />
-        <activity
-            android:name=".MentorDetailActivity"
-            android:exported="false"
-            android:label="@string/titulo_detalhe_mentor"
-            android:parentActivityName=".MainActivity" />
 
     </application>
 
