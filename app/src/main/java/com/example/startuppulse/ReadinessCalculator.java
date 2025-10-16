@@ -16,14 +16,14 @@ import java.util.Map;
  */
 public class ReadinessCalculator {
 
-    // Define os pesos de cada critério para o cálculo do score.
-    private static final int PESO_CANVAS = 35;
-    private static final int PESO_EQUIPE = 20;
-    private static final int PESO_METRICAS = 25;
-    private static final int PESO_MENTOR = 15;
-    private static final int PESO_PITCH_DECK = 5;
+    // --- PESOS ATUALIZADOS ---
+    // A lógica de negócios foi refinada para melhor refletir o que os investidores valorizam.
+    private static final int PESO_CANVAS = 15;        // Reduzido de 35. O Canvas é importante, mas é uma ferramenta interna.
+    private static final int PESO_EQUIPE = 25;        // Aumentado de 20. Investidores apostam na equipe.
+    private static final int PESO_METRICAS = 25;      // Mantido. Tração inicial é fundamental.
+    private static final int PESO_MENTOR = 15;        // Mantido. Validação externa reduz o risco.
+    private static final int PESO_PITCH_DECK = 20;    // Aumentado de 5. O Pitch Deck é a porta de entrada para o investidor.
 
-    // --- NOVO: Define a nota mínima para a validação do mentor ---
     private static final double NOTA_MINIMA_MENTOR = 7.5;
 
     public static ReadinessData calculate(Ideia ideia) {
@@ -34,10 +34,7 @@ public class ReadinessCalculator {
         boolean canvasCompleto = isCanvasPreenchido(ideia);
         boolean equipeDefinida = ideia.getEquipe() != null && !ideia.getEquipe().isEmpty();
         boolean metricasIniciais = ideia.getMetricas() != null && !ideia.getMetricas().isEmpty();
-
-        // --- LÓGICA DE VALIDAÇÃO DO MENTOR CORRIGIDA ---
         boolean validadoPorMentor = isIdeiaValidadaPorMentor(ideia);
-
         boolean hasPitchDeck = !TextUtils.isEmpty(ideia.getPitchDeckUrl());
 
         int score = 0;
@@ -51,7 +48,7 @@ public class ReadinessCalculator {
     }
 
     /**
-     * LÓGICA CORRIGIDA: Verifica se uma ideia foi validada por um mentor.
+     * Verifica se uma ideia foi validada por um mentor.
      * A validação requer que a ideia tenha sido avaliada e que a média das notas
      * seja igual ou superior à nota mínima definida.
      */
@@ -60,19 +57,16 @@ public class ReadinessCalculator {
             return false;
         }
 
-        // Acessa a lista de avaliações, que agora é uma lista simples de critérios.
         List<Avaliacao> avaliacoes = ideia.getAvaliacoes();
         if (avaliacoes == null || avaliacoes.isEmpty()) {
             return false;
         }
 
-        // Calcula a soma das notas diretamente da lista de avaliações.
         double somaNotas = 0;
         for (Avaliacao criterio : avaliacoes) {
             somaNotas += criterio.getNota();
         }
 
-        // A média é calculada sobre o tamanho da lista de avaliações.
         double media = somaNotas / avaliacoes.size();
 
         return media >= NOTA_MINIMA_MENTOR;

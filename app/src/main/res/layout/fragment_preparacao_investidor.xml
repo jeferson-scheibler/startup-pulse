@@ -34,6 +34,178 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardElevation="4dp"
+                app:cardUseCompatPadding="true"
+                app:cardBackgroundColor="?attr/colorPrimaryContainer">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <TextView
+                            android:id="@+id/textView"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Nível de Prontidão"
+                            android:textAppearance="@style/Text.TitleMedium"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent" />
+
+                        <TextView
+                            android:id="@+id/text_readiness_score"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textAppearance="@style/Text.TitleMedium"
+                            android:textColor="?attr/colorPrimary"
+                            android:textStyle="bold"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintTop_toTopOf="parent"
+                            tools:text="75%" />
+
+                        <ProgressBar
+                            android:id="@+id/progress_readiness"
+                            style="?android:attr/progressBarStyleHorizontal"
+                            android:layout_width="0dp"
+                            android:layout_height="8dp"
+                            android:layout_marginTop="8dp"
+                            android:progressDrawable="@drawable/progress_bar_circular"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toBottomOf="@+id/textView"
+                            tools:progress="75" />
+
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+
+                    <GridLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:columnCount="2">
+
+                        <LinearLayout
+                            android:layout_columnWeight="1"
+                            android:orientation="horizontal"
+                            android:layout_gravity="fill_horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="8dp">
+
+                            <ImageView
+                                android:id="@+id/check_canvas"
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
+                                tools:src="@drawable/ic_check" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:text="Canvas"/>
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_columnWeight="1"
+                            android:orientation="horizontal"
+                            android:layout_gravity="fill_horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="8dp">
+
+                            <ImageView
+                                android:id="@+id/check_equipe"
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
+                                tools:src="@drawable/ic_check" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:text="Equipe"/>
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_columnWeight="1"
+                            android:orientation="horizontal"
+                            android:layout_gravity="fill_horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="8dp">
+
+                            <ImageView
+                                android:id="@+id/check_metricas"
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
+                                tools:src="@drawable/ic_check" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:text="Métricas"/>
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_columnWeight="1"
+                            android:orientation="horizontal"
+                            android:layout_gravity="fill_horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="8dp">
+
+                            <ImageView
+                                android:id="@+id/check_mentor"
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
+                                tools:src="@drawable/ic_check" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:text="Mentor"/>
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_columnWeight="1"
+                            android:orientation="horizontal"
+                            android:layout_gravity="fill_horizontal"
+                            android:gravity="center_vertical">
+
+                            <ImageView
+                                android:id="@+id/check_pitch_deck"
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
+                                tools:src="@drawable/ic_check" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:text="Pitch Deck"/>
+                        </LinearLayout>
+
+                    </GridLayout>
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <ProgressBar
+                android:id="@+id/progress_indicator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:visibility="gone"
+                android:layout_marginTop="16dp"/>
+
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardElevation="4dp"
+                android:layout_marginTop="8dp"
                 app:cardUseCompatPadding="true">
 
                 <LinearLayout
@@ -90,7 +262,6 @@
                         android:text="Pitch Deck"
                         android:textAppearance="@style/Text.TitleMedium"
                         app:drawableStartCompat="@drawable/ic_publicar"
-                        app:tint="@color/colorPrimary"
                         android:drawablePadding="8dp"
                         android:gravity="center_vertical"/>
 
@@ -137,12 +308,13 @@
                         android:drawablePadding="8dp"
                         android:gravity="center_vertical"/>
 
-                    <LinearLayout
-                        android:id="@+id/layout_metricas_container"
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/recycler_metricas"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="16dp"
-                        android:orientation="vertical"/>
+                        tools:itemCount="1"
+                        tools:listitem="@layout/item_metrica_edit" />
 
                     <Button
                         android:id="@+id/btn_adicionar_metrica"
@@ -163,7 +335,7 @@
                 android:layout_marginTop="24dp"
                 android:layout_marginBottom="16dp"
                 android:text="Salvar e Liberar Acesso a Investidores"
-                style="@style/App.Button.Outlined.LessRounded"
+                style="@style/App.Button.Primary"
                 android:padding="12dp"/>
 
         </LinearLayout>
