@@ -57,6 +57,18 @@ public class MentorRepository {
                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
     }
 
+    public void getAllMentores(String currentUserId, ResultCallback<List<Mentor>> callback) {
+        firestore.collection("mentores")
+                .whereNotEqualTo("ownerId", currentUserId)
+                .whereEqualTo("ativoPublico", true)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<Mentor> mentores = queryDocumentSnapshots.toObjects(Mentor.class);
+                    callback.onResult(new Result.Success<>(mentores));
+                })
+                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+    }
+
     public void findAllMentores(@Nullable String excludeUserId, @NonNull ResultCallback<List<Mentor>> callback) {
         Query query = firestore.collection(MENTORES_COLLECTION);
         if (excludeUserId != null && !excludeUserId.isEmpty()) {
