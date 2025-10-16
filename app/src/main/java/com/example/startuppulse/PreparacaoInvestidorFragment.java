@@ -5,6 +5,7 @@ import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -15,8 +16,12 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.fragment.NavHostFragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
 import com.example.startuppulse.data.MembroEquipe;
-import com.example.startuppulse.databinding.FragmentPreparacaoInvestidorBinding; // << Mude o nome do seu XML
+import com.example.startuppulse.databinding.FragmentPreparacaoInvestidorBinding;
+import com.example.startuppulse.EquipeEditAdapter;
+import com.example.startuppulse.ui.preparacao.MetricasEditAdapter;
 import com.example.startuppulse.ui.preparacao.PreparacaoInvestidorViewModel;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
@@ -61,7 +66,8 @@ public class PreparacaoInvestidorFragment extends Fragment {
     }
 
     private void setupRecyclerViews() {
-        equipeAdapter = new EquipeEditAdapter(new ArrayList<>(), membro -> viewModel.removerMembro(membro));
+        // --- MELHORIA: Removido o `new ArrayList<>()` desnecessário para ListAdapter ---
+        equipeAdapter = new EquipeEditAdapter(membro -> viewModel.removerMembro(membro));
         binding.recyclerEquipe.setLayoutManager(new LinearLayoutManager(getContext()));
         binding.recyclerEquipe.setAdapter(equipeAdapter);
 
@@ -81,6 +87,7 @@ public class PreparacaoInvestidorFragment extends Fragment {
         viewModel.ideia.observe(getViewLifecycleOwner(), ideia -> {
             if (ideia == null) return;
 
+            // Usar submitList é a maneira correta para ListAdapter
             equipeAdapter.submitList(ideia.getEquipe() != null ? new ArrayList<>(ideia.getEquipe()) : new ArrayList<>());
             metricasAdapter.submitList(ideia.getMetricas() != null ? new ArrayList<>(ideia.getMetricas()) : new ArrayList<>());
 
@@ -89,13 +96,26 @@ public class PreparacaoInvestidorFragment extends Fragment {
                 binding.textPitchDeckStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.green_success));
             } else {
                 binding.textPitchDeckStatus.setText("Nenhum arquivo anexado.");
-                binding.textPitchDeckStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.material_on_surface_disabled));
+                binding.textPitchDeckStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.delete_red));
             }
+        });
+
+        viewModel.readinessData.observe(getViewLifecycleOwner(), readiness -> {
+            if (readiness == null) return;
+
+            String scoreText = readiness.getScore() + "%";
+            binding.textReadinessScore.setText(scoreText);
+            binding.progressReadiness.setProgress(readiness.getScore());
+
+            updateChecklistItem(binding.checkCanvas, readiness.isCanvasCompleto());
+            updateChecklistItem(binding.checkEquipe, readiness.isEquipeDefinida());
+            updateChecklistItem(binding.checkMetricas, readiness.isMetricasIniciais());
+            updateChecklistItem(binding.checkMentor, readiness.isValidadoPorMentor());
+            updateChecklistItem(binding.checkPitchDeck, readiness.hasPitchDeck());
         });
 
         viewModel.isLoading.observe(getViewLifecycleOwner(), isLoading -> {
             binding.progressIndicator.setVisibility(isLoading ? View.VISIBLE : View.GONE);
-            // Desabilita botões durante o carregamento
             binding.btnSalvarLiberarAcesso.setEnabled(!isLoading);
             binding.btnAnexarPitch.setEnabled(!isLoading);
         });
@@ -110,6 +130,19 @@ public class PreparacaoInvestidorFragment extends Fragment {
                 NavHostFragment.findNavController(this).navigateUp();
             }
         });
+    }
+
+    private void updateChecklistItem(ImageView imageView, boolean isCompleted) {
+        // Adicionando uma verificação para o contexto para evitar crashes em transições de tela
+        if (getContext() == null) return;
+
+        if (isCompleted) {
+            imageView.setImageResource(R.drawable.ic_check_circle);
+            imageView.setImageTintList(ContextCompat.getColorStateList(requireContext(), R.color.green_success));
+        } else {
+            imageView.setImageResource(R.drawable.ic_radio_button_unchecked);
+            imageView.setImageTintList(ContextCompat.getColorStateList(requireContext(), R.color.delete_red));
+        }
     }
 
     private void showAddMembroDialog() {

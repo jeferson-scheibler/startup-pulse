@@ -5,6 +5,9 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.SavedStateHandle;
 import androidx.lifecycle.ViewModel;
+
+import com.example.startuppulse.ReadinessCalculator;
+import com.example.startuppulse.ReadinessData;
 import com.example.startuppulse.data.Ideia;
 import com.example.startuppulse.data.IdeiaRepository;
 import com.example.startuppulse.data.MembroEquipe;
@@ -35,6 +38,11 @@ public class PreparacaoInvestidorViewModel extends ViewModel {
     private final MutableLiveData<Event<Boolean>> _navigationEvent = new MutableLiveData<>();
     public final LiveData<Event<Boolean>> navigationEvent = _navigationEvent;
 
+    // NOVO: LiveData para os dados de prontidão
+    private final MutableLiveData<ReadinessData> _readinessData = new MutableLiveData<>();
+    public final LiveData<ReadinessData> readinessData = _readinessData;
+
+
     @Inject
     public PreparacaoInvestidorViewModel(IdeiaRepository ideiaRepository, SavedStateHandle savedStateHandle) {
         this.ideiaRepository = ideiaRepository;
@@ -51,11 +59,27 @@ public class PreparacaoInvestidorViewModel extends ViewModel {
         ideiaRepository.getIdeiaById(ideiaId, result -> {
             _isLoading.setValue(false);
             if (result instanceof Result.Success) {
-                _ideia.setValue(((Result.Success<Ideia>) result).data);
+                Ideia loadedIdeia = ((Result.Success<Ideia>) result).data;
+                _ideia.setValue(loadedIdeia);
+                // Calcula o score assim que a ideia é carregada
+                calculateReadiness(loadedIdeia);
             } else {
                 _toastEvent.setValue(new Event<>("Falha ao carregar dados da ideia."));
             }
         });
+    }
+
+    // NOVO: Método para centralizar a atualização da ideia e o recálculo do score
+    private void updateIdeiaAndRecalculate(Ideia ideia) {
+        _ideia.setValue(ideia);
+        calculateReadiness(ideia);
+    }
+
+    // NOVO: Método que chama a classe de cálculo e atualiza o LiveData
+    private void calculateReadiness(Ideia ideia) {
+        if (ideia == null) return;
+        ReadinessData data = ReadinessCalculator.calculate(ideia);
+        _readinessData.setValue(data);
     }
 
     public void adicionarMembro(String nome, String funcao, String linkedin) {
@@ -66,7 +90,7 @@ public class PreparacaoInvestidorViewModel extends ViewModel {
         List<MembroEquipe> equipe = new ArrayList<>(currentIdeia.getEquipe() != null ? currentIdeia.getEquipe() : new ArrayList<>());
         equipe.add(novoMembro);
         currentIdeia.setEquipe(equipe);
-        _ideia.setValue(currentIdeia);
+        updateIdeiaAndRecalculate(currentIdeia); // ATUALIZADO
     }
 
     public void removerMembro(MembroEquipe membro) {
@@ -76,7 +100,7 @@ public class PreparacaoInvestidorViewModel extends ViewModel {
         List<MembroEquipe> equipe = new ArrayList<>(currentIdeia.getEquipe());
         equipe.remove(membro);
         currentIdeia.setEquipe(equipe);
-        _ideia.setValue(currentIdeia);
+        updateIdeiaAndRecalculate(currentIdeia); // ATUALIZADO
     }
 
     public void adicionarMetrica() {
@@ -87,7 +111,7 @@ public class PreparacaoInvestidorViewModel extends ViewModel {
         List<Metrica> metricas = new ArrayList<>(currentIdeia.getMetricas() != null ? currentIdeia.getMetricas() : new ArrayList<>());
         metricas.add(novaMetrica);
         currentIdeia.setMetricas(metricas);
-        _ideia.setValue(currentIdeia);
+        updateIdeiaAndRecalculate(currentIdeia); // ATUALIZADO
     }
 
     public void removerMetrica(Metrica metrica) {
@@ -97,7 +121,7 @@ public class PreparacaoInvestidorViewModel extends ViewModel {
         List<Metrica> metricas = new ArrayList<>(currentIdeia.getMetricas());
         metricas.remove(metrica);
         currentIdeia.setMetricas(metricas);
-        _ideia.setValue(currentIdeia);
+        updateIdeiaAndRecalculate(currentIdeia); // ATUALIZADO
     }
 
     public void uploadPitchDeck(Uri fileUri) {
@@ -108,7 +132,7 @@ public class PreparacaoInvestidorViewModel extends ViewModel {
                 Ideia currentIdeia = _ideia.getValue();
                 if (currentIdeia != null) {
                     currentIdeia.setPitchDeckUrl(downloadUrl);
-                    _ideia.setValue(currentIdeia);
+                    updateIdeiaAndRecalculate(currentIdeia); // ATUALIZADO
                 }
                 _toastEvent.setValue(new Event<>("Upload do Pitch Deck concluído!"));
                 salvarDados(false); // Salva a URL no documento da ideia
@@ -119,21 +143,38 @@ public class PreparacaoInvestidorViewModel extends ViewModel {
         });
     }
 
-    public void salvarEFinalizar() {
+    private void salvarDados(boolean finalizando) {
         Ideia currentIdeia = _ideia.getValue();
         if (currentIdeia == null) return;
 
-        currentIdeia.setProntaParaInvestidores(true);
+        // Se não estiver finalizando, apenas salva o estado atual sem mostrar loading ou navegar
+        if (!finalizando) {
+            ideiaRepository.updateIdeia(currentIdeia, result -> {
+                _isLoading.setValue(false); // Garante que o loading do upload termine
+                if (result instanceof Result.Error) {
+                    _toastEvent.setValue(new Event<>("Sincronização automática falhou."));
+                }
+            });
+            return;
+        }
 
+        // Lógica original para salvar e finalizar
+        currentIdeia.setProntaParaInvestidores(true);
         _isLoading.setValue(true);
         ideiaRepository.updateIdeia(currentIdeia, result -> {
             _isLoading.setValue(false);
             if (result instanceof Result.Success) {
                 _toastEvent.setValue(new Event<>("Sua ideia agora está visível para investidores!"));
-                _navigationEvent.setValue(new Event<>(true)); // Sinaliza para o Fragment navegar
+                _navigationEvent.setValue(new Event<>(true));
             } else {
+                currentIdeia.setProntaParaInvestidores(false); // Reverte em caso de erro
                 _toastEvent.setValue(new Event<>("Erro ao salvar os dados."));
             }
         });
+    }
+
+
+    public void salvarEFinalizar() {
+        salvarDados(true);
     }
 }

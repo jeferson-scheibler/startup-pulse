@@ -1,5 +1,6 @@
 package com.example.startuppulse.ui.investor;
 
+import android.annotation.SuppressLint;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -82,6 +83,7 @@ public class InvestorAdapter extends ListAdapter<Investor, InvestorAdapter.Inves
             return Objects.equals(oldItem.getId(), newItem.getId());
         }
 
+        @SuppressLint("DiffUtilEquals")
         @Override
         public boolean areContentsTheSame(@NonNull Investor oldItem, @NonNull Investor newItem) {
             // O conteúdo é o mesmo se o objeto for igual.

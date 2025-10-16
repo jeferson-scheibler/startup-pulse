@@ -1,5 +1,7 @@
 package com.example.startuppulse.data;
 
+import android.net.Uri;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -11,6 +13,8 @@ import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.WriteBatch;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,6 +22,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -30,13 +35,16 @@ import javax.inject.Singleton;
 public class IdeiaRepository {
 
     private static final String IDEIAS_COLLECTION = "ideias";
+    private static final String PITCH_DECKS_FOLDER = "pitch_decks";
 
     private final FirebaseFirestore firestore;
+    private final FirebaseStorage storage;
     private final String currentUserId;
 
     @Inject
-    public IdeiaRepository(FirebaseFirestore firestore, FirebaseAuth auth) {
+    public IdeiaRepository(FirebaseFirestore firestore, FirebaseStorage storage, FirebaseAuth auth) {
         this.firestore = firestore;
+        this.storage = storage;
         this.currentUserId = (auth.getCurrentUser() != null) ? auth.getCurrentUser().getUid() : null;
     }
 
@@ -44,6 +52,24 @@ public class IdeiaRepository {
 
     public String getNewIdeiaId() {
         return firestore.collection(IDEIAS_COLLECTION).document().getId();
+    }
+
+    public void getIdeiaById(@NonNull String ideiaId, @NonNull ResultCallback<Ideia> callback) {
+        firestore.collection(IDEIAS_COLLECTION).document(ideiaId).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot != null && documentSnapshot.exists()) {
+                        Ideia ideia = documentSnapshot.toObject(Ideia.class);
+                        if (ideia != null) {
+                            ideia.setId(documentSnapshot.getId());
+                            callback.onResult(new Result.Success<>(ideia));
+                        } else {
+                            callback.onResult(new Result.Error<>(new Exception("Falha ao mapear dados da ideia.")));
+                        }
+                    } else {
+                        callback.onResult(new Result.Error<>(new Exception("Ideia não encontrada.")));
+                    }
+                })
+                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
     }
 
     // --- MÉTODOS DE LEITURA (LISTENERS E GETTERS) ---
@@ -142,6 +168,15 @@ public class IdeiaRepository {
                 .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(null)))
                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
     }
+    public void updateIdeia(@NonNull Ideia ideia, @NonNull ResultCallback<Void> callback) {
+        if (ideia.getId() == null || ideia.getId().isEmpty()) {
+            callback.onResult(new Result.Error<>(new IllegalArgumentException("ID da ideia para atualização é inválido.")));
+            return;
+        }
+        // Reutiliza a lógica de save, pois .set() com um objeto POJO sobrescreve o documento,
+        // que é o comportamento esperado para uma atualização completa do objeto.
+        saveIdeia(ideia, callback);
+    }
 
     public void deleteIdeia(@NonNull String ideiaId, @NonNull ResultCallback<Void> callback) {
         firestore.collection(IDEIAS_COLLECTION).document(ideiaId).delete()
@@ -182,15 +217,19 @@ public class IdeiaRepository {
                 .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(null)))
                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
     }
+    // --- MÉTODOS DE UPLOAD DE ARQUIVOS ---
+    public void uploadPitchDeck(@NonNull String ideiaId, @NonNull Uri fileUri, @NonNull ResultCallback<String> callback) {
+        // Cria um nome de arquivo único para evitar conflitos
+        String fileName = "pitch_" + UUID.randomUUID().toString();
+        StorageReference fileRef = storage.getReference()
+                .child(PITCH_DECKS_FOLDER)
+                .child(ideiaId)
+                .child(fileName);
 
-    public void vincularMentorAideia(@NonNull String ideiaId, @NonNull String mentorId, String log, @NonNull ResultCallback<Void> callback) {
-        Map<String, Object> updates = new HashMap<>();
-        updates.put("mentorId", mentorId);
-        updates.put("matchmakingLog", log);
-        updates.put("ultimaBuscaMentorTimestamp", FieldValue.serverTimestamp());
-
-        firestore.collection(IDEIAS_COLLECTION).document(ideiaId).update(updates)
-                .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(null)))
+        fileRef.putFile(fileUri)
+                .addOnSuccessListener(taskSnapshot -> fileRef.getDownloadUrl()
+                        .addOnSuccessListener(uri -> callback.onResult(new Result.Success<>(uri.toString())))
+                        .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e))))
                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
     }
 
