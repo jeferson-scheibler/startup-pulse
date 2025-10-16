@@ -316,7 +316,7 @@ public class CanvasIdeiaViewModel extends ViewModel {
 
     // --- LÓGICA DE MATCHMAKING (PORTADA DO FIRESTOREHELPER) ---
 
-    @SuppressLint("MissingPermission") // Permissão é checada no Fragment antes de chamar
+    @SuppressLint("MissingPermission")
     public void procurarNovoMentor(@NonNull Context context, @Nullable Location userLocation) {
         Ideia ideiaAtual = _ideia.getValue();
         if (ideiaAtual == null) {
@@ -325,55 +325,45 @@ public class CanvasIdeiaViewModel extends ViewModel {
         }
 
         _isLoading.setValue(true); // Mostra loading para o usuário
-        buscarMentoresCompativeis(context, ideiaAtual, userLocation);
+        buscarMentoresCompativeis(ideiaAtual, userLocation);
     }
 
 
-    private void buscarMentoresCompativeis(@NonNull Context context, @NonNull Ideia ideia, @Nullable Location location) {
+    private void buscarMentoresCompativeis(@NonNull Ideia ideia, @Nullable Location location) {
         final List<String> areasDaIdeia = ideia.getAreasNecessarias() != null ? ideia.getAreasNecessarias() : new ArrayList<>();
 
         mentorRepository.findMentoresByAreas(areasDaIdeia, ideia.getOwnerId(), result -> {
             if (result instanceof Result.Success && !((Result.Success<List<Mentor>>) result).data.isEmpty()) {
+                // SUCESSO: Encontrou mentores por área
                 List<Mentor> mentores = ((Result.Success<List<Mentor>>) result).data;
                 List<Mentor> ordenados = MentorMatchService.ordenarPorAfinidadeEProximidade(mentores, areasDaIdeia, location);
                 vincularMelhorMentor(ideia, ordenados.get(0), "Mentor encontrado por área.");
             } else {
-                buscarMentoresPorProximidade(context, ideia, location, areasDaIdeia);
+                // FALHA: Não encontrou por área, parte para o Plano B (buscar todos).
+                buscarTodosOsMentores(ideia, location, areasDaIdeia);
             }
         });
     }
 
-    private void buscarMentoresPorProximidade(@NonNull Context context, @NonNull Ideia ideia, @Nullable Location location, @NonNull List<String> areasDaIdeia) {
+    private void buscarTodosOsMentores(@NonNull Ideia ideia, @Nullable Location location, @NonNull List<String> areasDaIdeia) {
+        // Se não tivermos a localização do usuário, não há como ordenar por proximidade.
         if (location == null) {
-            finalizarBuscaComErro("Nenhum mentor encontrado com as áreas desejadas.");
+            finalizarBuscaComErro("Não foi possível encontrar mentores. Ative a localização para buscar por proximidade.");
             return;
         }
 
-        try {
-            Geocoder geocoder = new Geocoder(context, Locale.getDefault());
-            // O Geocoder pode retornar uma lista vazia mesmo sem lançar exceção
-            List<Address> addresses = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
-            if (addresses != null && !addresses.isEmpty()) {
-                String cidade = addresses.get(0).getLocality();
-                if (cidade != null) {
-                    mentorRepository.findMentoresByCity(cidade, ideia.getOwnerId(), result -> {
-                        if (result instanceof Result.Success && !((Result.Success<List<Mentor>>) result).data.isEmpty()) {
-                            List<Mentor> mentores = ((Result.Success<List<Mentor>>) result).data;
-                            List<Mentor> ordenados = MentorMatchService.ordenarPorAfinidadeEProximidade(mentores, areasDaIdeia, location);
-                            vincularMelhorMentor(ideia, ordenados.get(0), "Mentor encontrado por proximidade.");
-                        } else {
-                            finalizarBuscaComErro("Nenhum mentor encontrado na sua região.");
-                        }
-                    });
-                    return; // Retorna para evitar cair no erro abaixo
-                }
+        mentorRepository.getAllMentores(ideia.getOwnerId(), result -> {
+            if (result instanceof Result.Success && !((Result.Success<List<Mentor>>) result).data.isEmpty()) {
+                // SUCESSO: Encontrou todos os mentores
+                List<Mentor> mentores = ((Result.Success<List<Mentor>>) result).data;
+                // O serviço de match irá ordenar por afinidade (que será 0 para a maioria) e DEPOIS por proximidade.
+                List<Mentor> ordenados = MentorMatchService.ordenarPorAfinidadeEProximidade(mentores, areasDaIdeia, location);
+                vincularMelhorMentor(ideia, ordenados.get(0), "Mentor encontrado por proximidade.");
+            } else {
+                // FALHA GERAL: Não encontrou nenhum mentor no banco de dados.
+                finalizarBuscaComErro("Nenhum mentor disponível foi encontrado no momento.");
             }
-            // Se 'addresses' for nulo ou vazio, consideramos um erro de geocoding
-            finalizarBuscaComErro("Não foi possível determinar sua cidade a partir da localização.");
-
-        } catch (IOException e) {
-            finalizarBuscaComErro("Não foi possível determinar sua cidade. Verifique sua conexão.");
-        }
+        });
     }
 
     private void finalizarBuscaComErro(String mensagem) {
@@ -383,18 +373,18 @@ public class CanvasIdeiaViewModel extends ViewModel {
     }
 
     private void vincularMelhorMentor(Ideia ideia, Mentor mentor, String log) {
-        // Atualiza o objeto localmente primeiro para uma UI mais reativa
         ideia.setMentorId(mentor.getId());
         ideia.setStatus(Ideia.Status.EM_AVALIACAO);
-        _ideia.setValue(ideia); // Notifica a UI imediatamente
+        // Não precisa notificar a UI aqui (_ideia.setValue), pois o listener do Firestore já fará isso
+        // quando a publicação for confirmada no banco, garantindo consistência.
 
         ideiaRepository.publicarIdeia(ideia.getId(), mentor.getId(), result -> {
             _isLoading.postValue(false);
             if (result instanceof Result.Success) {
-                _toastEvent.postValue(new Event<>("Novo mentor encontrado: " + mentor.getName()));
+                // O nome do mentor será atualizado pelo listener da ideia, que chama 'fetchMentorName'
+                _toastEvent.postValue(new Event<>("Mentor encontrado: " + mentor.getName()));
             } else {
-                _toastEvent.postValue(new Event<>("Erro ao vincular novo mentor."));
-                // Opcional: Reverter o estado da UI se a escrita no banco falhar
+                _toastEvent.postValue(new Event<>("Erro ao vincular o mentor. Tente novamente."));
             }
         });
     }
