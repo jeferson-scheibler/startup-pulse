@@ -29,10 +29,6 @@ public class IdeiasHostFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-
-        // CORREÇÃO APLICADA AQUI:
-        // Passamos 'this' (o próprio IdeiasHostFragment) para o adapter,
-        // em vez de 'requireActivity()'. Isso garante a hierarquia correta de fragments.
         binding.viewPager.setAdapter(new IdeiasPagerAdapter(this));
 
         // Conecta os botões ao ViewPager

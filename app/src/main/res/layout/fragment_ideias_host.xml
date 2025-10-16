@@ -18,20 +18,26 @@
 
     <Button
         android:id="@+id/btn_publicadas"
-        style="?attr/materialButtonOutlinedStyle"
+        style="@style/App.Button.Outlined.LessRounded"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:text="Feed Global"
+        android:textAppearance="@style/Text.BodySmall.Muted"
+        android:backgroundTint="@color/button_toggle_tint"
+        android:textColor="@color/button_toggle_text_color"
         android:textAllCaps="false"/>
 
     <Button
         android:id="@+id/btn_rascunhos"
-        style="?attr/materialButtonOutlinedStyle"
+        style="@style/App.Button.Outlined.LessRounded"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:text="Meus Rascunhos"
+        android:backgroundTint="@color/button_toggle_tint"
+        android:textColor="@color/button_toggle_text_color"
+        android:textAppearance="@style/Text.BodySmall.Muted"
         android:textAllCaps="false"/>
 
 </com.google.android.material.button.MaterialButtonToggleGroup>
