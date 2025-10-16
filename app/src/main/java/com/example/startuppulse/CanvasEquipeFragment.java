@@ -12,38 +12,22 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
-
-// Imports para a nova arquitetura
+import com.example.startuppulse.data.Ideia;
+import com.example.startuppulse.data.MembroEquipe;
 import com.example.startuppulse.databinding.FragmentCanvasEquipeBinding;
 import com.example.startuppulse.ui.canvas.CanvasIdeiaViewModel;
-
-import java.util.ArrayList;
-
 import dagger.hilt.android.AndroidEntryPoint;
 
 @AndroidEntryPoint
 public class CanvasEquipeFragment extends Fragment {
 
-    // A interface EquipeListener foi removida. O ViewModel lida com a comunicação.
-
     private FragmentCanvasEquipeBinding binding;
-    private CanvasIdeiaViewModel sharedViewModel; // O ViewModel compartilhado
+    private CanvasIdeiaViewModel sharedViewModel;
     private EquipeAdapter adapter;
+    private boolean isReadOnly = false; // Estado de UI local
 
-    /**
-     * O método newInstance foi removido, pois o CanvasPagerAdapter agora
-     * pode simplesmente chamar 'new CanvasEquipeFragment()'.
-     */
     public CanvasEquipeFragment() {
         // Construtor público vazio é obrigatório.
-    }
-
-    // O método onAttach foi removido, pois não usamos mais o listener.
-
-    @Override
-    public void onCreate(@Nullable Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        // A lógica de getArguments foi removida.
     }
 
     @Nullable
@@ -56,21 +40,25 @@ public class CanvasEquipeFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-
-        // Ponto-chave: Obtém a instância do ViewModel COMPARTILHADO do fragment pai.
         sharedViewModel = new ViewModelProvider(requireParentFragment()).get(CanvasIdeiaViewModel.class);
 
         setupRecyclerView();
-        setupObservers(); // A UI agora é configurada pelos observers.
+        setupObservers();
 
         binding.fabAddMembro.setOnClickListener(v -> showMembroDialog(null));
     }
 
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        binding = null;
+    }
+
     private void setupRecyclerView() {
         binding.recyclerViewEquipe.setLayoutManager(new LinearLayoutManager(getContext()));
-        // CORREÇÃO DO ERRO LAMBDA: O listener é passado corretamente para o novo construtor do adapter.
         adapter = new EquipeAdapter(membro -> {
-            if (!Boolean.TRUE.equals(sharedViewModel.isReadOnly.getValue())) {
+            // A verificação de 'readOnly' acontece aqui, antes de abrir o diálogo
+            if (!this.isReadOnly) {
                 showMembroDialog(membro);
             }
         });
@@ -78,28 +66,26 @@ public class CanvasEquipeFragment extends Fragment {
     }
 
     private void setupObservers() {
-        // Observa o objeto Ideia. Quando ele muda, a lista da equipe é atualizada no adapter.
+        // Observador principal que controla a UI
         sharedViewModel.ideia.observe(getViewLifecycleOwner(), ideia -> {
-            if (ideia != null) {
-                // Usa o método 'updateEquipe' que chama 'submitList' para máxima performance.
-                adapter.updateEquipe(ideia.getEquipe());
-                checkEmptyState();
-            }
-        });
+            if (ideia != null && binding != null) {
+                // 1. Determina o estado a partir do status da ideia
+                this.isReadOnly = ideia.getStatus() != Ideia.Status.RASCUNHO;
 
-        // Observa o estado de 'somente leitura' para controlar a UI.
-        sharedViewModel.isReadOnly.observe(getViewLifecycleOwner(), isReadOnly -> {
-            if (isReadOnly != null) {
-                binding.fabAddMembro.setVisibility(isReadOnly ? View.GONE : View.VISIBLE);
+                // 2. Atualiza o adapter e a visibilidade do FAB
+                adapter.submitList(ideia.getEquipe()); // Assumindo que EquipeAdapter usa ListAdapter
+                binding.fabAddMembro.setVisibility(this.isReadOnly ? View.GONE : View.VISIBLE);
+
+                checkEmptyState();
             }
         });
     }
 
     private void showMembroDialog(@Nullable MembroEquipe membroExistente) {
+        // Esta lógica permanece a mesma, pois já está bem estruturada.
         LayoutInflater inflater = requireActivity().getLayoutInflater();
         View dialogView = inflater.inflate(R.layout.dialog_add_membro, null);
 
-        // CORREÇÃO DOS ERROS DE SÍMBOLO: As views são declaradas e usadas dentro deste escopo.
         final EditText nomeInput = dialogView.findViewById(R.id.edit_text_nome_membro);
         final EditText funcaoInput = dialogView.findViewById(R.id.edit_text_funcao_membro);
         final EditText linkedinInput = dialogView.findViewById(R.id.edit_text_linkedin_membro);
@@ -138,7 +124,7 @@ public class CanvasEquipeFragment extends Fragment {
                     return;
                 }
 
-                // Delega a lógica de negócio para o ViewModel.
+                // Delega a ação para o ViewModel
                 if (membroExistente == null) {
                     sharedViewModel.addMembroEquipe(new MembroEquipe(nome, funcao, linkedin));
                 } else {
@@ -164,13 +150,8 @@ public class CanvasEquipeFragment extends Fragment {
 
     private boolean isValidLinkedInUrl(String url) {
         if (url == null) return false;
+        // Regex simples para validação de URL do LinkedIn
         String regex = "^((https|http):\\/\\/)?(www\\.)?linkedin\\.com\\/in\\/[a-zA-Z0-9_-]+(\\/)?$";
         return url.matches(regex);
-    }
-
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        binding = null;
     }
 }

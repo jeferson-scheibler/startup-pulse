@@ -12,46 +12,26 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
-
 import com.example.startuppulse.data.Ideia;
-import com.example.startuppulse.databinding.FragmentCanvasInicioBinding; // Import para View Binding
-import com.example.startuppulse.ui.canvas.CanvasIdeiaViewModel; // Import do ViewModel
+import com.example.startuppulse.databinding.FragmentCanvasInicioBinding;
+import com.example.startuppulse.ui.canvas.CanvasIdeiaViewModel;
 import com.google.android.material.chip.Chip;
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
 import dagger.hilt.android.AndroidEntryPoint;
 
 @AndroidEntryPoint
 public class CanvasInicioFragment extends Fragment {
 
-    // A interface InicioStateListener foi removida.
-
     private FragmentCanvasInicioBinding binding;
     private CanvasIdeiaViewModel sharedViewModel;
 
-    // Debounce para evitar sobrecarregar o ViewModel com atualizações
-    private final Handler handler = new Handler(Looper.getMainLooper());
-    private static final long DEBOUNCE_MS = 300L;
+    private final Handler debounceHandler = new Handler(Looper.getMainLooper());
+    private static final long DEBOUNCE_MS = 350L;
     private Runnable debounceRunnable;
     private boolean suppressWatcher = false;
-
-    /**
-     * O método newInstance foi removido. O CanvasPagerAdapter agora pode
-     * simplesmente chamar 'new CanvasInicioFragment()'.
-     */
-    public CanvasInicioFragment() {
-        // Construtor público vazio é obrigatório.
-    }
-
-    // Os métodos onAttach e onCreate foram simplificados ou removidos.
-    @Override
-    public void onCreate(@Nullable Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-    }
 
     @Nullable
     @Override
@@ -63,59 +43,62 @@ public class CanvasInicioFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-
-        // Ponto-chave: Obtém a instância do ViewModel COMPARTILHADO do fragment pai.
         sharedViewModel = new ViewModelProvider(requireParentFragment()).get(CanvasIdeiaViewModel.class);
 
+        setupInputListeners();
         setupObservers();
-        addInputListeners();
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        debounceHandler.removeCallbacks(debounceRunnable); // Garante a limpeza do handler
+        binding = null;
     }
 
     private void setupObservers() {
-        // Observa a Ideia para popular a UI quando os dados chegam ou mudam.
         sharedViewModel.ideia.observe(getViewLifecycleOwner(), ideia -> {
-            if (ideia == null) return;
-            // Usa 'suppressWatcher' para preencher a UI sem acionar os listeners de volta.
+            if (ideia == null || binding == null) return;
+
+            // Determina o estado de apenas leitura a partir do status da ideia
+            boolean isReadOnly = ideia.getStatus() != Ideia.Status.RASCUNHO;
+
+            // Previne que os TextWatchers sejam acionados ao popular a UI
             suppressWatcher = true;
+
+            // Atualiza os campos de texto se houver diferença
             if (!binding.editTextTituloIdeia.getText().toString().equals(ideia.getNome())) {
                 binding.editTextTituloIdeia.setText(ideia.getNome());
             }
             if (!binding.editTextDescricaoIdeia.getText().toString().equals(ideia.getDescricao())) {
                 binding.editTextDescricaoIdeia.setText(ideia.getDescricao());
             }
-            montarChipsAreas(ideia.getAreasNecessarias());
-            suppressWatcher = false;
-        });
 
-        // Observa o estado de 'somente leitura'.
-        sharedViewModel.isReadOnly.observe(getViewLifecycleOwner(), isReadOnly -> {
-            if (isReadOnly != null) {
-                setReadOnlyMode(isReadOnly);
-            }
+            // Atualiza o modo de edição e os chips
+            setReadOnlyMode(isReadOnly);
+            montarChipsAreas(ideia.getAreasNecessarias(), isReadOnly);
+
+            suppressWatcher = false;
         });
     }
 
-    private void addInputListeners() {
-        // Runnable que será chamado após o debounce.
+    private void setupInputListeners() {
         debounceRunnable = () -> {
-            if (sharedViewModel != null) {
+            if (sharedViewModel != null && binding != null) {
                 sharedViewModel.updateIdeiaBasics(
-                        binding.editTextTituloIdeia.getText().toString(),
-                        binding.editTextDescricaoIdeia.getText().toString(),
+                        binding.editTextTituloIdeia.getText().toString().trim(),
+                        binding.editTextDescricaoIdeia.getText().toString().trim(),
                         coletarAreasSelecionadas()
                 );
             }
         };
 
         TextWatcher textWatcher = new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
                 if (!suppressWatcher) triggerDebounce();
             }
-            @Override
-            public void afterTextChanged(Editable s) {}
+            @Override public void afterTextChanged(Editable s) {}
         };
 
         binding.editTextTituloIdeia.addTextChangedListener(textWatcher);
@@ -123,23 +106,22 @@ public class CanvasInicioFragment extends Fragment {
     }
 
     private void triggerDebounce() {
-        handler.removeCallbacks(debounceRunnable);
-        handler.postDelayed(debounceRunnable, DEBOUNCE_MS);
+        debounceHandler.removeCallbacks(debounceRunnable);
+        debounceHandler.postDelayed(debounceRunnable, DEBOUNCE_MS);
     }
 
-    private void montarChipsAreas(List<String> preSelecionadasList) {
+    private void montarChipsAreas(List<String> preSelecionadasList, boolean isReadOnly) {
         if (getContext() == null) return;
         binding.chipGroupAreasInicio.removeAllViews();
-        String[] areas = getResources().getStringArray(R.array.areas_atuacao_opcoes);
+        String[] allAreas = getResources().getStringArray(R.array.areas_atuacao_opcoes);
         Set<String> preSelecionadas = (preSelecionadasList != null) ? new HashSet<>(preSelecionadasList) : new HashSet<>();
-        boolean isReadOnly = Boolean.TRUE.equals(sharedViewModel.isReadOnly.getValue());
 
-        for (String area : areas) {
-            Chip chip = new Chip(getContext(), null, com.google.android.material.R.attr.chipStyle);
+        for (String area : allAreas) {
+            Chip chip = new Chip(getContext()); // Usar o construtor padrão é suficiente
             chip.setText(area);
             chip.setCheckable(true);
             chip.setChecked(preSelecionadas.contains(area));
-            chip.setEnabled(!isReadOnly);
+            chip.setEnabled(!isReadOnly); // Desabilita o chip se estiver em modo de leitura
             chip.setOnClickListener(v -> {
                 if (!suppressWatcher) triggerDebounce();
             });
@@ -161,15 +143,6 @@ public class CanvasInicioFragment extends Fragment {
     private void setReadOnlyMode(boolean isReadOnly) {
         binding.editTextTituloIdeia.setEnabled(!isReadOnly);
         binding.editTextDescricaoIdeia.setEnabled(!isReadOnly);
-        for (int i = 0; i < binding.chipGroupAreasInicio.getChildCount(); i++) {
-            binding.chipGroupAreasInicio.getChildAt(i).setEnabled(!isReadOnly);
-        }
-    }
-
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        handler.removeCallbacks(debounceRunnable); // Limpa o handler
-        binding = null;
+        // A lógica de habilitar/desabilitar os chips já está em 'montarChipsAreas'
     }
 }

@@ -1,6 +1,5 @@
-package com.example.startuppulse;
+package com.example.startuppulse.data;
 
-import com.google.firebase.firestore.ServerTimestamp;
 import java.io.Serializable;
 import java.util.Date;
 

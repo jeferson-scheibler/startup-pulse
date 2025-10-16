@@ -1,11 +1,11 @@
 package com.example.startuppulse;
 
 import android.view.LayoutInflater;
-import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
+import com.example.startuppulse.data.MembroEquipe;
 import com.example.startuppulse.databinding.ItemMembroEquipeEditBinding;
 import java.util.List;
 import java.util.function.Consumer;

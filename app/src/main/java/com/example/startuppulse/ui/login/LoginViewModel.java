@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.example.startuppulse.common.Result;
 import com.example.startuppulse.data.AuthRepository;
 import com.example.startuppulse.data.ResultCallback;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
@@ -49,14 +50,15 @@ public class LoginViewModel extends ViewModel {
     }
 
     private ResultCallback<FirebaseUser> createLoginCallback() {
-        return new ResultCallback<FirebaseUser>() {
-            @Override
-            public void onSuccess(FirebaseUser data) {
+        return result -> {
+            // Verifica se o resultado da operação foi um Sucesso
+            if (result instanceof Result.Success) {
                 _loginState.setValue(new LoginState(LoginState.AuthState.SUCCESS));
             }
-
-            @Override
-            public void onError(Exception e) {
+            // Se não foi sucesso, foi um Erro
+            else if (result instanceof Result.Error) {
+                // Extrai a exceção do objeto de Erro
+                Exception e = ((Result.Error<FirebaseUser>) result).error;
                 _loginState.setValue(new LoginState("Falha na autenticação: " + e.getMessage()));
             }
         };

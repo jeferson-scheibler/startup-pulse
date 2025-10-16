@@ -10,16 +10,13 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
-
 import com.example.startuppulse.data.CanvasEtapa;
-// Removido: import com.example.startuppulse.data.Ideia; // Não é mais necessário diretamente
+import com.example.startuppulse.data.Ideia;
 import com.example.startuppulse.data.PostIt;
 import com.example.startuppulse.databinding.FragmentCanvasBlockBinding;
 import com.example.startuppulse.ui.canvas.CanvasIdeiaViewModel;
 import com.google.android.material.snackbar.Snackbar;
-
-// Removido: import java.util.ArrayList; // Não é mais necessário para o construtor do adapter
-
+import java.util.List;
 import dagger.hilt.android.AndroidEntryPoint;
 
 @AndroidEntryPoint
@@ -29,7 +26,7 @@ public class CanvasBlockFragment extends Fragment implements PostItAdapter.OnPos
     private CanvasIdeiaViewModel sharedViewModel;
     private PostItAdapter postItAdapter;
     private String etapaChave;
-    // Removido: private boolean isReadOnly = false; // O estado é gerenciado pelo adapter
+    private boolean isReadOnly = false; // Mantém o estado localmente
 
     public static CanvasBlockFragment newInstance(String etapaChave) {
         CanvasBlockFragment fragment = new CanvasBlockFragment();
@@ -63,23 +60,30 @@ public class CanvasBlockFragment extends Fragment implements PostItAdapter.OnPos
         setupClickListeners();
     }
 
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        binding = null;
+    }
+
     private void setupObservers() {
+        // O observer principal que controla tudo neste fragmento
         sharedViewModel.ideia.observe(getViewLifecycleOwner(), ideia -> {
             if (ideia != null && etapaChave != null) {
-                // MODIFICAÇÃO 2: Usar submitList() para performance máxima com DiffUtil
+                // 1. Determina o estado de apenas leitura
+                this.isReadOnly = ideia.getStatus() != Ideia.Status.RASCUNHO;
+
+                // 2. Atualiza o adapter com a lista de Post-its e o estado read-only
+                postItAdapter.setReadOnly(this.isReadOnly);
                 postItAdapter.submitList(ideia.getPostItsPorChave(etapaChave));
+
+                // 3. Atualiza a visibilidade dos componentes da UI
+                binding.fabAddPostIt.setVisibility(this.isReadOnly ? View.GONE : View.VISIBLE);
                 refreshEmptyState(ideia.getPostItsPorChave(etapaChave));
             }
         });
 
-        sharedViewModel.isReadOnly.observe(getViewLifecycleOwner(), readOnly -> {
-            if (readOnly != null) {
-                // Informa o adapter sobre o modo read-only
-                postItAdapter.setReadOnly(readOnly);
-                binding.fabAddPostIt.setVisibility(readOnly ? View.GONE : View.VISIBLE);
-            }
-        });
-
+        // Este observer permanece o mesmo, para preencher o título e descrição do bloco
         sharedViewModel.etapas.observe(getViewLifecycleOwner(), etapas -> {
             if (etapas == null) return;
             for (CanvasEtapa etapa : etapas) {
@@ -95,7 +99,6 @@ public class CanvasBlockFragment extends Fragment implements PostItAdapter.OnPos
 
     private void setupRecycler() {
         binding.recyclerViewPostIts.setLayoutManager(new LinearLayoutManager(requireContext()));
-        // MODIFICAÇÃO 1: Usar o novo construtor do ListAdapter
         postItAdapter = new PostItAdapter(this);
         binding.recyclerViewPostIts.setAdapter(postItAdapter);
     }
@@ -109,40 +112,35 @@ public class CanvasBlockFragment extends Fragment implements PostItAdapter.OnPos
         dialog.show(getParentFragmentManager(), "AddPostItDialog");
     }
 
-    // Callbacks do Adapter (OnPostItClickListener)
+    // --- Callbacks do Adapter ---
 
     @Override
     public void onPostItClick(PostIt postit) {
-        // A verificação de isReadOnly agora é feita dentro do adapter,
-        // mas é uma boa prática manter aqui também por segurança.
-        if (Boolean.TRUE.equals(sharedViewModel.isReadOnly.getValue())) return;
+        // A verificação de isReadOnly é feita aqui para evitar abrir o diálogo desnecessariamente
+        if (this.isReadOnly) return;
         AddPostItDialogFragment dialog = AddPostItDialogFragment.newInstanceForEdit(etapaChave, postit);
         dialog.show(getParentFragmentManager(), "EditPostItDialog");
     }
 
     @Override
     public void onPostItLongClick(PostIt postit) {
-        if (Boolean.TRUE.equals(sharedViewModel.isReadOnly.getValue())) return;
+        if (this.isReadOnly) return;
         new AlertDialog.Builder(requireContext())
                 .setTitle("Apagar Ponto-Chave")
                 .setMessage("Tem certeza que deseja apagar este post-it?")
                 .setPositiveButton("Apagar", (d, w) -> {
                     sharedViewModel.deletePostIt(etapaChave, postit);
+                    // O feedback visual agora pode vir do ViewModel se desejado,
+                    // mas um Snackbar local ainda é uma boa opção.
                     Snackbar.make(binding.getRoot(), "Post-it excluído!", Snackbar.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("Cancelar", null)
                 .show();
     }
 
-    private void refreshEmptyState(java.util.List<PostIt> list) {
+    private void refreshEmptyState(List<PostIt> list) {
         boolean isEmpty = list == null || list.isEmpty();
         binding.viewEmptyState.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
         binding.recyclerViewPostIts.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
-    }
-
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        binding = null;
     }
 }

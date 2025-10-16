@@ -10,20 +10,13 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.EditText;
-import android.widget.RadioGroup;
-import android.widget.TextView;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
-import androidx.lifecycle.ViewModelProvider; // Import necessário
-
+import androidx.lifecycle.ViewModelProvider;
 import com.example.startuppulse.data.PostIt;
-import com.example.startuppulse.databinding.DialogAddPostitBinding; // Import para View Binding
-import com.example.startuppulse.ui.canvas.CanvasIdeiaViewModel; // Import do ViewModel
-import com.google.android.material.button.MaterialButton;
-
+import com.example.startuppulse.databinding.DialogAddPostitBinding;
+import com.example.startuppulse.ui.canvas.CanvasIdeiaViewModel;
 import java.util.HashMap;
 import java.util.Map;
 import dagger.hilt.android.AndroidEntryPoint;
@@ -35,7 +28,6 @@ public class AddPostItDialogFragment extends DialogFragment {
     private static final String ARG_POSTIT_ANTIGO  = "postit_antigo";
     private static final int    MAX_LEN_TEXT       = 280;
 
-    // MODIFICAÇÃO 1: Usar View Binding para segurança e conveniência
     private DialogAddPostitBinding binding;
     private CanvasIdeiaViewModel sharedViewModel;
 
@@ -44,9 +36,8 @@ public class AddPostItDialogFragment extends DialogFragment {
     private boolean isEditMode = false;
     private String corSelecionada = "#F9F871"; // Cor padrão
 
-    // A interface do listener foi completamente removida.
+    // --- Métodos de Fábrica ---
 
-    // Fábrica: Adicionar
     public static AddPostItDialogFragment newInstanceForAdd(String etapaChave) {
         AddPostItDialogFragment f = new AddPostItDialogFragment();
         Bundle b = new Bundle();
@@ -55,7 +46,6 @@ public class AddPostItDialogFragment extends DialogFragment {
         return f;
     }
 
-    // Fábrica: Editar
     public static AddPostItDialogFragment newInstanceForEdit(String etapaChave, PostIt postit) {
         AddPostItDialogFragment f = new AddPostItDialogFragment();
         Bundle b = new Bundle();
@@ -65,23 +55,24 @@ public class AddPostItDialogFragment extends DialogFragment {
         return f;
     }
 
+    // --- Ciclo de Vida ---
+
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // O FirestoreHelper foi removido.
         Bundle args = getArguments();
         if (args != null) {
             etapaChave  = args.getString(ARG_ETAPA_CHAVE);
             postitParaEditar = (PostIt) args.getSerializable(ARG_POSTIT_ANTIGO);
             isEditMode  = (postitParaEditar != null);
         }
+        // Estilo para remover o título padrão do Dialog
         setStyle(STYLE_NO_TITLE, 0);
     }
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        // Infla o layout usando View Binding
         binding = DialogAddPostitBinding.inflate(inflater, container, false);
         return binding.getRoot();
     }
@@ -89,8 +80,6 @@ public class AddPostItDialogFragment extends DialogFragment {
     @Override
     public void onViewCreated(@NonNull View v, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(v, savedInstanceState);
-
-        // MODIFICAÇÃO 2: Obter a instância do ViewModel compartilhado
         sharedViewModel = new ViewModelProvider(requireParentFragment()).get(CanvasIdeiaViewModel.class);
 
         if (getDialog() != null && getDialog().getWindow() != null) {
@@ -99,7 +88,19 @@ public class AddPostItDialogFragment extends DialogFragment {
 
         binding.editTextPostit.setFilters(new InputFilter[]{new InputFilter.LengthFilter(MAX_LEN_TEXT)});
 
-        // Configura a UI inicial
+        setupInitialState();
+        setupListeners();
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        binding = null;
+    }
+
+    // --- Lógica da UI ---
+
+    private void setupInitialState() {
         if (isEditMode && postitParaEditar != null) {
             binding.textDialogTitle.setText("Editar Ponto-Chave");
             binding.editTextPostit.setText(postitParaEditar.getTexto());
@@ -108,13 +109,14 @@ public class AddPostItDialogFragment extends DialogFragment {
             binding.textDialogTitle.setText("Adicionar Ponto-Chave");
             setSelectedColor(corSelecionada);
         }
+    }
 
-        // Listeners
+    private void setupListeners() {
         binding.radioGroupColors.setOnCheckedChangeListener((group, checkedId) -> {
             corSelecionada = colorForRadioId(checkedId);
         });
 
-        binding.btnCancelarPostit.setOnClickListener(vw -> dismissAllowingStateLoss());
+        binding.btnCancelarPostit.setOnClickListener(vw -> dismiss());
         binding.btnSalvarPostit.setOnClickListener(vw -> salvar());
     }
 
@@ -127,7 +129,7 @@ public class AddPostItDialogFragment extends DialogFragment {
 
         setButtonsEnabled(false);
 
-        // MODIFICAÇÃO 3: Chamar o ViewModel em vez do listener ou FirestoreHelper
+        // Delega a ação para o ViewModel compartilhado
         if (isEditMode) {
             sharedViewModel.updatePostIt(etapaChave, postitParaEditar, texto, corSelecionada);
         } else {
@@ -137,19 +139,9 @@ public class AddPostItDialogFragment extends DialogFragment {
         closeWithKeyboardHide();
     }
 
-    // --- Lógica de UI e Utilitários (permanecem os mesmos) ---
-
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        binding = null; // Previne memory leaks com View Binding em Dialogs/Fragments
-    }
-
     private void setButtonsEnabled(boolean enabled) {
         binding.btnSalvarPostit.setEnabled(enabled);
         binding.btnCancelarPostit.setEnabled(enabled);
-        binding.btnSalvarPostit.setAlpha(enabled ? 1f : .6f);
-        binding.btnCancelarPostit.setAlpha(enabled ? 1f : .6f);
     }
 
     private void closeWithKeyboardHide() {
@@ -158,30 +150,26 @@ public class AddPostItDialogFragment extends DialogFragment {
             InputMethodManager imm = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
             imm.hideSoftInputFromWindow(current.getWindowToken(), 0);
         }
-        dismissAllowingStateLoss();
+        dismiss();
     }
 
+    // --- Utilitários de Cor ---
+
     private static final Map<Integer, String> ID_TO_COLOR = new HashMap<Integer, String>() {{
-        put(R.id.radio_yellow, "#F9F871");
-        put(R.id.radio_orange, "#FFC75F");
-        put(R.id.radio_pink, "#FF96AD");
-        put(R.id.radio_blue, "#84D2F6");
-        put(R.id.radio_green, "#A9F0D1");
-        put(R.id.radio_white, "#FFFFFF");
+        put(R.id.radio_yellow, "#F9F871"); put(R.id.radio_orange, "#FFC75F");
+        put(R.id.radio_pink, "#FF96AD"); put(R.id.radio_blue, "#84D2F6");
+        put(R.id.radio_green, "#A9F0D1"); put(R.id.radio_white, "#FFFFFF");
     }};
 
     private static final Map<String, Integer> COLOR_TO_ID = new HashMap<String, Integer>() {{
-        put("#F9F871", R.id.radio_yellow);
-        put("#FFC75F", R.id.radio_orange);
-        put("#FF96AD", R.id.radio_pink);
-        put("#84D2F6", R.id.radio_blue);
-        put("#A9F0D1", R.id.radio_green);
-        put("#FFFFFF", R.id.radio_white);
+        put("#F9F871", R.id.radio_yellow); put("#FFC75F", R.id.radio_orange);
+        put("#FF96AD", R.id.radio_pink); put("#84D2F6", R.id.radio_blue);
+        put("#A9F0D1", R.id.radio_green); put("#FFFFFF", R.id.radio_white);
     }};
 
     private String colorForRadioId(int id) {
-        String c = ID_TO_COLOR.get(id);
-        return c != null ? c : "#F9F871";
+        String color = ID_TO_COLOR.get(id);
+        return color != null ? color : "#F9F871"; // Retorna amarelo como padrão
     }
 
     private void setSelectedColor(@NonNull String color) {

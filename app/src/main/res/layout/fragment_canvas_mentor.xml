@@ -5,72 +5,95 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".CanvasMentorActivity">
+    android:fitsSystemWindows="true"
+    android:background="?attr/colorSurface"
+    tools:context=".ui.mentor.CanvasMentorFragment">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/colorSurface">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            app:navigationIcon="@drawable/ic_close"
+            app:title="Seja um Mentor" />
+
+    </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:fillViewport="true"
-        android:background="@drawable/glass_fume_background"
-        android:padding="24dp">
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:padding="24dp">
 
-            <!-- Título -->
             <TextView
-                android:id="@+id/text_view_header_title"
+                android:id="@+id/text_view_header_subtitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Seja um Mentor"
-                android:textAppearance="@style/TextAppearance.Material3.HeadlineMedium"
-                android:importantForAccessibility="yes" />
+                android:layout_marginBottom="24dp"
+                android:text="Complete seu perfil para ajudar outros empreendedores com sua experiência."
+                android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
+                android:textColor="?attr/colorOnSurfaceVariant" />
 
             <!-- Nome (bloqueado) -->
             <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
                 android:hint="Nome completo"
-                app:helperText="Vem da sua conta"
-                app:endIconMode="custom"
-                app:endIconDrawable="@drawable/ic_info">
+                app:helperText="Seu nome não pode ser alterado."
+                app:startIconDrawable="@drawable/ic_person">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/edit_text_nome"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:enabled="false"
-                    android:inputType="textPersonName"
-                    android:importantForAutofill="no" />
+                    android:focusable="false"
+                    android:inputType="textPersonName" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Profissão -->
             <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:hint="Profissão ou especialidade"
-                app:helperText="Ex.: Product Manager, Advogado, Growth, CTO">
+                android:hint="Sua especialidade principal"
+                app:helperText="Ex.: Product Manager, Advogado, Growth, CTO"
+                app:startIconDrawable="@drawable/ic_work">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/edit_text_profissao"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textCapWords|textPersonName"
+                    android:inputType="textCapWords"
                     android:imeOptions="actionNext" />
             </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- Localização -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="Localização"
+                android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                android:textColor="?attr/colorOnSurface" />
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/layout_estado"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="8dp"
                 android:hint="Estado">
 
                 <AutoCompleteTextView
@@ -96,60 +119,60 @@
                     android:inputType="none" />
             </com.google.android.material.textfield.TextInputLayout>
 
+
             <!-- Áreas de atuação -->
             <TextView
                 android:id="@+id/label_areas"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
+                android:layout_marginTop="24dp"
                 android:text="Áreas de atuação"
-                android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+                android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                android:textColor="?attr/colorOnSurface"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Selecione até 5 áreas que você domina."
+                android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant"/>
 
             <com.google.android.material.chip.ChipGroup
                 android:id="@+id/chip_group_areas_select"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                app:singleLine="false"
-                app:selectionRequired="false"
-                tools:ignore="SpeakableTextPresent">
-
-                <!-- Chips preenchidos em runtime pela Activity -->
-            </com.google.android.material.chip.ChipGroup>
-
-            <!-- Espaço flexível -->
-            <Space
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"/>
-
-            <!-- Ações -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:orientation="horizontal">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/button_cancelar"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginEnd="8dp"
-                    android:text="Cancelar" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/button_salvar"
-                    style="@style/Widget.Material3.Button"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="8dp"
-                    android:text="Salvar cadastro" />
-            </LinearLayout>
+                android:layout_marginTop="12dp"
+                app:singleLine="false" />
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
+
+    <!-- Barra de Ações na parte inferior -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="vertical"
+        android:background="?attr/colorSurface"
+        android:elevation="4dp"
+        android:padding="16dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_salvar"
+            style="@style/App.Button.Outlined.LessRounded"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Salvar cadastro de mentor" />
+
+    </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/progress_bar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone"
+        tools:visibility="visible" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -3,17 +3,53 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main_nav_graph"
-    app:startDestination="@id/ideiasFragment"> <fragment
-    android:id="@+id/ideiasFragment"
-    android:name="com.example.startuppulse.IdeiasHostFragment"
-    android:label="Ideias"
-    tools:layout="@layout/fragment_ideias_host" />
+    app:startDestination="@id/ideiasFragment">
+
+    <fragment
+        android:id="@+id/ideiasFragment"
+        android:name="com.example.startuppulse.IdeiasHostFragment"
+        android:label="Ideias"
+        tools:layout="@layout/fragment_ideias_host" />
 
     <fragment
         android:id="@+id/mentoresFragment"
         android:name="com.example.startuppulse.MentoresFragment"
         android:label="Mentores"
-        tools:layout="@layout/fragment_mentores" />
+        tools:layout="@layout/fragment_mentores">
+        <action
+            android:id="@+id/action_mentoresFragment_to_mentorDetailFragment"
+            app:destination="@id/mentorDetailFragment"
+            app:enterAnim="@anim/fade_in"
+            app:exitAnim="@anim/fade_out"
+            app:popEnterAnim="@anim/fade_in"
+            app:popExitAnim="@anim/fade_out" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/canvasMentorFragment"
+        android:name="com.example.startuppulse.ui.mentor.CanvasMentorFragment"
+        android:label="Seja um Mentor"
+        tools:layout="@layout/fragment_canvas_mentor" />
+
+    <fragment
+        android:id="@+id/mentorDetailFragment"
+        android:name="com.example.startuppulse.ui.mentor.MentorDetailFragment"
+        android:label="Detalhes do Mentor"
+        tools:layout="@layout/fragment_mentor_detail">
+        <argument
+            android:name="mentorId"
+            app:argType="string" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/investidoresFragment"
+        android:name="com.example.startuppulse.InvestidoresFragment"
+        android:label="Investidores"
+        tools:layout="@layout/fragment_investidores">
+        <action
+            android:id="@+id/action_investidoresFragment_to_investorDetailFragment"
+            app:destination="@id/investorDetailFragment" />
+    </fragment>
 
     <fragment
         android:id="@+id/investorDetailFragment"
@@ -26,18 +62,6 @@
     </fragment>
 
     <fragment
-        android:id="@+id/investidoresFragment"
-        android:name="com.example.startuppulse.InvestidoresFragment"
-        android:label="Investidores"
-        tools:layout="@layout/fragment_investidores">
-
-        <action
-            android:id="@+id/action_investidoresFragment_to_investorDetailFragment"
-            app:destination="@id/investorDetailFragment" />
-
-    </fragment>
-
-    <fragment
         android:id="@+id/perfilFragment"
         android:name="com.example.startuppulse.PerfilFragment"
         android:label="Perfil"
@@ -45,6 +69,9 @@
         <action
             android:id="@+id/action_perfilFragment_to_assinaturaFragment"
             app:destination="@id/assinaturaFragment" />
+        <action
+            android:id="@+id/action_perfilFragment_to_canvasMentorFragment"
+            app:destination="@id/canvasMentorFragment" />
     </fragment>
 
     <fragment
@@ -67,9 +94,38 @@
             android:name="isReadOnly"
             app:argType="boolean"
             android:defaultValue="false" />
+
+        <action
+            android:id="@+id/action_canvasIdeiaFragment_to_avaliacaoFragment"
+            app:destination="@id/avaliacaoFragment" />
     </fragment>
 
     <action android:id="@+id/action_global_to_canvasIdeiaFragment"
         app:destination="@id/canvasIdeiaFragment" />
+
+    <fragment
+        android:id="@+id/preparacaoInvestidorFragment"
+        android:name="com.example.startuppulse.PreparacaoInvestidorFragment"
+        android:label="Preparação para Investidores"
+        tools:layout="@layout/fragment_preparacao_investidor" >
+        <argument
+            android:name="ideiaId"
+            app:argType="string" />
+    </fragment>
+
+    <action
+        android:id="@+id/action_global_to_preparacaoInvestidorFragment"
+        app:destination="@id/preparacaoInvestidorFragment" />
+
+    <fragment
+        android:id="@+id/avaliacaoFragment"
+        android:name="com.example.startuppulse.ui.avaliacao.AvaliacaoFragment"
+        android:label="Avaliar Ideia"
+        tools:layout="@layout/fragment_avaliacao">
+        <argument
+            android:name="ideiaId"
+            app:argType="string" />
+    </fragment>
+
 
 </navigation>
