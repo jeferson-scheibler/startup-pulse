@@ -5,17 +5,18 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.navigation.fragment.NavHostFragment;
 
+import com.example.startuppulse.databinding.FragmentAssinaturaBinding; // Importar a classe de binding
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.firestore.*;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.Calendar;
 import java.util.Date;
@@ -26,191 +27,107 @@ import dagger.hilt.android.AndroidEntryPoint;
 @AndroidEntryPoint
 public class AssinaturaFragment extends Fragment {
 
-    private TextView tvNomePlano, tvValidadePlano;
-
-    private Button btnAssinar, btnAtivarRecorrencia, btnCancelar;
+    // NOVO: Usar View Binding para acessar as views
+    private FragmentAssinaturaBinding binding;
 
     private FirebaseFirestore db;
-    private String uid;
+    private FirebaseUser currentUser;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_assinatura, container, false);
+        // Infla o layout usando o binding
+        binding = FragmentAssinaturaBinding.inflate(inflater, container, false);
+        return binding.getRoot();
+    }
 
-        tvNomePlano = view.findViewById(R.id.tvNomePlano);
-        tvValidadePlano = view.findViewById(R.id.tvValidadePlano);
-        btnAssinar = view.findViewById(R.id.btnSimularCompra);
-        btnAtivarRecorrencia = view.findViewById(R.id.btnAtivarRecorrencia);
-        btnCancelar = view.findViewById(R.id.btnCancelarAssinatura);
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
 
-
+        // Inicialização do Firebase
         db = FirebaseFirestore.getInstance();
-        uid = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        currentUser = FirebaseAuth.getInstance().getCurrentUser();
 
+        // Se o usuário não estiver logado, fecha o fragmento para evitar erros
+        if (currentUser == null) {
+            Toast.makeText(getContext(), "Você precisa estar logado para ver os planos.", Toast.LENGTH_SHORT).show();
+            NavHostFragment.findNavController(this).navigateUp();
+            return;
+        }
+
+        configurarListeners();
         verificarAssinatura();
+    }
 
-        btnAssinar.setOnClickListener(v -> mostrarDialogInfoCobranca());
-        btnAtivarRecorrencia.setOnClickListener(v -> mostrarDialogAtivarRecorrencia());
-        btnCancelar.setOnClickListener(v -> mostrarDialogCancelarRecorrencia());
+    private void configurarListeners() {
+        // Ação para o botão do plano PRO
+        binding.buttonAssinarPro.setOnClickListener(v -> mostrarDialogInfoCobranca());
 
+        // Ação para o botão do plano Gratuito (simplesmente fecha a tela)
+        binding.buttonContinuarGratuito.setOnClickListener(v -> NavHostFragment.findNavController(this).navigateUp());
 
-        return view;
+        // Ação para o botão de fechar na toolbar
+        binding.toolbar.setNavigationOnClickListener(v -> NavHostFragment.findNavController(this).navigateUp());
     }
 
     private void mostrarDialogInfoCobranca() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-        builder.setTitle("Informações da Cobrança");
-
-        String mensagem = "💳 Valor: R$ 39,90/mês\n\n" +
-                "Ao confirmar, sua conta será atualizada para o plano Premium com acesso ilimitado a ideias e publicações.";
-
-        builder.setMessage(mensagem);
-
-        builder.setPositiveButton("Confirmar", (dialog, which) -> {
-            simularCompra(); // metodo que você já usa para ativar o plano
-        });
-
-        builder.setNegativeButton("Cancelar", (dialog, which) -> {
-            dialog.dismiss();
-        });
-
-        AlertDialog dialog = builder.create();
-        dialog.show();
+        new AlertDialog.Builder(getContext())
+                .setTitle("Confirmar Assinatura")
+                .setMessage("💳 Valor: R$ 29,00/mês\n\nAo confirmar, sua conta será atualizada para o plano PRO com acesso a projetos ilimitados e match com mentores e investidores.")
+                .setPositiveButton("Confirmar e Assinar", (dialog, which) -> simularCompra())
+                .setNegativeButton("Cancelar", null)
+                .show();
     }
-
-    private void mostrarDialogCancelarRecorrencia() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-        builder.setTitle("Cancelar Assinatura Recorrente");
-        builder.setMessage("Você deseja mesmo cancelar a assinatura recorrente?");
-
-        builder.setPositiveButton("Sim", (dialog, which) -> {
-            cancelarAssinatura(); // chama sua função real de cancelamento
-        });
-
-        builder.setNegativeButton("Não", (dialog, which) -> dialog.dismiss());
-
-        AlertDialog dialog = builder.create();
-        dialog.show();
-    }
-
-    private void mostrarDialogAtivarRecorrencia() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-        builder.setTitle("Ativar Assinatura Recorrente");
-
-        builder.setMessage("Deseja ativar a assinatura recorrente?\n\n" +
-                "Você será cobrado automaticamente todo mês para manter seu plano Premium ativo.");
-
-        builder.setPositiveButton("Sim", (dialog, which) -> {
-            ativarRecorrencia(); // chama sua função que ativa a recorrência
-        });
-
-        builder.setNegativeButton("Cancelar", (dialog, which) -> dialog.dismiss());
-
-        AlertDialog dialog = builder.create();
-        dialog.show();
-    }
-
 
     private void verificarAssinatura() {
-        db.collection("premium").document(uid).get()
+        db.collection("premium").document(currentUser.getUid()).get()
                 .addOnSuccessListener(document -> {
                     if (document.exists()) {
                         Timestamp dataFim = document.getTimestamp("data_fim");
-                        Boolean recorrente = document.getBoolean("ativo");
-
+                        // Se o usuário já tem uma assinatura válida, ele não deveria nem ver os botões de compra.
                         if (dataFim != null && dataFim.toDate().after(new Date())) {
-                            // Assinatura ainda válida
-                            String dataFormatada = android.text.format.DateFormat.format("dd/MM/yyyy", dataFim.toDate()).toString();
-                            tvNomePlano.setText("Plano Premium");
-                            tvValidadePlano.setText("Válido até " + dataFormatada);
-
-
-                            btnAssinar.setVisibility(View.GONE);
-
-                            if (recorrente != null && recorrente) {
-                                // Recorrência ATIVADA → mostrar botão para cancelar
-                                btnCancelar.setVisibility(View.VISIBLE);
-                                btnAtivarRecorrencia.setVisibility(View.GONE);
-                            } else {
-                                // Recorrência DESATIVADA → mostrar botão para ativar
-                                btnAtivarRecorrencia.setVisibility(View.VISIBLE);
-                                btnCancelar.setVisibility(View.GONE);
-                            }
-
-                        } else {
-                            // Assinatura vencida ou inexistente
-                            tvNomePlano.setText("Seu Plano: Plano Básico");
-                            tvValidadePlano.setText("");
-
-                            btnAssinar.setVisibility(View.VISIBLE);
-                            btnAtivarRecorrencia.setVisibility(View.GONE);
-                            btnCancelar.setVisibility(View.GONE);
+                            binding.buttonAssinarPro.setEnabled(false);
+                            binding.buttonAssinarPro.setText("Você já é PRO");
+                            binding.buttonContinuarGratuito.setVisibility(View.GONE); // Esconde o botão de continuar gratuito
+                            Toast.makeText(getContext(), "Seu plano PRO já está ativo!", Toast.LENGTH_LONG).show();
                         }
-
-                    } else {
-                        // Documento não existe (nunca assinou)
-                        tvNomePlano.setText("Seu Plano: Plano Básico");
-                        tvValidadePlano.setText("");
-                        btnAssinar.setVisibility(View.VISIBLE);
-                        btnAtivarRecorrencia.setVisibility(View.GONE);
-                        btnCancelar.setVisibility(View.GONE);
                     }
+                    // Se não existe documento ou a assinatura expirou, a tela funciona normalmente.
                 })
                 .addOnFailureListener(e -> {
-                    tvNomePlano.setText("Erro ao Verificar Plano");
-                    tvValidadePlano.setText("");
-
-                    btnAssinar.setVisibility(View.GONE);
-                    btnAtivarRecorrencia.setVisibility(View.GONE);
-                    btnCancelar.setVisibility(View.GONE);
+                    // Em caso de falha na verificação, permite que o usuário tente assinar.
+                    Toast.makeText(getContext(), "Não foi possível verificar seu plano atual.", Toast.LENGTH_SHORT).show();
                 });
     }
-
 
     private void simularCompra() {
         Calendar cal = Calendar.getInstance();
         Timestamp dataInicio = new Timestamp(cal.getTime());
-        cal.add(Calendar.DAY_OF_MONTH, 30); // validade de 30 dias
+        cal.add(Calendar.DAY_OF_MONTH, 30); // Validade de 30 dias
         Timestamp dataFim = new Timestamp(cal.getTime());
 
         Map<String, Object> dados = new HashMap<>();
-        dados.put("ativo", true); // ativação recorrente será feita manualmente
+        dados.put("ativo", true); // Assinatura começa ativa (recorrência)
         dados.put("data_assinatura", dataInicio);
         dados.put("data_fim", dataFim);
+        dados.put("plano", "PRO");
 
-        db.collection("premium").document(uid)
+        db.collection("premium").document(currentUser.getUid())
                 .set(dados)
                 .addOnSuccessListener(unused -> {
-                    Toast.makeText(getContext(), "Assinatura ativada!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "Bem-vindo ao plano PRO!", Toast.LENGTH_SHORT).show();
+                    // Atualiza a UI para refletir o novo status
                     verificarAssinatura();
-                });
-    }
-
-    private void ativarRecorrencia() {
-        db.collection("premium").document(uid)
-                .update("ativo", true)
-                .addOnSuccessListener(unused -> {
-                    Toast.makeText(getContext(), "Assinatura recorrente ativada!", Toast.LENGTH_SHORT).show();
-                    verificarAssinatura(); // Atualiza interface
                 })
-                .addOnFailureListener(e -> {
-                    Toast.makeText(getContext(), "Erro ao ativar recorrência.", Toast.LENGTH_SHORT).show();
-                });
+                .addOnFailureListener(e -> Toast.makeText(getContext(), "Ocorreu um erro ao assinar. Tente novamente.", Toast.LENGTH_SHORT).show());
     }
 
-
-    private void cancelarAssinatura() {
-        db.collection("premium").document(uid)
-                .update("ativo", false)
-                .addOnSuccessListener(unused -> {
-                    Toast.makeText(getContext(), "Assinatura recorrente cancelada.", Toast.LENGTH_SHORT).show();
-                    verificarAssinatura(); // atualizar interface
-                })
-                .addOnFailureListener(e -> {
-                    Toast.makeText(getContext(), "Erro ao cancelar recorrência.", Toast.LENGTH_SHORT).show();
-                });
+    // É uma boa prática limpar o binding no onDestroyView para evitar memory leaks
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        binding = null;
     }
-
 }
