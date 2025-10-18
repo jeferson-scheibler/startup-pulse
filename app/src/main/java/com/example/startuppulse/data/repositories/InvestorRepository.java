@@ -1,6 +1,8 @@
-package com.example.startuppulse.data;
+package com.example.startuppulse.data.repositories;
 
 import com.example.startuppulse.common.Result;
+import com.example.startuppulse.data.models.Investor;
+import com.example.startuppulse.data.ResultCallback;
 import com.google.firebase.firestore.FirebaseFirestore;
 import java.util.List;
 import javax.inject.Inject;
@@ -11,14 +13,13 @@ import javax.inject.Singleton;
  * Gerenciado pelo Hilt como um Singleton para toda a aplicação.
  */
 @Singleton
-public class InvestorRepository {
+public class InvestorRepository extends BaseRepository{
 
     private static final String INVESTORS_COLLECTION = "investors"; // Corrigido para "investors" como no seu código original
-    private final FirebaseFirestore firestore;
 
-    @Inject // O Hilt irá fornecer a instância do FirebaseFirestore aqui
-    public InvestorRepository(FirebaseFirestore firestore) {
-        this.firestore = firestore;
+    @Inject
+    public InvestorRepository() {
+        super();
     }
 
     /**
@@ -27,7 +28,7 @@ public class InvestorRepository {
      * @param callback O callback que será chamado com o resultado.
      */
     public void getInvestorDetails(String investorId, ResultCallback<Investor> callback) {
-        firestore.collection(INVESTORS_COLLECTION).document(investorId)
+        db.collection(INVESTORS_COLLECTION).document(investorId)
                 .get()
                 .addOnSuccessListener(documentSnapshot -> {
                     if (documentSnapshot.exists()) {
@@ -46,7 +47,7 @@ public class InvestorRepository {
      * @param callback O callback que será chamado com o resultado.
      */
     public void getInvestidores(ResultCallback<List<Investor>> callback) {
-        firestore.collection(INVESTORS_COLLECTION)
+        db.collection(INVESTORS_COLLECTION)
                 .get()
                 .addOnSuccessListener(querySnapshot -> {
                     try {

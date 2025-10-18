@@ -1,9 +1,11 @@
-package com.example.startuppulse.data;
+package com.example.startuppulse.data.repositories;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.example.startuppulse.common.Result;
+import com.example.startuppulse.data.models.Mentor;
+import com.example.startuppulse.data.ResultCallback;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FieldPath;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -18,17 +20,12 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 
 @Singleton
-public class MentorRepository {
-
+public class MentorRepository extends BaseRepository{
     private static final String MENTORES_COLLECTION = "mentores";
 
-    private final FirebaseFirestore firestore;
-    private final String currentUserId;
-
     @Inject
-    public MentorRepository(FirebaseFirestore firestore, FirebaseAuth auth) {
-        this.firestore = firestore;
-        this.currentUserId = (auth.getCurrentUser() != null) ? auth.getCurrentUser().getUid() : null;
+    public MentorRepository() {
+        super();
     }
 
     // --- MÉTODOS DE LEITURA (BUSCA) ---
@@ -38,7 +35,7 @@ public class MentorRepository {
      * Alinhado com a nova classe Result e o callback genérico.
      */
     public void getMentorById(@NonNull String mentorId, @NonNull ResultCallback<Mentor> callback) {
-        firestore.collection(MENTORES_COLLECTION).document(mentorId).get()
+        db.collection(MENTORES_COLLECTION).document(mentorId).get()
                 .addOnSuccessListener(snap -> {
                     if (snap.exists()) {
                         Mentor mentor = snap.toObject(Mentor.class);
@@ -58,7 +55,7 @@ public class MentorRepository {
     }
 
     public void getAllMentores(String currentUserId, ResultCallback<List<Mentor>> callback) {
-        firestore.collection("mentores")
+        db.collection("mentores")
                 .whereNotEqualTo("ownerId", currentUserId)
                 .whereEqualTo("ativoPublico", true)
                 .get()
@@ -70,7 +67,7 @@ public class MentorRepository {
     }
 
     public void findAllMentores(@Nullable String excludeUserId, @NonNull ResultCallback<List<Mentor>> callback) {
-        Query query = firestore.collection(MENTORES_COLLECTION);
+        Query query = db.collection(MENTORES_COLLECTION);
         if (excludeUserId != null && !excludeUserId.isEmpty()) {
             query = query.whereNotEqualTo(FieldPath.documentId(), excludeUserId);
         }
@@ -91,7 +88,7 @@ public class MentorRepository {
             return;
         }
 
-        Query query = firestore.collection(MENTORES_COLLECTION).whereArrayContainsAny("areas", areas);
+        Query query = db.collection(MENTORES_COLLECTION).whereArrayContainsAny("areas", areas);
         if (ownerId != null && !ownerId.isEmpty()) {
             query = query.whereNotEqualTo(FieldPath.documentId(), ownerId);
         }
@@ -108,7 +105,7 @@ public class MentorRepository {
     }
 
     public void findMentoresByCity(@NonNull String cidade, @Nullable String ownerId, @NonNull ResultCallback<List<Mentor>> callback) {
-        Query query = firestore.collection(MENTORES_COLLECTION).whereEqualTo("cidade", cidade);
+        Query query = db.collection(MENTORES_COLLECTION).whereEqualTo("cidade", cidade);
         if (ownerId != null && !ownerId.isEmpty()) {
             query = query.whereNotEqualTo(FieldPath.documentId(), ownerId);
         }
@@ -124,7 +121,7 @@ public class MentorRepository {
     }
 
     public void findMentoresByState(@NonNull String estado, @Nullable String ownerId, @NonNull ResultCallback<List<Mentor>> callback) {
-        Query query = firestore.collection(MENTORES_COLLECTION).whereEqualTo("estado", estado);
+        Query query = db.collection(MENTORES_COLLECTION).whereEqualTo("estado", estado);
         if (ownerId != null && !ownerId.isEmpty()) {
             query = query.whereNotEqualTo(FieldPath.documentId(), ownerId);
         }
@@ -142,21 +139,21 @@ public class MentorRepository {
     // --- MÉTODOS DE ESCRITA (CRIAÇÃO, ATUALIZAÇÃO) ---
 
     public void saveMentorProfile(@NonNull Mentor mentor, @NonNull ResultCallback<String> callback) {
-        if (currentUserId == null) {
+        if (getCurrentUserId() == null) {
             callback.onResult(new Result.Error<>(new IllegalStateException("Usuário não autenticado.")));
             return;
         }
 
-        mentor.setId(currentUserId);
+        mentor.setId(getCurrentUserId());
 
-        firestore.collection(MENTORES_COLLECTION).document(currentUserId)
+        db.collection(MENTORES_COLLECTION).document(getCurrentUserId())
                 .set(mentor, SetOptions.merge())
-                .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(currentUserId)))
+                .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(getCurrentUserId())))
                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
     }
 
     public void updateMentorFields(@NonNull String mentorId, @Nullable Boolean verificado, @Nullable List<String> areas, @NonNull ResultCallback<Void> callback) {
-        if (!mentorId.equals(currentUserId)) {
+        if (!mentorId.equals(getCurrentUserId())) {
             callback.onResult(new Result.Error<>(new SecurityException("Não autorizado para atualizar este perfil.")));
             return;
         }
@@ -170,7 +167,7 @@ public class MentorRepository {
             return;
         }
 
-        firestore.collection(MENTORES_COLLECTION).document(mentorId).update(updates)
+        db.collection(MENTORES_COLLECTION).document(mentorId).update(updates)
                 .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(null)))
                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
     }
