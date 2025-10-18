@@ -132,4 +132,4 @@ public class PerfilFragment extends Fragment {
         super.onDestroyView();
         binding = null;
     }
-    }
+}

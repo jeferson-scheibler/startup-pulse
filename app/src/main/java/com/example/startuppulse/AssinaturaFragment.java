@@ -6,18 +6,15 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
-
-import com.example.startuppulse.databinding.FragmentAssinaturaBinding; // Importar a classe de binding
+import com.example.startuppulse.databinding.FragmentAssinaturaBinding;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
-
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -27,17 +24,13 @@ import dagger.hilt.android.AndroidEntryPoint;
 @AndroidEntryPoint
 public class AssinaturaFragment extends Fragment {
 
-    // NOVO: Usar View Binding para acessar as views
     private FragmentAssinaturaBinding binding;
-
     private FirebaseFirestore db;
     private FirebaseUser currentUser;
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
-                             @Nullable Bundle savedInstanceState) {
-        // Infla o layout usando o binding
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         binding = FragmentAssinaturaBinding.inflate(inflater, container, false);
         return binding.getRoot();
     }
@@ -46,62 +39,71 @@ public class AssinaturaFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // Inicialização do Firebase
         db = FirebaseFirestore.getInstance();
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
 
-        // Se o usuário não estiver logado, fecha o fragmento para evitar erros
         if (currentUser == null) {
-            Toast.makeText(getContext(), "Você precisa estar logado para ver os planos.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "Você precisa estar logado.", Toast.LENGTH_SHORT).show();
             NavHostFragment.findNavController(this).navigateUp();
             return;
         }
 
         configurarListeners();
-        verificarAssinatura();
+        verificarStatusAssinatura();
     }
 
     private void configurarListeners() {
-        // Ação para o botão do plano PRO
-        binding.buttonAssinarPro.setOnClickListener(v -> mostrarDialogInfoCobranca());
-
-        // Ação para o botão do plano Gratuito (simplesmente fecha a tela)
+        // Usa o ID do seu layout mais recente
+        binding.buttonAssinarPro.setOnClickListener(v -> mostrarDialogoDeConfirmacao());
         binding.buttonContinuarGratuito.setOnClickListener(v -> NavHostFragment.findNavController(this).navigateUp());
-
-        // Ação para o botão de fechar na toolbar
         binding.toolbar.setNavigationOnClickListener(v -> NavHostFragment.findNavController(this).navigateUp());
     }
 
-    private void mostrarDialogInfoCobranca() {
-        new AlertDialog.Builder(getContext())
-                .setTitle("Confirmar Assinatura")
-                .setMessage("💳 Valor: R$ 29,00/mês\n\nAo confirmar, sua conta será atualizada para o plano PRO com acesso a projetos ilimitados e match com mentores e investidores.")
-                .setPositiveButton("Confirmar e Assinar", (dialog, which) -> simularCompra())
+    private void mostrarDialogoDeConfirmacao() {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Ativar Simulação PRO")
+                .setMessage("Deseja simular a compra e ativar o plano PRO por 30 dias para este usuário? (Apenas para teste, sem cobrança)")
+                .setPositiveButton("Sim, Ativar", (dialog, which) -> simularCompra())
                 .setNegativeButton("Cancelar", null)
                 .show();
     }
 
-    private void verificarAssinatura() {
+    /**
+     * Verifica na coleção 'premium' se o usuário já tem uma assinatura ativa.
+     */
+    private void verificarStatusAssinatura() {
+        binding.buttonAssinarPro.setEnabled(false); // Desabilita o botão enquanto verifica
+
         db.collection("premium").document(currentUser.getUid()).get()
                 .addOnSuccessListener(document -> {
                     if (document.exists()) {
                         Timestamp dataFim = document.getTimestamp("data_fim");
-                        // Se o usuário já tem uma assinatura válida, ele não deveria nem ver os botões de compra.
                         if (dataFim != null && dataFim.toDate().after(new Date())) {
+                            // Usuário é PRO
+                            binding.buttonAssinarPro.setText("Plano PRO Ativo (Simulação)");
                             binding.buttonAssinarPro.setEnabled(false);
-                            binding.buttonAssinarPro.setText("Você já é PRO");
-                            binding.buttonContinuarGratuito.setVisibility(View.GONE); // Esconde o botão de continuar gratuito
-                            Toast.makeText(getContext(), "Seu plano PRO já está ativo!", Toast.LENGTH_LONG).show();
+                            binding.buttonContinuarGratuito.setVisibility(View.GONE);
+                        } else {
+                            // Assinatura expirou
+                            binding.buttonAssinarPro.setText("Assinar Agora");
+                            binding.buttonAssinarPro.setEnabled(true);
                         }
+                    } else {
+                        // Usuário não é PRO
+                        binding.buttonAssinarPro.setText("Assinar Agora");
+                        binding.buttonAssinarPro.setEnabled(true);
                     }
-                    // Se não existe documento ou a assinatura expirou, a tela funciona normalmente.
                 })
                 .addOnFailureListener(e -> {
-                    // Em caso de falha na verificação, permite que o usuário tente assinar.
-                    Toast.makeText(getContext(), "Não foi possível verificar seu plano atual.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "Erro ao verificar assinatura.", Toast.LENGTH_SHORT).show();
+                    binding.buttonAssinarPro.setEnabled(true); // Permite tentar de novo
                 });
     }
 
+    /**
+     * Este é o seu método original. Ele é a forma mais simples de simular.
+     * Escreve diretamente no Firestore para conceder o status PRO.
+     */
     private void simularCompra() {
         Calendar cal = Calendar.getInstance();
         Timestamp dataInicio = new Timestamp(cal.getTime());
@@ -109,22 +111,22 @@ public class AssinaturaFragment extends Fragment {
         Timestamp dataFim = new Timestamp(cal.getTime());
 
         Map<String, Object> dados = new HashMap<>();
-        dados.put("ativo", true); // Assinatura começa ativa (recorrência)
+        dados.put("ativo", true);
         dados.put("data_assinatura", dataInicio);
         dados.put("data_fim", dataFim);
         dados.put("plano", "PRO");
 
+        // Usa a sua coleção "premium" original
         db.collection("premium").document(currentUser.getUid())
                 .set(dados)
                 .addOnSuccessListener(unused -> {
-                    Toast.makeText(getContext(), "Bem-vindo ao plano PRO!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "Simulação bem-sucedida! Plano PRO ativado.", Toast.LENGTH_SHORT).show();
                     // Atualiza a UI para refletir o novo status
-                    verificarAssinatura();
+                    verificarStatusAssinatura();
                 })
-                .addOnFailureListener(e -> Toast.makeText(getContext(), "Ocorreu um erro ao assinar. Tente novamente.", Toast.LENGTH_SHORT).show());
+                .addOnFailureListener(e -> Toast.makeText(getContext(), "Erro na simulação. Tente novamente.", Toast.LENGTH_SHORT).show());
     }
 
-    // É uma boa prática limpar o binding no onDestroyView para evitar memory leaks
     @Override
     public void onDestroyView() {
         super.onDestroyView();

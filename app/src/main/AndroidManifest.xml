@@ -36,11 +36,6 @@
             android:exported="true"
             android:label="@string/app_name"
             android:windowSoftInputMode="adjustResize" />
-
-        <activity
-            android:name=".AvaliacaoActivity"
-            android:label="@string/avaliacao_titulo" />
-
     </application>
 
 </manifest>
