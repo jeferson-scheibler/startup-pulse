@@ -1,6 +1,9 @@
 package com.example.startuppulse.data;
 
 import com.google.firebase.firestore.PropertyName;
+import com.google.firebase.firestore.ServerTimestamp;
+
+import java.util.Date;
 
 public class User {
 
@@ -13,6 +16,11 @@ public class User {
     private int publicadasCount;
     private int seguindoCount;
     private long diasDeConta;
+    private String plano;
+    private Date dataExpiracaoPlano;
+    private String purchaseToken;
+    @ServerTimestamp
+    private Date dataCriacao;
 
     // Getters
     public String getNome() { return nome; }
@@ -35,4 +43,40 @@ public class User {
     public void setPublicadasCount(int publicadasCount) { this.publicadasCount = publicadasCount; }
     public void setSeguindoCount(int seguindoCount) { this.seguindoCount = seguindoCount; }
     public void setDiasDeConta(long diasDeConta) { this.diasDeConta = diasDeConta; }
+
+    public String getPlano() {
+        return plano;
+    }
+
+    public void setPlano(String plano) {
+        this.plano = plano;
+    }
+
+    public Date getDataExpiracaoPlano() {
+        return dataExpiracaoPlano;
+    }
+
+    public void setDataExpiracaoPlano(Date dataExpiracaoPlano) {
+        this.dataExpiracaoPlano = dataExpiracaoPlano;
+    }
+
+    public String getPurchaseToken() {
+        return purchaseToken;
+    }
+
+    public void setPurchaseToken(String purchaseToken) {
+        this.purchaseToken = purchaseToken;
+    }
+
+    public Date getDataCriacao() {
+        return dataCriacao;
+    }
+
+    public void setDataCriacao(Date dataCriacao) {
+        this.dataCriacao = dataCriacao;
+    }
+
+    public boolean isPro() {
+        return "pro".equals(plano) && (dataExpiracaoPlano == null || dataExpiracaoPlano.after(new Date()));
+    }
 }

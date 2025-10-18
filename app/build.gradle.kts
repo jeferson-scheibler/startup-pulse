@@ -81,6 +81,8 @@ dependencies {
     implementation(libs.firebase.config)
     implementation(libs.androidx.preference)
     implementation(libs.cronet.embedded)
+    implementation(libs.androidx.runtime)
+    implementation(libs.firebase.crashlytics.buildtools)
     annotationProcessor(libs.compiler)
     implementation(libs.lottie)
 
@@ -97,6 +99,9 @@ dependencies {
     annotationProcessor(libs.hilt.compiler)
 
     implementation("com.google.firebase:firebase-storage")
+    implementation("com.android.billingclient:billing:8.0.0")
+    implementation("com.google.guava:guava:33.5.0-android")
+    implementation("com.google.firebase:firebase-functions")
 
     // Desugaring
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.2")

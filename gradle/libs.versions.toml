@@ -26,7 +26,9 @@ cronetEmbedded = "141.7340.3"
 retrofit = "3.0.0"
 navigation = "2.9.5"
 hilt = "2.57.2"
-lifecycle = "2.8.2"
+lifecycle = "2.9.4"
+runtime = "1.9.3"
+firebaseCrashlyticsBuildtools = "3.0.6"
 
 [libraries]
 compiler = { module = "com.github.bumptech.glide:compiler", version.ref = "glide" }
@@ -42,7 +44,8 @@ material = { group = "com.google.android.material", name = "material", version.r
 activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
 constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version.ref = "firebaseAuth" }
-google-gms-auth = { group = "com.google.android.gms", name = "play-services-auth", version = "21.2.0" }
+#noinspection SimilarGradleDependency
+google-gms-auth = { group = "com.google.android.gms", name = "play-services-auth", version = "21.4.0" }
 credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentials" }
 credentials-play-services-auth = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentialsPlayServicesAuth" }
 googleid = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleid" }
@@ -61,6 +64,8 @@ androidx-navigation-ui = { group = "androidx.navigation", name = "navigation-ui"
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
 androidx-lifecycle-livedata-ktx = { group = "androidx.lifecycle", name = "lifecycle-livedata-ktx", version.ref = "lifecycle" }
+androidx-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtime" }
+firebase-crashlytics-buildtools = { group = "com.google.firebase", name = "firebase-crashlytics-buildtools", version.ref = "firebaseCrashlyticsBuildtools" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -10,9 +10,13 @@ import com.example.startuppulse.common.Result;
 import com.example.startuppulse.data.AuthRepository;
 import com.example.startuppulse.data.MentorRepository;
 import com.example.startuppulse.data.User;
+import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 // Imports do Hilt
+import java.util.Date;
+
 import javax.inject.Inject;
 import dagger.hilt.android.lifecycle.HiltViewModel;
 
@@ -31,10 +35,16 @@ public class PerfilViewModel extends ViewModel {
     private final MutableLiveData<Boolean> _navigateToLogin = new MutableLiveData<>(false);
     public final LiveData<Boolean> navigateToLogin = _navigateToLogin;
 
+    private final MutableLiveData<Boolean> _isPro = new MutableLiveData<>(false);
+    public final LiveData<Boolean> isPro = _isPro;
+    private final FirebaseFirestore firestore;
+
     @Inject
-    public PerfilViewModel(AuthRepository authRepository, MentorRepository mentorRepository) {
+    public PerfilViewModel(AuthRepository authRepository, MentorRepository mentorRepository, FirebaseFirestore firestore) {
         this.authRepository = authRepository;
         this.mentorRepository = mentorRepository;
+        this.firestore = firestore;
+        checkSubscriptionStatus();
         loadUserProfile();
         checkIfUserIsMentor();
     }
@@ -60,6 +70,31 @@ public class PerfilViewModel extends ViewModel {
                 _isMentor.postValue(result instanceof Result.Success);
             });
         }
+    }
+    public void checkSubscriptionStatus() {
+        String userId = authRepository.getCurrentUserId();
+        if (userId == null) {
+            _isPro.postValue(false);
+            return;
+        }
+
+        firestore.collection("premium").document(userId).get()
+                .addOnSuccessListener(document -> {
+                    if (document.exists()) {
+                        Timestamp dataFim = document.getTimestamp("data_fim");
+                        if (dataFim != null && dataFim.toDate().after(new Date())) {
+                            _isPro.postValue(true); // Usuário é Pro
+                        } else {
+                            _isPro.postValue(false); // Assinatura expirou
+                        }
+                    } else {
+                        _isPro.postValue(false); // Não tem assinatura
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    _isPro.postValue(false); // Assume que não é Pro em caso de erro
+                    // Opcional: Logar o erro
+                });
     }
 
     public void logout() {

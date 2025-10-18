@@ -144,6 +144,7 @@
                             android:gravity="center_vertical">
 
                             <TextView
+                                android:id="@+id/text_pro_name"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
@@ -159,6 +160,7 @@
                         </LinearLayout>
 
                         <TextView
+                            android:id="@+id/text_pro_price"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
@@ -167,6 +169,7 @@
                             android:textColor="@color/colorOnSurface" />
 
                         <TextView
+                            android:id="@+id/text_pro_interval"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="/mês"
