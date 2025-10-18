@@ -39,12 +39,10 @@ public class IdeiaRepository extends BaseRepository{
 
     private static final String IDEIAS_COLLECTION = "ideias";
     private static final String PITCH_DECKS_FOLDER = "pitch_decks";
-    private final String currentUserId;
 
     @Inject
     public IdeiaRepository() {
         super();
-        this.currentUserId = (auth.getCurrentUser() != null) ? auth.getCurrentUser().getUid() : null;
     }
 
     // --- MÉTODOS DE GERAÇÃO DE ID ---
@@ -122,12 +120,12 @@ public class IdeiaRepository extends BaseRepository{
     }
 
     public ListenerRegistration listenToDraftIdeias(@NonNull ResultCallback<List<Ideia>> callback) {
-        if (currentUserId == null) {
+        if (getCurrentUserId() == null) {
             callback.onResult(new Result.Success<>(new ArrayList<>()));
             return null;
         }
         return db.collection(IDEIAS_COLLECTION)
-                .whereEqualTo("ownerId", currentUserId)
+                .whereEqualTo("ownerId", getCurrentUserId())
                 .whereEqualTo("status", Ideia.Status.RASCUNHO.name())
                 .orderBy("timestamp", Query.Direction.DESCENDING)
                 .addSnapshotListener((snapshots, e) -> {
@@ -150,7 +148,7 @@ public class IdeiaRepository extends BaseRepository{
     // --- MÉTODOS DE ESCRITA (CREATE, UPDATE, DELETE) ---
 
     public void saveIdeia(@NonNull Ideia ideia, @NonNull ResultCallback<Void> callback) {
-        if (currentUserId == null) {
+        if (getCurrentUserId() == null) {
             callback.onResult(new Result.Error<>(new IllegalStateException("Usuário não autenticado.")));
             return;
         }
@@ -160,7 +158,7 @@ public class IdeiaRepository extends BaseRepository{
         }
 
         // Garante que o ownerId e o timestamp sejam definidos/atualizados
-        ideia.setOwnerId(currentUserId);
+        ideia.setOwnerId(getCurrentUserId());
         ideia.setTimestamp(new Date());
 
         db.collection(IDEIAS_COLLECTION).document(ideia.getId()).set(ideia)

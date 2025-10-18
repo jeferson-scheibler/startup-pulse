@@ -1,9 +1,11 @@
-package com.example.startuppulse.data;
+package com.example.startuppulse.data.repositories;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.example.startuppulse.common.Result;
+import com.example.startuppulse.data.ResultCallback;
+import com.example.startuppulse.data.models.User;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FirebaseAuth;
@@ -23,26 +25,22 @@ import javax.inject.Singleton;
  * Gerenciado pelo Hilt como um Singleton para toda a aplicação.
  */
 @Singleton
-public class AuthRepository {
-
-    private final FirebaseAuth firebaseAuth;
-    private final FirebaseFirestore firestore;
+public class AuthRepository extends BaseRepository{
     private static final String USUARIOS_COLLECTION = "usuarios"; // Padronizado
 
     @Inject
-    public AuthRepository(FirebaseAuth firebaseAuth, FirebaseFirestore firestore) {
-        this.firebaseAuth = firebaseAuth;
-        this.firestore = firestore;
+    public AuthRepository() {
+        super();
     }
 
     // --- MÉTODOS DE SESSÃO ---
 
     public FirebaseUser getCurrentUser() {
-        return firebaseAuth.getCurrentUser();
+        return auth.getCurrentUser();
     }
 
     public String getCurrentUserId() {
-        FirebaseUser currentUser = firebaseAuth.getCurrentUser();
+        FirebaseUser currentUser = auth.getCurrentUser();
         return (currentUser != null) ? currentUser.getUid() : null;
     }
 
@@ -52,20 +50,20 @@ public class AuthRepository {
     }
 
     public void logout() {
-        firebaseAuth.signOut();
+        auth.signOut();
     }
 
     // --- MÉTODOS DE AUTENTICAÇÃO ---
 
     public void loginWithEmail(String email, String password, @NonNull ResultCallback<FirebaseUser> callback) {
-        firebaseAuth.signInWithEmailAndPassword(email, password)
+        auth.signInWithEmailAndPassword(email, password)
                 .addOnSuccessListener(authResult -> callback.onResult(new Result.Success<>(authResult.getUser())))
                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
     }
 
     public void loginWithGoogle(GoogleSignInAccount googleAccount, @NonNull ResultCallback<FirebaseUser> callback) {
         AuthCredential credential = GoogleAuthProvider.getCredential(googleAccount.getIdToken(), null);
-        firebaseAuth.signInWithCredential(credential)
+        auth.signInWithCredential(credential)
                 .addOnSuccessListener(authResult -> {
                     // Após o login, garante que o usuário exista no Firestore
                     saveUserToFirestoreOnLogin(authResult.getUser(), callback);
@@ -74,7 +72,7 @@ public class AuthRepository {
     }
 
     public void createUser(String name, String email, String password, @NonNull ResultCallback<FirebaseUser> callback) {
-        firebaseAuth.createUserWithEmailAndPassword(email, password)
+        auth.createUserWithEmailAndPassword(email, password)
                 .addOnSuccessListener(authResult -> {
                     FirebaseUser user = authResult.getUser();
                     if (user != null) {
@@ -99,7 +97,7 @@ public class AuthRepository {
      * (Método migrado e aprimorado)
      */
     public void getUserProfile(@NonNull String userId, @NonNull ResultCallback<User> callback) {
-        firestore.collection(USUARIOS_COLLECTION).document(userId).get()
+        db.collection(USUARIOS_COLLECTION).document(userId).get()
                 .addOnSuccessListener(snapshot -> {
                     if (snapshot != null && snapshot.exists()) {
                         User user = snapshot.toObject(User.class);
@@ -116,7 +114,7 @@ public class AuthRepository {
      * (Método migrado)
      */
     public void updatePremiumStatus(@NonNull String userId, boolean isPremium, @NonNull ResultCallback<Void> callback) {
-        firestore.collection(USUARIOS_COLLECTION).document(userId)
+        db.collection(USUARIOS_COLLECTION).document(userId)
                 .update("isPremium", isPremium)
                 .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(null)))
                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
@@ -140,7 +138,7 @@ public class AuthRepository {
             userData.put("foto_perfil", user.getPhotoUrl().toString());
         }
 
-        firestore.collection(USUARIOS_COLLECTION).document(user.getUid())
+        db.collection(USUARIOS_COLLECTION).document(user.getUid())
                 .set(userData, SetOptions.merge()) // A chave para a operação segura
                 .addOnSuccessListener(aVoid -> finalCallback.onResult(new Result.Success<>(user)))
                 .addOnFailureListener(e -> finalCallback.onResult(new Result.Error<>(e)));
