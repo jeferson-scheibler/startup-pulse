@@ -12,7 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
-import com.example.startuppulse.data.Ideia;
+import com.example.startuppulse.data.models.Ideia;
 import com.example.startuppulse.databinding.FragmentCanvasInicioBinding;
 import com.example.startuppulse.ui.canvas.CanvasIdeiaViewModel;
 import com.google.android.material.chip.Chip;

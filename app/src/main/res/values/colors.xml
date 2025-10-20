@@ -42,4 +42,7 @@
 
     <!-- filete interno bem sutil -->
     <color name="mentorCardStrokeAccent">#1A000000</color> <!-- 10% preto -->
+
+    <color name="colorOnSurfaceVariant">#44474F</color>
+    <color name="colorOutline">#74777F</color>
 </resources>

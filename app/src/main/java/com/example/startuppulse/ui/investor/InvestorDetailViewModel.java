@@ -6,9 +6,8 @@ import androidx.lifecycle.SavedStateHandle;
 import androidx.lifecycle.ViewModel;
 
 import com.example.startuppulse.common.Result;
-import com.example.startuppulse.data.Investor;
-import com.example.startuppulse.data.InvestorRepository;
-import com.example.startuppulse.data.ResultCallback;
+import com.example.startuppulse.data.models.Investor;
+import com.example.startuppulse.data.repositories.InvestorRepository;
 
 import javax.inject.Inject;
 import dagger.hilt.android.lifecycle.HiltViewModel;

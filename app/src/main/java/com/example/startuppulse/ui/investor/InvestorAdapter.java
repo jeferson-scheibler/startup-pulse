@@ -11,7 +11,7 @@ import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.example.startuppulse.R;
-import com.example.startuppulse.data.Investor;
+import com.example.startuppulse.data.models.Investor;
 import com.google.android.material.imageview.ShapeableImageView;
 import java.util.Objects;
 

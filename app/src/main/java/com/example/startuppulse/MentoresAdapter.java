@@ -17,11 +17,11 @@ import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
-import com.example.startuppulse.data.Mentor;
+import com.example.startuppulse.data.models.Mentor;
 import com.example.startuppulse.util.AvatarUtils;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
-import java.util.ArrayList;
+
 import java.util.List;
 import java.util.Objects;
 

@@ -25,62 +25,78 @@ import javax.inject.Singleton;
  * Gerenciado pelo Hilt como um Singleton para toda a aplicação.
  */
 @Singleton
-public class AuthRepository extends BaseRepository{
-    private static final String USUARIOS_COLLECTION = "usuarios"; // Padronizado
+public class AuthRepository implements IAuthRepository{
+    private static final String USUARIOS_COLLECTION = "usuarios";
+    private final FirebaseFirestore firestore;
+    private final FirebaseAuth firebaseAuth;
 
     @Inject
-    public AuthRepository() {
-        super();
+    public AuthRepository(FirebaseFirestore firestore, FirebaseAuth firebaseAuth) {
+        this.firestore = firestore;
+        this.firebaseAuth = firebaseAuth;
     }
 
     // --- MÉTODOS DE SESSÃO ---
 
+    @Override
+    @Nullable
     public FirebaseUser getCurrentUser() {
-        return auth.getCurrentUser();
+        return firebaseAuth.getCurrentUser();
     }
 
-    public String getCurrentUserId() {
-        FirebaseUser currentUser = auth.getCurrentUser();
-        return (currentUser != null) ? currentUser.getUid() : null;
-    }
-
+    @Override
     public boolean isCurrentUser(@Nullable String userId) {
-        String currentUserId = getCurrentUserId();
-        return currentUserId != null && userId != null && currentUserId.equals(userId);
+        if (userId == null) {
+            return false;
+        }
+        return userId.equals(getCurrentUserId());
     }
 
+    @Override
+    @Nullable
+    public String getCurrentUserId() {
+        FirebaseUser user = getCurrentUser();
+        return (user != null) ? user.getUid() : null;
+    }
+
+    @Override
+    public boolean isLoggedIn() {
+        return firebaseAuth.getCurrentUser() != null;
+    }
+
+    @Override
     public void logout() {
-        auth.signOut();
+        firebaseAuth.signOut();
     }
 
     // --- MÉTODOS DE AUTENTICAÇÃO ---
 
-    public void loginWithEmail(String email, String password, @NonNull ResultCallback<FirebaseUser> callback) {
-        auth.signInWithEmailAndPassword(email, password)
+    @Override
+    public void loginWithEmail(@NonNull String email, @NonNull String password, @NonNull ResultCallback<FirebaseUser> callback) {
+        firebaseAuth.signInWithEmailAndPassword(email, password) // CORRIGIDO: Usa firebaseAuth
                 .addOnSuccessListener(authResult -> callback.onResult(new Result.Success<>(authResult.getUser())))
                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
     }
 
-    public void loginWithGoogle(GoogleSignInAccount googleAccount, @NonNull ResultCallback<FirebaseUser> callback) {
+    @Override
+    public void loginWithGoogle(@NonNull GoogleSignInAccount googleAccount, @NonNull ResultCallback<FirebaseUser> callback) {
         AuthCredential credential = GoogleAuthProvider.getCredential(googleAccount.getIdToken(), null);
-        auth.signInWithCredential(credential)
+        firebaseAuth.signInWithCredential(credential) // CORRIGIDO: Usa firebaseAuth
                 .addOnSuccessListener(authResult -> {
-                    // Após o login, garante que o usuário exista no Firestore
                     saveUserToFirestoreOnLogin(authResult.getUser(), callback);
                 })
                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
     }
 
-    public void createUser(String name, String email, String password, @NonNull ResultCallback<FirebaseUser> callback) {
-        auth.createUserWithEmailAndPassword(email, password)
+    @Override
+    public void createUser(@NonNull String name, @NonNull String email, @NonNull String password, @NonNull ResultCallback<FirebaseUser> callback) {
+        firebaseAuth.createUserWithEmailAndPassword(email, password) // CORRIGIDO: Usa firebaseAuth
                 .addOnSuccessListener(authResult -> {
                     FirebaseUser user = authResult.getUser();
                     if (user != null) {
-                        // Atualiza o nome no Firebase Auth
                         UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder().setDisplayName(name).build();
                         user.updateProfile(profileUpdates)
                                 .addOnCompleteListener(task -> {
-                                    // E então, salva no Firestore
                                     saveUserToFirestoreOnLogin(user, callback);
                                 });
                     } else {
@@ -94,10 +110,9 @@ public class AuthRepository extends BaseRepository{
 
     /**
      * Busca os dados de um perfil de usuário a partir do seu ID.
-     * (Método migrado e aprimorado)
      */
     public void getUserProfile(@NonNull String userId, @NonNull ResultCallback<User> callback) {
-        db.collection(USUARIOS_COLLECTION).document(userId).get()
+        firestore.collection(USUARIOS_COLLECTION).document(userId).get()
                 .addOnSuccessListener(snapshot -> {
                     if (snapshot != null && snapshot.exists()) {
                         User user = snapshot.toObject(User.class);
@@ -111,10 +126,9 @@ public class AuthRepository extends BaseRepository{
 
     /**
      * Atualiza o status de premium de um usuário.
-     * (Método migrado)
      */
     public void updatePremiumStatus(@NonNull String userId, boolean isPremium, @NonNull ResultCallback<Void> callback) {
-        db.collection(USUARIOS_COLLECTION).document(userId)
+        firestore.collection(USUARIOS_COLLECTION).document(userId)
                 .update("isPremium", isPremium)
                 .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(null)))
                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
@@ -138,7 +152,7 @@ public class AuthRepository extends BaseRepository{
             userData.put("foto_perfil", user.getPhotoUrl().toString());
         }
 
-        db.collection(USUARIOS_COLLECTION).document(user.getUid())
+        firestore.collection(USUARIOS_COLLECTION).document(user.getUid())
                 .set(userData, SetOptions.merge()) // A chave para a operação segura
                 .addOnSuccessListener(aVoid -> finalCallback.onResult(new Result.Success<>(user)))
                 .addOnFailureListener(e -> finalCallback.onResult(new Result.Error<>(e)));

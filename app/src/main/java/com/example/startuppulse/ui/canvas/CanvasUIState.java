@@ -1,6 +1,6 @@
 package com.example.startuppulse.ui.canvas;
 
-import com.example.startuppulse.data.Ideia;
+import com.example.startuppulse.data.models.Ideia;
 
 public class CanvasUIState {
     public final Ideia ideia;

@@ -12,14 +12,13 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
-import androidx.navigation.Navigation;
 // NOVO IMPORT: Para encontrar o NavController principal
 import androidx.navigation.fragment.NavHostFragment;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.example.startuppulse.common.Result;
-import com.example.startuppulse.data.User;
+import com.example.startuppulse.data.models.User;
 import com.example.startuppulse.databinding.FragmentPerfilBinding;
 import com.example.startuppulse.ui.perfil.PerfilViewModel;
 
@@ -70,6 +69,16 @@ public class PerfilFragment extends Fragment {
                 binding.buttonTornarMentor.setVisibility(isMentor ? View.GONE : View.VISIBLE);
             }
         });
+
+        viewModel.isPro.observe(getViewLifecycleOwner(), isPro -> {
+            if (binding != null) {
+                if (isPro) {
+                    binding.btnGerenciarAssinatura.setText(R.string.gerenciar_assinatura);
+                } else {
+                    binding.btnGerenciarAssinatura.setText(R.string.fazer_upgrade);
+                }
+            }
+        });
     }
 
     private void setupClickListeners() {
@@ -81,10 +90,23 @@ public class PerfilFragment extends Fragment {
                 navController.navigate(R.id.action_perfilFragment_to_assinaturaFragment)
         );
 
-        // A navegação para se tornar um mentor continua a mesma
         binding.buttonTornarMentor.setOnClickListener(v ->
                 navController.navigate(R.id.action_perfilFragment_to_canvasMentorFragment)
         );
+        binding.btnEditarPerfil.setOnClickListener(v -> {
+            // TODO: Navegar para a tela de edição de perfil
+            Toast.makeText(getContext(), "Editar Perfil Clicado", Toast.LENGTH_SHORT).show();
+        });
+
+        binding.btnPrivacidade.setOnClickListener(v -> {
+            // TODO: Navegar para a tela de privacidade
+            Toast.makeText(getContext(), "Privacidade Clicado", Toast.LENGTH_SHORT).show();
+        });
+
+        binding.btnAjuda.setOnClickListener(v -> {
+            // TODO: Navegar para a tela de ajuda/suporte
+            Toast.makeText(getContext(), "Ajuda e Suporte Clicado", Toast.LENGTH_SHORT).show();
+        });
     }
 
     private void populateUi(User user) {

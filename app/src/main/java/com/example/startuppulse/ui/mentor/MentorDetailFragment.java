@@ -11,7 +11,7 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.fragment.NavHostFragment;
 import com.bumptech.glide.Glide;
-import com.example.startuppulse.data.Mentor;
+import com.example.startuppulse.data.models.Mentor;
 import com.example.startuppulse.common.Result;
 import com.example.startuppulse.databinding.FragmentMentorDetailBinding;
 import dagger.hilt.android.AndroidEntryPoint;

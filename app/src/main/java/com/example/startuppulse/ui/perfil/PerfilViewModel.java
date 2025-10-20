@@ -7,9 +7,9 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.example.startuppulse.common.Result;
-import com.example.startuppulse.data.AuthRepository;
-import com.example.startuppulse.data.MentorRepository;
-import com.example.startuppulse.data.User;
+import com.example.startuppulse.data.repositories.AuthRepository;
+import com.example.startuppulse.data.repositories.MentorRepository;
+import com.example.startuppulse.data.models.User;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;

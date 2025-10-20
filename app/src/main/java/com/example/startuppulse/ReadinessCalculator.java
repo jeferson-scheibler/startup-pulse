@@ -4,7 +4,7 @@ import android.text.TextUtils;
 
 import com.example.startuppulse.data.Avaliacao;
 import com.example.startuppulse.data.CanvasEtapa;
-import com.example.startuppulse.data.Ideia;
+import com.example.startuppulse.data.models.Ideia;
 import com.example.startuppulse.data.PostIt;
 
 import java.util.List;

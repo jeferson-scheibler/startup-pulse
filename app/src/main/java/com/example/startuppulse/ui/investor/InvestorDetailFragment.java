@@ -15,7 +15,7 @@ import androidx.navigation.fragment.NavHostFragment;
 import com.bumptech.glide.Glide;
 import com.example.startuppulse.R;
 import com.example.startuppulse.common.Result;
-import com.example.startuppulse.data.Investor;
+import com.example.startuppulse.data.models.Investor;
 import com.example.startuppulse.databinding.FragmentInvestorDetailBinding;
 import com.google.android.material.chip.Chip;
 import java.util.List;

@@ -134,4 +134,6 @@
     <string name="sign_up_button_text">Cadastrar</string>
     <string name="already_have_account_prompt">Já tem uma conta?</string>
     <string name="login_link">Faça login</string>
+
+    <string name="fazer_upgrade">Faça o Upgrade!</string>
 </resources>
