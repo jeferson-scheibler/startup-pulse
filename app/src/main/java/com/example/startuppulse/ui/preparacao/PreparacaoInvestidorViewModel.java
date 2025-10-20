@@ -8,8 +8,8 @@ import androidx.lifecycle.ViewModel;
 
 import com.example.startuppulse.ReadinessCalculator;
 import com.example.startuppulse.ReadinessData;
-import com.example.startuppulse.data.Ideia;
-import com.example.startuppulse.data.IdeiaRepository;
+import com.example.startuppulse.data.models.Ideia;
+import com.example.startuppulse.data.repositories.IdeiaRepository;
 import com.example.startuppulse.data.MembroEquipe;
 import com.example.startuppulse.data.Metrica;
 import com.example.startuppulse.common.Result;

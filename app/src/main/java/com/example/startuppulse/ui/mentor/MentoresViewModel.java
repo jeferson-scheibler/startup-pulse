@@ -4,9 +4,9 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.example.startuppulse.data.Mentor;
+import com.example.startuppulse.data.models.Mentor;
 import com.example.startuppulse.common.Result;
-import com.example.startuppulse.data.MentorRepository;
+import com.example.startuppulse.data.repositories.MentorRepository;
 import com.example.startuppulse.data.ResultCallback;
 
 import java.util.List;

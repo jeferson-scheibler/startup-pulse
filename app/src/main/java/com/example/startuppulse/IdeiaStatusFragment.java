@@ -27,17 +27,16 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.fragment.NavHostFragment;
 import com.example.startuppulse.data.Avaliacao;
-import com.example.startuppulse.data.Ideia;
+import com.example.startuppulse.data.models.Ideia;
 import com.example.startuppulse.databinding.FragmentIdeiaStatusBinding;
 import com.example.startuppulse.ui.canvas.CanvasIdeiaViewModel;
 import com.example.startuppulse.util.PdfGenerator;
 import java.util.List;
 import java.util.Locale;
 import dagger.hilt.android.AndroidEntryPoint;
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
+
 import android.location.Location;
-import com.example.startuppulse.LocationService;
+
 import com.google.android.material.snackbar.Snackbar;
 
 @AndroidEntryPoint

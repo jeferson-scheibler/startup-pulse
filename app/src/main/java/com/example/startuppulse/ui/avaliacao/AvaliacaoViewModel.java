@@ -8,7 +8,7 @@ import androidx.lifecycle.ViewModel;
 import com.example.startuppulse.util.Event;
 import com.example.startuppulse.common.Result;
 import com.example.startuppulse.data.Avaliacao;
-import com.example.startuppulse.data.IdeiaRepository;
+import com.example.startuppulse.data.repositories.IdeiaRepository;
 
 import java.util.ArrayList;
 import java.util.HashMap;

@@ -16,7 +16,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.startuppulse.common.Result;
-import com.example.startuppulse.data.Ideia;
+import com.example.startuppulse.data.models.Ideia;
 import com.example.startuppulse.databinding.FragmentMeusRascunhosBinding;
 import com.example.startuppulse.ui.ideias.MeusRascunhosViewModel;
 import com.google.android.material.snackbar.Snackbar;

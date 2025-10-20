@@ -17,7 +17,7 @@ import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.startuppulse.common.Result;
-import com.example.startuppulse.data.Ideia;
+import com.example.startuppulse.data.models.Ideia;
 import com.example.startuppulse.databinding.FragmentIdeiasBinding;
 import com.example.startuppulse.ui.ideias.IdeiasViewModel;
 import com.google.android.material.snackbar.Snackbar;

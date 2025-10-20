@@ -8,14 +8,15 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 import com.example.startuppulse.LimiteHelper;
 import com.example.startuppulse.common.Result;
-import com.example.startuppulse.data.AuthRepository;
-import com.example.startuppulse.data.Ideia;
-import com.example.startuppulse.data.IdeiaRepository;
+import com.example.startuppulse.data.repositories.AuthRepository;
+import com.example.startuppulse.data.models.Ideia;
+import com.example.startuppulse.data.repositories.IIdeiaRepository;
+import com.example.startuppulse.data.repositories.IdeiaRepository;
 import com.example.startuppulse.util.Event;
 import com.google.firebase.firestore.ListenerRegistration;
 import java.util.List;
 import javax.inject.Inject;
-import dagger.hilt.android.AndroidEntryPoint;
+
 import dagger.hilt.android.lifecycle.HiltViewModel;
 
 @HiltViewModel
@@ -24,7 +25,7 @@ public class IdeiasViewModel extends ViewModel {
     private static final String TAG = "IdeiasViewModel_DEBUG";
 
     // --- Repositórios ---
-    private final IdeiaRepository ideiaRepository;
+    private final IIdeiaRepository ideiaRepository;
     private final AuthRepository authRepository;
     private ListenerRegistration publicIdeiasListener;
 
@@ -57,7 +58,7 @@ public class IdeiasViewModel extends ViewModel {
 
 
     @Inject
-    public IdeiasViewModel(IdeiaRepository ideiaRepository, AuthRepository authRepository) {
+    public IdeiasViewModel(IIdeiaRepository ideiaRepository, AuthRepository authRepository) {
         this.ideiaRepository = ideiaRepository;
         this.authRepository = authRepository;
         listenToPublicIdeias();

@@ -5,12 +5,10 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.example.startuppulse.common.Result;
-import com.example.startuppulse.data.AuthRepository;
-import com.example.startuppulse.data.ResultCallback;
-import com.google.firebase.auth.FirebaseUser;
+import com.example.startuppulse.data.repositories.AuthRepository;
 
 import javax.inject.Inject;
-import javax.inject.Inject;
+
 import dagger.hilt.android.lifecycle.HiltViewModel;
 
 @HiltViewModel

@@ -13,7 +13,7 @@
         <item name="android:paddingEnd">8dp</item>
         <item name="android:paddingTop">4dp</item>
         <item name="android:paddingBottom">4dp</item>
-        <item name="android:textAppearance">?attr/textAppearanceLabelSmall</item>
+        <item name="android:textAppearance">@style/Text.BodySmall.Muted</item>
         <item name="android:textColor">@color/colorOnPrimary</item>
     </style>
 
@@ -24,7 +24,7 @@
         <item name="android:drawablePadding">8dp</item>
         <item name="android:drawableTint">@color/colorPrimary</item>
         <item name="android:gravity">center_vertical</item>
-        <item name="android:textAppearance">?attr/textAppearanceBodyMedium</item>
+        <item name="android:textAppearance">@style/Text.BodyMedium</item>
         <item name="android:textColor">@color/colorOnSurface</item>
         <item name="android:layout_marginBottom">8dp</item>
     </style>
@@ -179,5 +179,64 @@
         <item name="android:windowIsTranslucent">false</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowFullscreen">true</item>
+    </style>
+
+    <style name="Widget.App.Card.Glass" parent="Widget.Material3.CardView.Filled">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">18dp</item>
+        <item name="android:background">@drawable/glass_fume_background</item>
+        <item name="cardElevation">0dp</item>
+        <item name="strokeWidth">0dp</item>
+        <item name="cardBackgroundColor">@android:color/transparent</item>
+    </style>
+
+    <style name="Widget.App.Chip" parent="Widget.AppCompat.TextView">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:paddingLeft">12dp</item>
+        <item name="android:paddingRight">12dp</item>
+        <item name="android:paddingTop">6dp</item>
+        <item name="android:paddingBottom">6dp</item>
+        <item name="android:textAppearance">?attr/textAppearanceLabelMedium</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <style name="Widget.App.StatContainer" parent="">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:gravity">center</item>
+    </style>
+
+    <style name="Widget.App.StatValue" parent="Widget.AppCompat.TextView">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textAppearance">?attr/textAppearanceTitleLarge</item>
+        <item name="android:textColor">@color/colorOnSurface</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:text">"—"</item>
+    </style>
+
+    <style name="Widget.App.StatLabel" parent="Widget.AppCompat.TextView">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">2dp</item>
+        <item name="android:textAppearance">?attr/textAppearanceBodySmall</item>
+        <item name="android:textColor">@color/colorOnSurfaceVariant</item>
+        <item name="android:gravity">center</item>
+    </style>
+
+    <style name="App.Button.Outlined.LessRounded.OnSurface" parent="App.Button.Outlined.LessRounded">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="strokeColor">@color/colorOutline</item>
+        <item name="iconTint">@color/colorOnSurfaceVariant</item>
+        <item name="android:textColor">@color/colorOnSurface</item>
+        <item name="rippleColor">@color/rippleNeutral</item>
+        <item name="android:textAlignment">viewStart</item>
+        <item name="iconPadding">12dp</item>
     </style>
 </resources>

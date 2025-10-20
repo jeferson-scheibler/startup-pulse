@@ -27,7 +27,7 @@ import androidx.navigation.fragment.NavHostFragment;
 import com.example.startuppulse.CanvasPagerAdapter;
 import com.example.startuppulse.LocationService;
 import com.example.startuppulse.R;
-import com.example.startuppulse.data.Ideia;
+import com.example.startuppulse.data.models.Ideia;
 import com.example.startuppulse.databinding.FragmentCanvasIdeiaBinding;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.tabs.TabLayoutMediator;

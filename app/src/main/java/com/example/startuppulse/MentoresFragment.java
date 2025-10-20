@@ -23,10 +23,9 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.startuppulse.common.Result;
-import com.example.startuppulse.data.Mentor;
+import com.example.startuppulse.data.models.Mentor;
 import com.example.startuppulse.databinding.FragmentMentoresBinding;
 import com.example.startuppulse.ui.mentor.MentoresViewModel;
 import com.example.startuppulse.util.GeoCache;

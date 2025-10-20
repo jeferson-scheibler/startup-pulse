@@ -4,7 +4,7 @@ import android.location.Location;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.example.startuppulse.data.Mentor;
+import com.example.startuppulse.data.models.Mentor;
 
 import java.util.Collections;
 import java.util.Comparator;
