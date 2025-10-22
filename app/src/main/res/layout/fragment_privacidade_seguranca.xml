@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/colorSurface"
+    tools:context=".ui.privacidade.PrivacidadeSegurancaFragment">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="0dp"
+        android:layout_height="?attr/actionBarSize"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:navigationIcon="@drawable/ic_arrow_back"
+        app:navigationIconTint="?attr/colorOnSurface"
+        app:title="@string/privacidade_e_seguranca"
+        app:titleTextAppearance="@style/Text.TitleMedium.Bold" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingTop="16dp"
+        app:layout_constraintTop_toBottomOf="@id/toolbar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_alterar_senha"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/alterar_senha"
+            android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:textColor="?attr/colorOnSurface"
+            android:gravity="start|center_vertical"
+            android:paddingHorizontal="24dp"
+            android:paddingVertical="16dp"
+            android:textAllCaps="false"
+            app:icon="@drawable/ic_lock"
+            app:iconTint="?attr/colorOnSurfaceVariant"
+            app:iconPadding="16dp"/>
+
+        <TextView
+            android:id="@+id/text_info_google_login"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/info_alterar_senha_google"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:layout_marginHorizontal="24dp"
+            android:layout_marginTop="-8dp"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone"
+            tools:visibility="visible"/>
+
+        <com.google.android.material.divider.MaterialDivider
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="24dp"/>
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switch_visibilidade_perfil"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/perfil_publico"
+            android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:textColor="?attr/colorOnSurface"
+            android:paddingHorizontal="24dp"
+            android:paddingVertical="16dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/descricao_perfil_publico"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:layout_marginHorizontal="24dp"
+            android:layout_marginTop="-8dp"
+            android:layout_marginBottom="8dp"/>
+
+
+        <com.google.android.material.divider.MaterialDivider
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="24dp"/>
+
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_excluir_conta"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/excluir_minha_conta"
+            android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:textColor="@color/colorError"
+            android:gravity="start|center_vertical"
+            android:paddingHorizontal="24dp"
+            android:paddingVertical="16dp"
+            android:textAllCaps="false"
+            app:icon="@drawable/ic_delete"
+            app:iconTint="@color/colorError"
+            app:iconPadding="16dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/aviso_excluir_conta"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:layout_marginHorizontal="24dp"
+            android:layout_marginTop="-8dp"
+            android:layout_marginBottom="8dp"/>
+
+    </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/progress_bar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:visibility="visible"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

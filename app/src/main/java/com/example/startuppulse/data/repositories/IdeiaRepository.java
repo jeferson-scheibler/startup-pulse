@@ -1,6 +1,7 @@
 package com.example.startuppulse.data.repositories;
 
 import android.net.Uri;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -41,6 +42,7 @@ public class IdeiaRepository implements IIdeiaRepository {
 
     private static final String IDEIAS_COLLECTION = "ideias";
     private static final String PITCH_DECKS_FOLDER = "pitch_decks";
+    private static final String TAG = "IdeiaRepository";
 
     @Inject
     public IdeiaRepository(FirebaseFirestore firestore, IAuthRepository authRepository, IStorageRepository storageRepository) {
@@ -112,6 +114,57 @@ public class IdeiaRepository implements IIdeiaRepository {
     // ============================================================
     // LEITURAS E LISTENERS
     // ============================================================
+    @Override
+    public void getPublicIdeasCountByUser(String userId, ResultCallback<Integer> callback) {
+        firestore.collection("ideias")
+                .whereEqualTo("ownerId", userId)
+                .whereIn("status", Arrays.asList(
+                        Ideia.Status.EM_AVALIACAO.name(),
+                        Ideia.Status.AVALIADA_APROVADA.name(),
+                        Ideia.Status.AVALIADA_REPROVADA.name()
+                ))
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    if (querySnapshot != null) {
+                        callback.onResult(new Result.Success<>(querySnapshot.size()));
+                    } else {
+                        callback.onResult(new Result.Success<>(0));
+                    }
+                })
+                .addOnFailureListener(e ->
+                        callback.onResult(new Result.Error<>(e)));
+    }
+
+    @Override
+    public void getAvaliacoesRecebidasCount(String userId, ResultCallback<Integer> callback) {
+        Log.d(TAG, "getAvaliacoesRecebidasCount: Buscando ideias do userId: " + userId + " para contar avaliações.");
+        firestore.collection(IDEIAS_COLLECTION)
+                .whereEqualTo("ownerId", userId) // Busca ideias do usuário
+                // Não precisa filtrar por status aqui, a menos que só queira contar avaliações de ideias públicas
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    int totalAvaliacoes = 0;
+                    if (querySnapshot != null && !querySnapshot.isEmpty()) {
+                        Log.d(TAG, "getAvaliacoesRecebidasCount: Encontradas " + querySnapshot.size() + " ideias do usuário.");
+                        // Itera sobre cada documento de ideia encontrado
+                        for (Ideia ideia : querySnapshot.toObjects(Ideia.class)) {
+                            // Assumindo que Ideia.java tem getAvaliacoes() que retorna uma List
+                            if (ideia.getAvaliacoes() != null) {
+                                totalAvaliacoes += ideia.getAvaliacoes().size();
+                            }
+                        }
+                        Log.d(TAG, "getAvaliacoesRecebidasCount SUCCESS: Total de avaliações contadas: " + totalAvaliacoes);
+                        callback.onResult(new Result.Success<>(totalAvaliacoes));
+                    } else {
+                        Log.d(TAG, "getAvaliacoesRecebidasCount: Nenhuma ideia encontrada para o usuário.");
+                        callback.onResult(new Result.Success<>(0)); // Retorna 0 se não encontrou ideias
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "getAvaliacoesRecebidasCount ERROR ao buscar ideias: ", e);
+                    callback.onResult(new Result.Error<>(e));
+                });
+    }
 
     @Override
     public void getIdeiasForOwner(@NonNull String ownerId, @NonNull ResultCallback<List<Ideia>> callback) {

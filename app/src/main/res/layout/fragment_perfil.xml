@@ -148,23 +148,6 @@
                     tools:text="Válido até 08/09/2025" />
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnGerenciarAssinatura"
-                    style="@style/App.Button.Outlined.LessRounded"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:paddingVertical="12dp"
-                    android:text="@string/gerenciar_assinatura"
-                    android:textAllCaps="false"
-                    android:textColor="@color/colorPrimary"
-                    app:iconTint="@color/colorPrimary"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toBottomOf="@id/icon_plano"
-                    app:strokeColor="@color/colorPrimary"
-                    app:strokeWidth="1dp" />
-
-                <com.google.android.material.button.MaterialButton
                     android:id="@+id/button_upgrade_pro"
                     style="@style/App.Button.Outlined.LessRounded"
                     android:layout_width="match_parent"
@@ -172,11 +155,10 @@
                     android:layout_marginHorizontal="16dp"
                     android:layout_marginTop="16dp"
                     android:text="Gerenciar Assinatura"
-                    android:visibility="gone"
                     app:icon="@drawable/ic_fontes_renda"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toBottomOf="@id/btnGerenciarAssinatura"
+                    app:layout_constraintTop_toBottomOf="@id/text_view_validade_plano"
                     tools:visibility="visible" />
 
             </androidx.constraintlayout.widget.ConstraintLayout>
@@ -185,50 +167,134 @@
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/card_stats"
             style="@style/Widget.App.Card.Glass"
+            android:layout_height="wrap_content"
             app:layout_constraintTop_toBottomOf="@id/card_perfil"
             app:layout_constraintStart_toStartOf="@id/guideline_start"
             app:layout_constraintEnd_toEndOf="@id/guideline_end">
 
-            <LinearLayout
+            <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="16dp"
-                android:orientation="horizontal">
+                android:paddingVertical="10dp"
+                android:paddingHorizontal="16dp">
 
-                <LinearLayout style="@style/Widget.App.StatContainer">
-                    <TextView
-                        android:id="@+id/stat_publicadas"
-                        style="@style/Widget.App.StatValue"
-                        tools:text="12" />
-                    <TextView
-                        style="@style/Widget.App.StatLabel"
-                        android:text="@string/ideias_publicadas" />
-                </LinearLayout>
+                <ImageView
+                    android:id="@+id/icon_stat_publicadas"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_lightbulb_outline"
+                    app:tint="@color/colorPrimary"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="@id/stat_publicadas"
+                    app:layout_constraintBottom_toBottomOf="@id/label_stat_publicadas"
+                    android:layout_marginStart="8dp"/>
 
-                <Space android:layout_width="12dp" android:layout_height="0dp"/>
+                <TextView
+                    android:id="@+id/stat_publicadas"
+                    style="@style/Widget.App.StatValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="?attr/textAppearanceTitleLarge"
+                    android:textColor="@color/colorPrimary"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintStart_toEndOf="@id/icon_stat_publicadas"
+                    app:layout_constraintBottom_toTopOf="@id/label_stat_publicadas"
+                    app:layout_constraintVertical_chainStyle="packed"
+                    android:layout_marginStart="8dp"
+                    tools:text="12" />
 
-                <LinearLayout style="@style/Widget.App.StatContainer">
-                    <TextView
-                        android:id="@+id/stat_seguindo"
-                        style="@style/Widget.App.StatValue"
-                        tools:text="5" />
-                    <TextView
-                        style="@style/Widget.App.StatLabel"
-                        android:text="@string/mentores_seguidos" />
-                </LinearLayout>
+                <TextView
+                    android:id="@+id/label_stat_publicadas"
+                    style="@style/Widget.App.StatLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/ideias_publicadas"
+                    android:alpha="0.8"
+                    android:textColor="@color/colorOnSurface"
+                    app:layout_constraintTop_toBottomOf="@id/stat_publicadas"
+                    app:layout_constraintStart_toStartOf="@id/stat_publicadas"
+                    app:layout_constraintBottom_toBottomOf="parent"/>
 
-                <Space android:layout_width="12dp" android:layout_height="0dp"/>
 
-                <LinearLayout style="@style/Widget.App.StatContainer">
-                    <TextView
-                        android:id="@+id/stat_dias"
-                        style="@style/Widget.App.StatValue"
-                        tools:text="32" />
-                    <TextView
-                        style="@style/Widget.App.StatLabel"
-                        android:text="@string/dias_de_conta" />
-                </LinearLayout>
-            </LinearLayout>
+                <com.google.android.material.progressindicator.CircularProgressIndicator
+                    android:id="@+id/progress_engagement"
+                    android:layout_width="90dp"
+                    android:layout_height="90dp"
+                    android:progress="32"
+                    app:indicatorSize="90dp"
+                    app:trackThickness="6dp"
+                    app:trackCornerRadius="3dp"
+                    app:indicatorColor="@color/colorPrimary"
+                    app:trackColor="@color/colorSurfaceVariant"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent" />
+
+                <TextView
+                    android:id="@+id/stat_engajamento_value"
+                    style="@style/Widget.App.StatValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="?attr/textAppearanceHeadlineMedium"
+                    android:textColor="@color/colorPrimary"
+                    android:textStyle="bold"
+                    app:layout_constraintTop_toTopOf="@id/progress_engagement"
+                    app:layout_constraintBottom_toBottomOf="@id/progress_engagement"
+                    app:layout_constraintStart_toStartOf="@id/progress_engagement"
+                    app:layout_constraintEnd_toEndOf="@id/progress_engagement"
+                    tools:text="32" />
+
+                <TextView
+                    android:id="@+id/label_stat_engajamento"
+                    style="@style/Widget.App.StatLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="@string/engajamento"
+                    android:alpha="0.8"
+                    android:textColor="@color/colorOnSurface"
+                    app:layout_constraintTop_toBottomOf="@id/progress_engagement"
+                    app:layout_constraintStart_toStartOf="@id/progress_engagement"
+                    app:layout_constraintEnd_toEndOf="@id/progress_engagement"/>
+
+
+                <ImageView
+                    android:id="@+id/icon_stat_dias"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_calendar_today"
+                    app:tint="@color/colorPrimary"
+                    app:layout_constraintEnd_toStartOf="@id/stat_dias"
+                    app:layout_constraintTop_toTopOf="@id/stat_dias"       app:layout_constraintBottom_toBottomOf="@id/stat_dias" android:layout_marginEnd="8dp"/>
+
+                <TextView
+                    android:id="@+id/stat_dias"
+                    style="@style/Widget.App.StatValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="?attr/textAppearanceTitleLarge"
+                    android:textColor="@color/colorPrimary"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintBottom_toTopOf="@id/label_stat_dias"
+                    app:layout_constraintVertical_chainStyle="packed"
+                    android:layout_marginEnd="8dp"
+                    tools:text="2" />
+
+                <TextView
+                    android:id="@+id/label_stat_dias"
+                    style="@style/Widget.App.StatLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/dias_acessados"
+                    android:alpha="0.8"
+                    android:textColor="@color/colorOnSurface"
+                    app:layout_constraintTop_toBottomOf="@id/stat_dias"
+                    app:layout_constraintEnd_toEndOf="@id/stat_dias"
+                    app:layout_constraintBottom_toBottomOf="parent"/>
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
         </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.card.MaterialCardView

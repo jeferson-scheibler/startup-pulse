@@ -95,6 +95,9 @@ public interface IIdeiaRepository {
     @Nullable
     ListenerRegistration listenToDraftIdeias(@NonNull ResultCallback<List<Ideia>> callback);
 
+    void getPublicIdeasCountByUser(String userId, ResultCallback<Integer> callback);
+    void getAvaliacoesRecebidasCount(String userId, ResultCallback<Integer> callback);
+
     // ------------------------------
     // Publicação / Avaliação
     // ------------------------------

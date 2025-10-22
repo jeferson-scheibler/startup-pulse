@@ -62,6 +62,12 @@
     </fragment>
 
     <fragment
+        android:id="@+id/editarPerfilFragment"
+        android:name="com.example.startuppulse.ui.perfil.EditarPerfilFragment"
+        android:label="EditarPerfilFragment"
+        tools:layout="@layout/fragment_editar_perfil"/>
+
+    <fragment
         android:id="@+id/perfilFragment"
         android:name="com.example.startuppulse.PerfilFragment"
         android:label="Perfil"
@@ -72,6 +78,15 @@
         <action
             android:id="@+id/action_perfilFragment_to_canvasMentorFragment"
             app:destination="@id/canvasMentorFragment" />
+        <action
+            android:id="@+id/action_perfilFragment_to_editarPerfilFragment"
+            app:destination="@id/editarPerfilFragment" />
+        <action
+            android:id="@+id/action_perfilFragment_to_privacidadeSegurancaFragment"
+            app:destination="@id/privacidadeSegurancaFragment" />
+        <action
+            android:id="@+id/action_perfilFragment_to_ajudaSuporteFragment"
+            app:destination="@id/ajudaSuporteFragment" />
     </fragment>
 
     <fragment
@@ -127,5 +142,21 @@
             app:argType="string" />
     </fragment>
 
+    <fragment
+        android:id="@+id/privacidadeSegurancaFragment"
+        android:name="com.example.startuppulse.ui.privacidade.PrivacidadeSegurancaFragment"
+        android:label="PrivacidadeSegurancaFragment"
+        tools:layout="@layout/fragment_privacidade_seguranca"/>
+
+    <action android:id="@+id/action_global_return_to_login"
+        app:destination="@id/loginFragment"
+        app:popUpTo="@id/nav_graph"
+        app:popUpToInclusive="true"/>
+
+    <fragment
+        android:id="@+id/ajudaSuporteFragment"
+        android:name="com.example.startuppulse.ui.ajuda.AjudaSuporteFragment"
+        android:label="AjudaSuporteFragment"
+        tools:layout="@layout/fragment_ajuda_suporte"/>
 
 </navigation>

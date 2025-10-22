@@ -28,4 +28,10 @@ public abstract class RepositoryModule {
     @Binds
     @Singleton
     public abstract IAuthRepository bindAuthRepository(AuthRepository impl);
+
+    @Binds
+    public abstract IStorageRepository bindStorageRepository(StorageRepository impl);
+
+    @Binds
+    public abstract IUserRepository bindUserRepository(UserRepository impl);
 }

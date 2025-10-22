@@ -39,6 +39,7 @@
     <!-- vinheta praticamente zero no claro -->
     <color name="mentorCardVignetteStart">#00000000</color>
     <color name="mentorCardVignetteEnd">#00000000</color>
+    <color name="colorBrandLinkedIn">#0A66C2</color>
 
     <!-- filete interno bem sutil -->
     <color name="mentorCardStrokeAccent">#1A000000</color> <!-- 10% preto -->

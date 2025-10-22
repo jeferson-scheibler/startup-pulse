@@ -28,6 +28,7 @@ public class Mentor implements Serializable {
     private double latitude;
     private double longitude;
     private boolean activePublic;
+    private String status = "ativo";
 
     public Mentor() {
         // Construtor vazio necessário para o Firestore
@@ -102,4 +103,6 @@ public class Mentor implements Serializable {
     public boolean isActivePublic() { return activePublic; }
     @PropertyName("ativoPublico")
     public void setActivePublic(boolean activePublic) { this.activePublic = activePublic; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 }

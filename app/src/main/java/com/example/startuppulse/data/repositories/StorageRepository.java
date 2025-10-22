@@ -33,4 +33,24 @@ public class StorageRepository implements IStorageRepository {
                                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e))))
                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
     }
+
+    @Override
+    public void uploadImage(@NonNull Uri fileUri, @NonNull String folderPath, @NonNull String fileName, @NonNull ResultCallback<String> callback) {
+        StorageReference storageRef = storage.getReference().child(folderPath).child(fileName);
+
+        storageRef.putFile(fileUri)
+                .addOnSuccessListener(taskSnapshot -> {
+                    // Após o sucesso do upload, obtemos a URL de download
+                    storageRef.getDownloadUrl()
+                            .addOnSuccessListener(uri -> {
+                                callback.onResult(new Result.Success<>(uri.toString()));
+                            })
+                            .addOnFailureListener(e -> {
+                                callback.onResult(new Result.Error<>(new Exception("Falha ao obter a URL de download.", e)));
+                            });
+                })
+                .addOnFailureListener(e -> {
+                    callback.onResult(new Result.Error<>(new Exception("Falha no upload da imagem.", e)));
+                });
+    }
 }
