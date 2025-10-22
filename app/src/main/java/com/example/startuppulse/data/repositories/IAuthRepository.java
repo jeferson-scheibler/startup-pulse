@@ -39,6 +39,7 @@ public interface IAuthRepository {
 
     // --- Métodos de Perfil (Firestore) ---
     void getUserProfile(@NonNull String userId, @NonNull ResultCallback<User> callback);
+    void getDiasAcessados(String userId, ResultCallback<Integer> callback);
 
     void updatePremiumStatus(@NonNull String userId, boolean isPremium, @NonNull ResultCallback<Void> callback);
 }

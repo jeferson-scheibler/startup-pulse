@@ -2,6 +2,7 @@ package com.example.startuppulse;
 
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -45,6 +46,8 @@ public class PerfilFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         viewModel = new ViewModelProvider(this).get(PerfilViewModel.class);
 
+        Log.d("PerfilFragment", "onViewCreated: Initializing profile data load.");
+        viewModel.loadUserProfile();
         setupObservers();
         setupClickListeners();
     }
@@ -57,6 +60,8 @@ public class PerfilFragment extends Fragment {
                 User user = ((Result.Success<User>) result).data;
                 if (user != null) {
                     populateUi(user);
+                    Log.d("PerfilFragment", "User profile loaded, requesting stats...");
+                    viewModel.carregarDadosEstatisticas();
                 }
             } else if (result instanceof Result.Error) {
                 String errorMsg = ((Result.Error<User>) result).error.getMessage();
@@ -70,12 +75,49 @@ public class PerfilFragment extends Fragment {
             }
         });
 
+        viewModel.getIdeiasPublicas().observe(getViewLifecycleOwner(), valor -> {
+            if (binding != null) {
+                Log.d("PerfilFragment", "Observer IdeiasPublicas: " + valor);
+                binding.statPublicadas.setText(String.valueOf(valor != null ? valor : 0));
+            }
+        });
+
+        viewModel.getDiasAcessados().observe(getViewLifecycleOwner(), valor -> {
+            if (binding != null) {
+                Log.d("PerfilFragment", "Observer DiasAcessados: " + valor);
+                binding.statDias.setText(String.valueOf(valor != null ? valor : 0));
+            }
+        });
+
+        viewModel.getNivelEngajamento().observe(getViewLifecycleOwner(), valor -> {
+            if (binding != null) {
+                int score = (valor != null ? valor : 0);
+                Log.d("PerfilFragment", "Observer NivelEngajamento: " + score);
+                // Atualiza o texto central
+                binding.statEngajamentoValue.setText(String.valueOf(score));
+                // Atualiza a barra de progresso circular (com animação)
+                binding.progressEngagement.setProgressCompat(score, true);
+            }
+        });
+
+        viewModel.validadePlanoDisplay.observe(getViewLifecycleOwner(), validade -> {
+            if (binding != null) {
+                binding.textViewValidadePlano.setText(validade);
+                // Mostra ou esconde o TextView baseado se a string está vazia
+                binding.textViewValidadePlano.setVisibility(validade.isEmpty() ? View.GONE : View.VISIBLE);
+                Log.d("PerfilFragment", "Observer ValidadePlanoDisplay: " + validade);
+            }
+        });
+
+
         viewModel.isPro.observe(getViewLifecycleOwner(), isPro -> {
             if (binding != null) {
                 if (isPro) {
-                    binding.btnGerenciarAssinatura.setText(R.string.gerenciar_assinatura);
+                    binding.buttonUpgradePro.setText(R.string.gerenciar_assinatura);
+                    binding.textViewNomePlano.setText("Plano Premium");
                 } else {
-                    binding.btnGerenciarAssinatura.setText(R.string.fazer_upgrade);
+                    binding.buttonUpgradePro.setText(R.string.fazer_upgrade);
+                    binding.textViewNomePlano.setText("Plano Básico");
                 }
             }
         });
@@ -83,29 +125,21 @@ public class PerfilFragment extends Fragment {
 
     private void setupClickListeners() {
         NavController navController = NavHostFragment.findNavController(this);
-
         binding.btnSair.setOnClickListener(v -> viewModel.logout());
-
-        binding.btnGerenciarAssinatura.setOnClickListener(v ->
+        binding.buttonUpgradePro.setOnClickListener(v ->
                 navController.navigate(R.id.action_perfilFragment_to_assinaturaFragment)
         );
-
         binding.buttonTornarMentor.setOnClickListener(v ->
                 navController.navigate(R.id.action_perfilFragment_to_canvasMentorFragment)
         );
-        binding.btnEditarPerfil.setOnClickListener(v -> {
-            // TODO: Navegar para a tela de edição de perfil
-            Toast.makeText(getContext(), "Editar Perfil Clicado", Toast.LENGTH_SHORT).show();
-        });
-
+        binding.btnEditarPerfil.setOnClickListener(v ->
+                navController.navigate(R.id.action_perfilFragment_to_editarPerfilFragment)
+        );
         binding.btnPrivacidade.setOnClickListener(v -> {
-            // TODO: Navegar para a tela de privacidade
-            Toast.makeText(getContext(), "Privacidade Clicado", Toast.LENGTH_SHORT).show();
+            navController.navigate(R.id.action_perfilFragment_to_privacidadeSegurancaFragment);
         });
-
         binding.btnAjuda.setOnClickListener(v -> {
-            // TODO: Navegar para a tela de ajuda/suporte
-            Toast.makeText(getContext(), "Ajuda e Suporte Clicado", Toast.LENGTH_SHORT).show();
+            navController.navigate(R.id.action_perfilFragment_to_ajudaSuporteFragment);
         });
     }
 
@@ -122,7 +156,6 @@ public class PerfilFragment extends Fragment {
                     .transition(DrawableTransitionOptions.withCrossFade())
                     .into(binding.imageViewPerfil);
         }
-
         if (user.isPremium()) {
             binding.textViewNomePlano.setText("Plano Premium");
             binding.textViewValidadePlano.setText("Válido até " + user.getValidadePlano());
@@ -132,21 +165,6 @@ public class PerfilFragment extends Fragment {
             binding.textViewValidadePlano.setText("");
             binding.chipPremium.setVisibility(View.GONE);
         }
-
-        binding.statPublicadas.setText(String.valueOf(user.getPublicadasCount()));
-        binding.statSeguindo.setText(String.valueOf(user.getSeguindoCount()));
-        binding.statDias.setText(String.valueOf(user.getDiasDeConta()));
-
-        long dias = user.getDiasDeConta();
-        String textoChip;
-        if (dias < 30) {
-            textoChip = String.format(Locale.getDefault(), "Membro há %d dias", dias);
-        } else {
-            long meses = Math.max(1, dias / 30);
-            textoChip = String.format(Locale.getDefault(), "Membro há %d %s",
-                    meses, (meses == 1 ? "mês" : "meses"));
-        }
-        binding.chipMemberSince.setText(textoChip);
     }
 
     @Override

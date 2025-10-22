@@ -239,4 +239,13 @@
         <item name="android:textAlignment">viewStart</item>
         <item name="iconPadding">12dp</item>
     </style>
+
+    <style name="App.Button.Destructive" parent="Widget.Material3.Button">
+        <item name="shapeAppearanceOverlay">@style/App.Shape</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="backgroundTint">@color/colorError</item>
+        <item name="iconTint">@color/colorOnPrimary</item>
+        <item name="android:textColor">@color/colorOnPrimary</item>
+        <item name="rippleColor">@color/ripplePrimary</item> <item name="elevation">2dp</item>
+    </style>
 </resources>
