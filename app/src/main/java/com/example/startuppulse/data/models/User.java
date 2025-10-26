@@ -13,7 +13,8 @@ public class User {
     private String nome;
     private String email;
     private String bio;
-    @PropertyName("foto_perfil")
+    private String mentorBio;
+    @PropertyName("fotoUrl")
     private String fotoUrl;
     private boolean isPremium;
     private String validadePlano;
@@ -32,14 +33,15 @@ public class User {
 
     private String profissao;
     private String linkedinUrl;
-    private List<String> areasDeInteresse;
+    @PropertyName("areas")
+    private List<String> areasAtuacao;
     private String status = "ativo";
 
     private boolean profilePublic = true;
 
     public User() {
-        this.areasDeInteresse = new ArrayList<>();
-        this.areasDeInteresse = new ArrayList<>();
+        this.areasAtuacao = new ArrayList<>();
+        this.areasAtuacao = new ArrayList<>();
         this.diasAcessoTotal = 0L;
     }
 
@@ -51,7 +53,7 @@ public class User {
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public String getEmail() { return email; }
-    @PropertyName("foto_perfil")
+    @PropertyName("fotoUrl")
     public String getFotoUrl() { return fotoUrl; }
 
     public boolean isPremium() { return isPremium; }
@@ -66,7 +68,7 @@ public class User {
     public void setNome(String nome) { this.nome = nome; }
     public void setBio(String bio) { this.bio = bio; }
     public void setEmail(String email) { this.email = email; }
-    @PropertyName("foto_perfil")
+    @PropertyName("fotoUrl")
     public void setFotoUrl(String fotoUrl) { this.fotoUrl = fotoUrl; }
     public void setPremium(boolean premium) { isPremium = premium; }
     public void setValidadePlano(String validadePlano) { this.validadePlano = validadePlano; }
@@ -126,16 +128,17 @@ public class User {
         this.linkedinUrl = linkedinUrl;
     }
 
+    @PropertyName("areas")
     public List<String> getAreasDeInteresse() {
         // Garante que nunca retorne nulo para evitar NullPointerException
-        if (areasDeInteresse == null) {
+        if (areasAtuacao == null) {
             return new ArrayList<>();
         }
-        return areasDeInteresse;
+        return areasAtuacao;
     }
-
+    @PropertyName("areas")
     public void setAreasDeInteresse(List<String> areasDeInteresse) {
-        this.areasDeInteresse = areasDeInteresse;
+        this.areasAtuacao = areasDeInteresse;
     }
 
     public Timestamp getUltimoAcesso() {
@@ -150,6 +153,9 @@ public class User {
         // Garante que retorne 0 se for nulo
         return (diasAcessoTotal != null) ? diasAcessoTotal : 0L;
     }
+
+    public String getMentorBio() { return mentorBio; }
+    public void setMentorBio(String mentorBio) { this.mentorBio = mentorBio; }
 
     public void setDiasAcessoTotal(Long diasAcessoTotal) {
         this.diasAcessoTotal = diasAcessoTotal;

@@ -21,6 +21,7 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
 
         <item name="android:fontFamily">@font/font_texto</item>
+        <item name="elevationOverlayEnabled">false</item>
     </style>
 
     <!-- Títulos -->
@@ -38,6 +39,10 @@
     <style name="Text.BodyMedium" parent="TextAppearance.Material3.BodyMedium">
         <item name="fontFamily">@font/font_texto</item>
         <item name="android:textColor">@color/colorOnSurface</item>
+    </style>
+
+    <style name="ThemeOverlay.StartupPulse.Chip.Area.Compact" parent="">
+        <item name="chipStyle">@style/Widget.StartupPulse.Chip.Area.Compact</item>
     </style>
 
     <style name="Theme.StartupPulse.NoActionBar" parent="Theme.StartupPulse" />

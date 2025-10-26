@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/colorSurface"
+    android:background="@android:color/transparent"
     android:fillViewport="true">
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -314,21 +314,24 @@
                     android:id="@+id/btnEditarPerfil"
                     style="@style/App.Button.Outlined.LessRounded.OnSurface"
                     android:text="@string/editar_perfil"
-                    app:icon="@drawable/ic_edit" />
+                    app:icon="@drawable/ic_edit"
+                    app:iconTint="@color/colorOnSurface"/>
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnPrivacidade"
                     style="@style/App.Button.Outlined.LessRounded.OnSurface"
                     android:layout_marginTop="10dp"
                     android:text="@string/privacidade_e_seguranca"
-                    app:icon="@drawable/ic_shield" />
+                    app:icon="@drawable/ic_shield"
+                    app:iconTint="@color/colorOnSurface"/>
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnAjuda"
                     style="@style/App.Button.Outlined.LessRounded.OnSurface"
                     android:layout_marginTop="10dp"
                     android:text="@string/ajuda_e_suporte"
-                    app:icon="@drawable/ic_help" />
+                    app:icon="@drawable/ic_help"
+                    app:iconTint="@color/colorOnSurface"/>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

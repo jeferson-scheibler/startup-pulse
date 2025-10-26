@@ -5,6 +5,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -15,6 +17,7 @@ import android.text.style.StyleSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -28,6 +31,7 @@ import androidx.navigation.NavController;
 import androidx.navigation.fragment.NavHostFragment;
 import com.example.startuppulse.data.Avaliacao;
 import com.example.startuppulse.data.models.Ideia;
+import com.example.startuppulse.databinding.DialogMentorFeedbackBinding;
 import com.example.startuppulse.databinding.FragmentIdeiaStatusBinding;
 import com.example.startuppulse.ui.canvas.CanvasIdeiaViewModel;
 import com.example.startuppulse.util.PdfGenerator;
@@ -37,6 +41,7 @@ import dagger.hilt.android.AndroidEntryPoint;
 
 import android.location.Location;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
 
 @AndroidEntryPoint
@@ -246,8 +251,13 @@ public class IdeiaStatusFragment extends Fragment {
     }
 
     private void showFeedbackDialog() {
+        // 1. Verificações de segurança (mantidas)
         if (!isAdded() || currentIdeia == null || currentIdeia.getAvaliacoes() == null || currentIdeia.getAvaliacoes().isEmpty()) return;
 
+        // Adiciona uma verificação de contexto
+        if (getContext() == null) return;
+
+        // 2. Preparação dos dados (exatamente como estava, está ótimo)
         String mentorNome = sharedViewModel.mentorNome.getValue() != null ? sharedViewModel.mentorNome.getValue() : "Mentor";
         List<Avaliacao> avaliacoes = currentIdeia.getAvaliacoes();
 
@@ -261,11 +271,42 @@ public class IdeiaStatusFragment extends Fragment {
             formattedFeedback.append(feedbackText).append("\n\n");
         }
 
-        new AlertDialog.Builder(requireContext())
-                .setTitle("Feedback de " + mentorNome)
-                .setMessage(formattedFeedback)
-                .setPositiveButton("Entendi", null)
-                .show();
+        // --- LÓGICA DO DIÁLOGO ANTIGO REMOVIDA ---
+        // new AlertDialog.Builder(requireContext())...
+
+        // --- INÍCIO DA LÓGICA DO NOVO DIÁLOGO "GLASS" ---
+
+        // 3. Infla o layout customizado
+        DialogMentorFeedbackBinding dialogBinding = DialogMentorFeedbackBinding.inflate(LayoutInflater.from(getContext()));
+
+        // 4. Constrói o diálogo
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
+        builder.setView(dialogBinding.getRoot());
+        builder.setCancelable(false); // Força o usuário a usar o botão "Fechar"
+
+        AlertDialog dialog = builder.create();
+
+        // 5. Aplica o estilo "Glass" (fundo transparente + dim/escurecimento)
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            WindowManager.LayoutParams lp = new WindowManager.LayoutParams();
+            lp.copyFrom(dialog.getWindow().getAttributes());
+            lp.dimAmount = 0.7f; // Escurece o fundo
+            lp.flags |= WindowManager.LayoutParams.FLAG_DIM_BEHIND;
+            dialog.getWindow().setAttributes(lp);
+        }
+
+        // 6. Define o conteúdo dinâmico
+        dialogBinding.dialogTitle.setText("Feedback de " + mentorNome);
+        dialogBinding.dialogFeedbackText.setText(formattedFeedback);
+
+        // 7. Configura o botão de fechar
+        dialogBinding.dialogButtonClose.setOnClickListener(v -> {
+            dialog.dismiss();
+        });
+
+        // 8. Exibe o diálogo
+        dialog.show();
     }
 
     private void verificarPermissaoEGerarPdf() {

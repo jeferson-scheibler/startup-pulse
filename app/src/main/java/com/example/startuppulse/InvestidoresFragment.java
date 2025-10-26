@@ -19,9 +19,10 @@ import com.example.startuppulse.databinding.FragmentInvestidoresBinding;
 import com.example.startuppulse.ui.investor.InvestidoresViewModel;
 import com.example.startuppulse.ui.investor.InvestorAdapter;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
+// Imports removidos:
+// import java.util.ArrayList;
+// import java.util.Locale;
+import java.util.List; // Este é mantido, provavelmente usado pelo investors.observe
 
 import dagger.hilt.android.AndroidEntryPoint;
 
@@ -31,7 +32,7 @@ public class InvestidoresFragment extends Fragment {
     private FragmentInvestidoresBinding binding;
     private InvestidoresViewModel viewModel;
     private InvestorAdapter investorAdapter;
-    private ReadinessTaskAdapter readinessAdapter;
+    // Removido: private ReadinessTaskAdapter readinessAdapter;
     private NavController navController;
 
     @Nullable
@@ -59,7 +60,7 @@ public class InvestidoresFragment extends Fragment {
             navController.navigate(R.id.action_investidoresFragment_to_investorDetailFragment, args);
         });
 
-        binding.recyclerViewTasks.setLayoutManager(new LinearLayoutManager(requireContext()));
+        // Removido: binding.recyclerViewTasks.setLayoutManager(...);
         binding.recyclerViewInvestors.setLayoutManager(new LinearLayoutManager(requireContext()));
         binding.recyclerViewInvestors.setAdapter(investorAdapter);
     }
@@ -72,7 +73,7 @@ public class InvestidoresFragment extends Fragment {
             binding.containerInvestorList.setVisibility(state == InvestidoresViewModel.ViewState.SHOW_INVESTORS ? View.VISIBLE : View.GONE);
         });
 
-        viewModel.readinessData.observe(getViewLifecycleOwner(), this::updateReadinessUI);
+        // Removido: viewModel.readinessData.observe(...);
 
         viewModel.investors.observe(getViewLifecycleOwner(), investors -> {
             investorAdapter.submitList(investors); // Assumindo que o InvestorAdapter usa ListAdapter
@@ -85,22 +86,9 @@ public class InvestidoresFragment extends Fragment {
         });
     }
 
-    private void updateReadinessUI(ReadinessData data) {
-        if (binding == null || data == null) return;
-
-        binding.progressBarScore.setProgress(data.getScore());
-        binding.textViewScore.setText(String.format(Locale.getDefault(), "%d%%", data.getScore()));
-
-        List<ReadinessTask> tasks = new ArrayList<>();
-        tasks.add(new ReadinessTask("Preencha todos os blocos do seu Canvas da Ideia.", data.isCanvasCompleto()));
-        tasks.add(new ReadinessTask("Cadastre os membros da sua equipe.", data.isEquipeDefinida()));
-        tasks.add(new ReadinessTask("Documente suas métricas e tração inicial.", data.isMetricasIniciais()));
-        tasks.add(new ReadinessTask("Receba uma avaliação de um mentor.", data.isValidadoPorMentor()));
-        tasks.add(new ReadinessTask("Anexe seu Pitch Deck.", data.hasPitchDeck()));
-
-        readinessAdapter = new ReadinessTaskAdapter(tasks, requireContext());
-        binding.recyclerViewTasks.setAdapter(readinessAdapter);
-    }
+    // Removido: private void updateReadinessUI(ReadinessData data) { ... }
+    // O método inteiro foi removido pois seus componentes (progressBarScore,
+    // textViewScore, recyclerViewTasks) não existem mais.
 
     @Override
     public void onDestroyView() {

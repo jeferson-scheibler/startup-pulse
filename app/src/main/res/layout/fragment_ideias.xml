@@ -5,7 +5,6 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/colorSurface"
     tools:context=".IdeiasFragment">
 
     <!-- Título da tela -->
@@ -21,6 +20,18 @@
         android:accessibilityHeading="true"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"/>
+
+    <com.airbnb.lottie.LottieAnimationView
+        android:id="@+id/lottie_lightbulb"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_marginStart="8dp"
+        app:lottie_rawRes="@raw/light_bulb"
+        app:lottie_autoPlay="true"
+        app:lottie_loop="true"
+        app:layout_constraintStart_toEndOf="@id/text_view_header_title"
+        app:layout_constraintTop_toTopOf="@id/text_view_header_title"
+        app:layout_constraintBottom_toBottomOf="@id/text_view_header_title"/>
 
     <!-- Pull-to-refresh + lista -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout

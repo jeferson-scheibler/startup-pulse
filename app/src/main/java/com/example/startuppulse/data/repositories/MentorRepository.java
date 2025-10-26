@@ -1,17 +1,27 @@
 package com.example.startuppulse.data.repositories;
 
+import android.net.Uri;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.example.startuppulse.common.Result;
 import com.example.startuppulse.data.models.Mentor;
 import com.example.startuppulse.data.ResultCallback;
+import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldPath;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.SetOptions;
+import com.google.firebase.firestore.WriteBatch;
+import com.google.firebase.storage.FirebaseStorage; // <-- MUDANÇA: Importado o Storage
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -20,19 +30,25 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 
 @Singleton
-public class MentorRepository extends BaseRepository{
+public class MentorRepository extends BaseRepository implements IMentorRepository {
+
     private static final String MENTORES_COLLECTION = "mentores";
 
+    // MUDANÇA: 'db' (FirebaseFirestore) já vem do seu BaseRepository.
+    // Nós só precisamos injetar o FirebaseStorage.
+    private final FirebaseStorage storage;
+
     @Inject
-    public MentorRepository() {
-        super();
+    public MentorRepository(FirebaseStorage storage) { // <-- MUDANÇA: Injetando FirebaseStorage
+        super(); // Isso inicializa o 'db' do BaseRepository
+        this.storage = storage; // Armazena a instância do Storage
     }
 
     // --- MÉTODOS DE LEITURA (BUSCA) ---
 
     /**
      * Busca um mentor pelo seu ID.
-     * Alinhado com a nova classe Result e o callback genérico.
+     * (Correto, já usava o 'db' do BaseRepository)
      */
     public void getMentorById(@NonNull String mentorId, @NonNull ResultCallback<Mentor> callback) {
         db.collection(MENTORES_COLLECTION).document(mentorId).get()
@@ -43,15 +59,39 @@ public class MentorRepository extends BaseRepository{
                             mentor.setId(snap.getId());
                             callback.onResult(new Result.Success<>(mentor));
                         } else {
-                            // Erro de desserialização do objeto
                             callback.onResult(new Result.Error<>(new Exception("Falha ao mapear os dados do mentor.")));
                         }
                     } else {
-                        // Trata "não encontrado" como um erro explícito para a UI
                         callback.onResult(new Result.Error<>(new Exception("Mentor não encontrado.")));
                     }
                 })
                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+    }
+
+    public void updateMentorFieldsByOwnerId(String ownerId, Map<String, Object> updates, ResultCallback<Void> callback) {
+        db.collection(MENTORES_COLLECTION) // <-- MUDANÇA
+                .whereEqualTo("ownerId", ownerId)
+                .limit(1)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    if (querySnapshot.isEmpty()) {
+                        callback.onResult(new Result.Success<>(null));
+                        return;
+                    }
+
+                    WriteBatch batch = db.batch(); // <-- MUDANÇA
+                    for (DocumentSnapshot mentorDoc : querySnapshot.getDocuments()) {
+                        batch.update(mentorDoc.getReference(), updates);
+                    }
+
+                    batch.commit()
+                            .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(null)))
+                            .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+
+                })
+                .addOnFailureListener(e -> {
+                    callback.onResult(new Result.Error<>(e));
+                });
     }
 
     public void getAllMentores(String currentUserId, ResultCallback<List<Mentor>> callback) {
@@ -136,8 +176,6 @@ public class MentorRepository extends BaseRepository{
         }).addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
     }
 
-    // --- MÉTODOS DE ESCRITA (CRIAÇÃO, ATUALIZAÇÃO) ---
-
     public void saveMentorProfile(@NonNull Mentor mentor, @NonNull ResultCallback<String> callback) {
         if (getCurrentUserId() == null) {
             callback.onResult(new Result.Error<>(new IllegalStateException("Usuário não autenticado.")));
@@ -170,5 +208,74 @@ public class MentorRepository extends BaseRepository{
         db.collection(MENTORES_COLLECTION).document(mentorId).update(updates)
                 .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(null)))
                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+    }
+
+    public void updateMentorProfile(@NonNull Mentor mentor,
+                                    @Nullable Uri newAvatarUri,
+                                    @Nullable Uri newBannerUri,
+                                    @NonNull ResultCallback<Mentor> callback) {
+
+        String userId = getCurrentUserId();
+        if (userId == null || !userId.equals(mentor.getId())) {
+            callback.onResult(new Result.Error<>(new SecurityException("Não autorizado para atualizar este perfil.")));
+            return;
+        }
+
+        Task<Void> taskChain = Tasks.forResult(null);
+
+        // 1. Se houver um novo Avatar, faz o upload e atualiza o objeto mentor
+        if (newAvatarUri != null) {
+            String avatarPath = MENTORES_COLLECTION + "/" + userId + "/avatar.jpg";
+            taskChain = taskChain.continueWithTask(task -> uploadImage(newAvatarUri, avatarPath))
+                    .onSuccessTask(uri -> {
+                        // Atualiza o objeto 'mentor' em memória
+                        mentor.setFotoUrl(uri.toString());
+                        return Tasks.forResult(null);
+                    });
+        }
+
+        // 2. Se houver um novo Banner, faz o upload e atualiza o objeto mentor
+        if (newBannerUri != null) {
+            String bannerPath = MENTORES_COLLECTION + "/" + userId + "/banner.jpg";
+            taskChain = taskChain.continueWithTask(task -> uploadImage(newBannerUri, bannerPath))
+                    .onSuccessTask(uri -> {
+                        // Atualiza o objeto 'mentor' em memória
+                        mentor.setBannerUrl(uri.toString()); // Assumindo que o campo é 'bannerUrl'
+                        return Tasks.forResult(null);
+                    });
+        }
+
+        // 3. Após a fila de uploads (se houver) terminar, salva o objeto MENTOR
+        //    completo (com as novas URLs e novos textos) no Firestore.
+        taskChain.continueWithTask(task ->
+                        db.collection(MENTORES_COLLECTION).document(userId)
+                                .set(mentor, SetOptions.merge())
+                )
+                .addOnSuccessListener(aVoid -> {
+                    // --- 2. MUDANÇA NO RETORNO ---
+                    // O 'mentor' agora contém as novas URLs.
+                    // Retorna o objeto Mentor atualizado no sucesso.
+                    callback.onResult(new Result.Success<>(mentor));
+                })
+                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+    }
+
+
+    // --- MÉTODO HELPER ---
+
+    /**
+     * Faz upload de um arquivo para o Firebase Storage e retorna a URL de download.
+     */
+    private Task<Uri> uploadImage(Uri fileUri, String storagePath) {
+        // MUDANÇA: Agora 'storage' é a instância correta do FirebaseStorage injetada
+        StorageReference ref = storage.getReference().child(storagePath);
+        UploadTask uploadTask = ref.putFile(fileUri);
+
+        return uploadTask.continueWithTask(task -> {
+            if (!task.isSuccessful()) {
+                throw task.getException();
+            }
+            return ref.getDownloadUrl();
+        });
     }
 }

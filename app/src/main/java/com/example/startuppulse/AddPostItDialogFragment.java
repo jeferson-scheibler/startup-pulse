@@ -10,6 +10,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
@@ -125,14 +127,29 @@ public class AddPostItDialogFragment extends DialogFragment {
         if (TextUtils.isEmpty(texto)) {
             binding.editTextPostit.setError("O post-it não pode estar vazio.");
             return;
+        } else {
+            binding.editTextPostit.setError(null); // Limpa o erro se o texto for válido
         }
 
+
+        // Desabilita botões para evitar cliques múltiplos (opcional, mas bom)
         setButtonsEnabled(false);
 
         // Delega a ação para o ViewModel compartilhado
         if (isEditMode) {
-            sharedViewModel.updatePostIt(etapaChave, postitParaEditar, texto, corSelecionada);
+            // --- CORREÇÃO AQUI ---
+            // Chama 'saveEditedPostIt' que espera (etapa, original, texto, cor)
+            if (postitParaEditar != null) {
+                sharedViewModel.saveEditedPostIt(etapaChave, postitParaEditar, texto, corSelecionada);
+            } else {
+                // Segurança extra, embora isEditMode já deva garantir que postitParaEditar não é nulo
+                Toast.makeText(getContext(), "Erro: Post-it original não encontrado para edição.", Toast.LENGTH_SHORT).show();
+                setButtonsEnabled(true); // Reabilita botões se houve erro
+                return; // Não fecha o dialog
+            }
+            // --- FIM DA CORREÇÃO ---
         } else {
+            // A chamada para adicionar estava correta
             sharedViewModel.addPostIt(etapaChave, texto, corSelecionada);
         }
 
@@ -148,7 +165,10 @@ public class AddPostItDialogFragment extends DialogFragment {
         View current = getDialog() != null ? getDialog().getCurrentFocus() : null;
         if (current != null && getContext() != null) {
             InputMethodManager imm = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-            imm.hideSoftInputFromWindow(current.getWindowToken(), 0);
+            // Garante que a view ainda tem um token de janela
+            if (current.getWindowToken() != null) {
+                imm.hideSoftInputFromWindow(current.getWindowToken(), 0);
+            }
         }
         dismiss();
     }
@@ -175,6 +195,9 @@ public class AddPostItDialogFragment extends DialogFragment {
     private void setSelectedColor(@NonNull String color) {
         corSelecionada = color.toUpperCase();
         Integer id = COLOR_TO_ID.get(corSelecionada);
-        binding.radioGroupColors.check(id != null ? id : R.id.radio_yellow);
+        // Garante que o binding não seja nulo antes de acessar radioGroupColors
+        if (binding != null) {
+            binding.radioGroupColors.check(id != null ? id : R.id.radio_yellow);
+        }
     }
 }

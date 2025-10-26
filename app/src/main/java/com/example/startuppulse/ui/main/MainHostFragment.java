@@ -177,7 +177,7 @@ public class MainHostFragment extends Fragment {
 
     private void tintNavIcons() {
         int selectedColor = ContextCompat.getColor(requireContext(), R.color.colorPrimary);
-        int normalColor = ContextCompat.getColor(requireContext(), R.color.strokeSoft);
+        int normalColor = ContextCompat.getColor(requireContext(), R.color.colorOutline);
 
         binding.navIconIdeias.setImageTintList(ColorStateList.valueOf(binding.navButtonIdeias.isSelected() ? selectedColor : normalColor));
         binding.navIconMentores.setImageTintList(ColorStateList.valueOf(binding.navButtonMentores.isSelected() ? selectedColor : normalColor));

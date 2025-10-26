@@ -27,7 +27,7 @@ retrofit = "3.0.0"
 navigation = "2.9.5"
 hilt = "2.57.2"
 lifecycle = "2.9.4"
-runtime = "1.9.3"
+runtime = "1.9.4"
 firebaseCrashlyticsBuildtools = "3.0.6"
 
 [libraries]

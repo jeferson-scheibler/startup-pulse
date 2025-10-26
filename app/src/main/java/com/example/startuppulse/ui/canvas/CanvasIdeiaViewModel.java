@@ -15,11 +15,13 @@ import androidx.lifecycle.ViewModel;
 import com.example.startuppulse.R;
 import com.example.startuppulse.data.CanvasEtapa;
 import com.example.startuppulse.data.MembroEquipe;
+import com.example.startuppulse.data.ResultCallback;
 import com.example.startuppulse.data.models.Mentor;
 import com.example.startuppulse.MentorMatchService;
 import com.example.startuppulse.common.Result;
 import com.example.startuppulse.data.repositories.AuthRepository;
 import com.example.startuppulse.data.models.Ideia;
+import com.example.startuppulse.data.repositories.IIdeiaRepository;
 import com.example.startuppulse.data.repositories.IdeiaRepository;
 import com.example.startuppulse.data.repositories.MentorRepository;
 import com.example.startuppulse.data.PostIt;
@@ -41,7 +43,7 @@ public class CanvasIdeiaViewModel extends ViewModel {
     private static final String TAG = "CanvasViewModel_DEBUG";
 
     // --- Repositórios Injetados ---
-    private final IdeiaRepository ideiaRepository;
+    private final IIdeiaRepository ideiaRepository;
     private final MentorRepository mentorRepository;
     private final AuthRepository authRepository;
 
@@ -69,6 +71,12 @@ public class CanvasIdeiaViewModel extends ViewModel {
     public final LiveData<Event<Boolean>> closeScreenEvent = _closeScreenEvent;
     public final LiveData<Boolean> isPublishEnabled;
 
+    private final MutableLiveData<Event<PostIt>> _editPostItEvent = new MutableLiveData<>();
+    public LiveData<Event<PostIt>> editPostItEvent = _editPostItEvent;
+
+    private final MutableLiveData<Event<PostIt>> _deletePostItEvent = new MutableLiveData<>();
+    public LiveData<Event<PostIt>> deletePostItEvent = _deletePostItEvent;
+
     private final List<String> etapasObrigatorias = Arrays.asList(
             CanvasEtapa.CHAVE_PROPOSTA_VALOR, CanvasEtapa.CHAVE_SEGMENTO_CLIENTES,
             CanvasEtapa.CHAVE_CANAIS, CanvasEtapa.CHAVE_RELACIONAMENTO_CLIENTES,
@@ -78,11 +86,12 @@ public class CanvasIdeiaViewModel extends ViewModel {
     );
 
     @Inject
-    public CanvasIdeiaViewModel(IdeiaRepository ideiaRepository, MentorRepository mentorRepository, AuthRepository authRepository) {
+    public CanvasIdeiaViewModel(IIdeiaRepository ideiaRepository, MentorRepository mentorRepository, AuthRepository authRepository) {
         this.ideiaRepository = ideiaRepository;
         this.mentorRepository = mentorRepository;
         this.authRepository = authRepository;
         isPublishEnabled = Transformations.map(_ideia, this::isIdeiaValidaParaPublicar);
+        _etapas.setValue(new ArrayList<>());
     }
 
     public void loadIdeia(@Nullable String ideiaId) {
@@ -175,34 +184,72 @@ public class CanvasIdeiaViewModel extends ViewModel {
             _toastEvent.setValue(new Event<>("Salve a ideia antes de adicionar post-its."));
             return;
         }
-
-        PostIt novoPostIt = new PostIt(texto, cor, new Date());
-        // O ID do PostIt pode ser gerado aqui ou no repositório, se necessário
-
-        ideiaRepository.addPostitToIdeia(ideiaAtual.getId(), etapaChave, novoPostIt, result -> {
-            if (result instanceof Result.Error) {
-                _toastEvent.postValue(new Event<>("Erro ao adicionar post-it."));
-            }
-            // A UI será atualizada automaticamente pelo listener do Firestore
-        });
-    }
-
-    public void updatePostIt(@NonNull String etapaChave, @NonNull PostIt postitAntigo, @NonNull String novoTexto, @NonNull String novaCor) {
-        Ideia ideiaAtual = _ideia.getValue();
-        if (ideiaAtual == null || ideiaAtual.getId() == null) {
-            _toastEvent.setValue(new Event<>("Erro: Ideia não encontrada para atualizar post-it."));
+        // Só permite adicionar se for rascunho
+        if (ideiaAtual.getStatus() != Ideia.Status.RASCUNHO) {
+            _toastEvent.setValue(new Event<>("Não é possível adicionar post-its a uma ideia publicada."));
             return;
         }
 
-        // Cria o novo objeto PostIt com os dados atualizados, mantendo o timestamp original
-        PostIt postitNovo = new PostIt(novoTexto, novaCor, postitAntigo.getTimestamp());
-        postitNovo.setLastModified(new Date());
 
-        ideiaRepository.updatePostitInIdeia(ideiaAtual.getId(), etapaChave, postitAntigo, postitNovo, result -> {
+        PostIt novoPostIt = new PostIt(texto, cor, new Date());
+        // O ID do PostIt pode ser gerado aqui ou no repositório, se necessário
+        // Se o repo gerar, você pode precisar ajustar a lógica se precisar do ID imediatamente.
+        // novoPostIt.setId(UUID.randomUUID().toString()); // Exemplo se precisar gerar aqui
+
+        // Mostra o loading enquanto salva
+        _isLoading.setValue(true);
+
+        ideiaRepository.addPostitToIdeia(ideiaAtual.getId(), etapaChave, novoPostIt, result -> {
+            _isLoading.setValue(false); // Esconde o loading
             if (result instanceof Result.Error) {
-                _toastEvent.postValue(new Event<>("Erro ao atualizar post-it."));
+                _toastEvent.postValue(new Event<>("Erro ao adicionar post-it: " + ((Result.Error<Void>)result).error.getMessage()));
             }
-            // A UI será atualizada automaticamente pelo listener do Firestore
+            // No sucesso, não fazemos nada aqui. O listener do Firestore (listenToIdeia)
+            // que está ativo deve receber a atualização e atualizar o _ideia LiveData,
+            // que por sua vez atualizará a UI.
+        });
+    }
+
+    public void requestEditPostIt(PostIt postIt) {
+        _editPostItEvent.setValue(new Event<>(postIt));
+    }
+
+    public void requestDeletePostIt(PostIt postIt) {
+        Ideia currentIdeia = _ideia.getValue();
+        if (currentIdeia != null && currentIdeia.getStatus() == Ideia.Status.RASCUNHO) {
+            _deletePostItEvent.setValue(new Event<>(postIt));
+        }
+    }
+
+    public void saveEditedPostIt(@NonNull String etapaChave, @NonNull PostIt originalPostIt, @NonNull String newText, @NonNull String newColor) {
+        Ideia currentIdeia = _ideia.getValue();
+        if (currentIdeia == null || currentIdeia.getId() == null || originalPostIt == null || etapaChave == null) {
+            _toastEvent.setValue(new Event<>("Erro: Dados inválidos para salvar post-it."));
+            return;
+        }
+        // Só permite editar se for rascunho
+        if (currentIdeia.getStatus() != Ideia.Status.RASCUNHO) {
+            _toastEvent.setValue(new Event<>("Não é possível editar post-its de uma ideia publicada."));
+            return;
+        }
+
+        // Cria o *novo* objeto PostIt com os dados atualizados
+        // Mantém o ID e o timestamp original, atualiza o lastModified
+        PostIt updatedPostIt = new PostIt(newText, newColor, originalPostIt.getTimestamp());
+        updatedPostIt.setId(originalPostIt.getId()); // Garante que o ID seja o mesmo
+        updatedPostIt.setLastModified(new Date());
+
+        _isLoading.setValue(true);
+
+        ideiaRepository.updatePostitInIdeia(currentIdeia.getId(), etapaChave, originalPostIt, updatedPostIt, new ResultCallback<Void>() {
+            @Override
+            public void onResult(Result<Void> result) {
+                _isLoading.setValue(false);
+                if (result instanceof Result.Error) {
+                    _toastEvent.postValue(new Event<>("Erro ao atualizar post-it: " + ((Result.Error<Void>)result).error.getMessage()));
+                }
+                // No sucesso, o listener do Firestore atualizará a UI.
+            }
         });
     }
 
@@ -412,11 +459,14 @@ public class CanvasIdeiaViewModel extends ViewModel {
             boolean isExistingDraft = (ideiaListener != null);
 
             // Validação de conteúdo mínimo
-            boolean hasContent = (ideiaAtual.getNome() != null && !ideiaAtual.getNome().trim().isEmpty()) ||
-                    (ideiaAtual.getDescricao() != null && !ideiaAtual.getDescricao().trim().isEmpty()) ||
-                    (ideiaAtual.getAreasNecessarias() != null && !ideiaAtual.getAreasNecessarias().isEmpty());
+            boolean hasTitle = ideiaAtual.getNome() != null && !ideiaAtual.getNome().trim().isEmpty();
+            boolean hasDescription = ideiaAtual.getDescricao() != null && !ideiaAtual.getDescricao().trim().isEmpty();
+            boolean hasAreas = ideiaAtual.getAreasNecessarias() != null && !ideiaAtual.getAreasNecessarias().isEmpty();
 
-            if (!isExistingDraft && !hasContent) {
+            // A variável agora checa se os 3 requisitos são verdadeiros
+            boolean meetsMinimumRequirements = hasTitle && hasDescription && hasAreas;
+
+            if (!isExistingDraft && !meetsMinimumRequirements) {
                 // Se for um RASCUNHO NOVO e SEM CONTEÚDO, descarta.
                 _toastEvent.setValue(new Event<>("Rascunho vazio descartado."));
                 _closeScreenEvent.setValue(new Event<>(true));
@@ -438,39 +488,55 @@ public class CanvasIdeiaViewModel extends ViewModel {
         }
     }
 
-    public void deletePostIt(@NonNull String etapaChave, @NonNull PostIt postIt) {
-        Ideia ideiaAtual = _ideia.getValue();
-        if (ideiaAtual == null || ideiaAtual.getId() == null) {
-            _toastEvent.setValue(new Event<>("Não é possível apagar o post-it. Salve a ideia primeiro."));
+    public void deletePostIt(@NonNull String etapaChave, @NonNull PostIt postItToDelete) {
+        Ideia currentIdeia = _ideia.getValue();
+        if (currentIdeia == null || currentIdeia.getId() == null || etapaChave == null || postItToDelete == null) {
+            Log.e(TAG, "deletePostIt: Tentativa de deletar com dados nulos.");
+            _toastEvent.setValue(new Event<>("Erro interno ao tentar excluir post-it."));
+            return;
+        }
+        // Só permite deletar se for rascunho
+        if (currentIdeia.getStatus() != Ideia.Status.RASCUNHO) {
+            _toastEvent.setValue(new Event<>("Não é possível excluir post-its de uma ideia publicada."));
             return;
         }
 
-        ideiaRepository.deletePostitFromIdeia(ideiaAtual.getId(), etapaChave, postIt, result -> {
-            if (result instanceof Result.Error) {
-                _toastEvent.postValue(new Event<>("Erro ao apagar post-it."));
+        _isLoading.setValue(true);
+
+        ideiaRepository.deletePostitFromIdeia(currentIdeia.getId(), etapaChave, postItToDelete, new ResultCallback<Void>() {
+            @Override
+            public void onResult(Result<Void> result) {
+                _isLoading.setValue(false);
+                if (result instanceof Result.Error) {
+                    _toastEvent.postValue(new Event<>("Erro ao excluir post-it: " + ((Result.Error<Void>)result).error.getMessage()));
+                }
+                // No sucesso, o listener do Firestore atualizará a UI.
             }
-            // A UI será atualizada automaticamente pelo listener em tempo real, não precisamos fazer mais nada.
         });
     }
 
     private void garantirMembroIdealizador(Ideia ideia) {
-        // Verifica se a ideia está em um status que exibe a equipe e se a equipe está vazia
         boolean deveTerEquipe = ideia.getStatus() == Ideia.Status.AVALIADA_APROVADA || ideia.getStatus() == Ideia.Status.AVALIADA_REPROVADA;
         boolean equipeVazia = ideia.getEquipe() == null || ideia.getEquipe().isEmpty();
 
         if (deveTerEquipe && equipeVazia) {
-            // Busca o perfil do usuário dono da ideia
             authRepository.getUserProfile(ideia.getOwnerId(), result -> {
                 if (result instanceof Result.Success) {
                     User owner = ((Result.Success<User>) result).data;
                     if (owner != null) {
-                        // Cria o membro padrão e adiciona à lista
                         MembroEquipe idealizador = new MembroEquipe(owner.getNome(), "Idealizador", "");
-                        ideia.setEquipe(new ArrayList<>());
+                        // Garante que a lista não seja nula antes de adicionar
+                        if (ideia.getEquipe() == null) {
+                            ideia.setEquipe(new ArrayList<>());
+                        }
                         ideia.getEquipe().add(idealizador);
-                        // Re-emite a ideia atualizada para que a UI reaja
-                        _ideia.postValue(ideia);
+                        _ideia.postValue(ideia); // Usa postValue pois está em callback
+                    } else {
+                        Log.e(TAG, "garantirMembroIdealizador: Dono da ideia (User) retornado como nulo.");
                     }
+                } else {
+                    Log.e(TAG, "garantirMembroIdealizador: Falha ao buscar perfil do dono da ideia.");
+                    // Não emitir a ideia aqui, pois falhou em obter o dono
                 }
             });
         }
