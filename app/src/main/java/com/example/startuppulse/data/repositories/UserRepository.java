@@ -53,7 +53,7 @@ public class UserRepository implements IUserRepository {
             updates.put("bio", newBio);
         }
         if (newPhotoUrl != null && !newPhotoUrl.isEmpty()) {
-            updates.put("foto_perfil", newPhotoUrl);
+            updates.put("fotoUrl", newPhotoUrl);
         }
         if (newProfession != null) { // Adicionado
             updates.put("profissao", newProfession);
@@ -62,7 +62,7 @@ public class UserRepository implements IUserRepository {
             updates.put("linkedinUrl", newLinkedinUrl);
         }
         if (newAreas != null) { // Adicionado
-            updates.put("areasDeInteresse", newAreas);
+            updates.put("areas", newAreas);
         }
 
         if (updates.isEmpty()) {

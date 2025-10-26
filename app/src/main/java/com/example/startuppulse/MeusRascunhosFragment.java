@@ -1,5 +1,7 @@
 package com.example.startuppulse;
 
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -7,6 +9,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
@@ -17,9 +20,11 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.startuppulse.common.Result;
 import com.example.startuppulse.data.models.Ideia;
+import com.example.startuppulse.databinding.DialogConfirmDeleteBinding;
 import com.example.startuppulse.databinding.FragmentMeusRascunhosBinding;
 import com.example.startuppulse.ui.ideias.MeusRascunhosViewModel;
-import com.google.android.material.snackbar.Snackbar;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import android.view.WindowManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -117,23 +122,60 @@ public class MeusRascunhosFragment extends Fragment {
                 // Pega a ideia que foi arrastada
                 final Ideia ideiaParaExcluir = ideiasAdapter.getIdeiaAt(position);
 
-                // Mostra um Snackbar com a opção de "Desfazer"
-                Snackbar.make(binding.getRoot(), "Rascunho excluído", Snackbar.LENGTH_LONG)
-                        .setAction("Desfazer", v -> {
-                            // Se o utilizador clica em "Desfazer", não fazemos nada. A exclusão é cancelada.
-                        })
-                        .addCallback(new Snackbar.Callback() {
-                            @Override
-                            public void onDismissed(Snackbar snackbar, int event) {
-                                // Se o Snackbar sumiu sem que o "Desfazer" fosse clicado,
-                                // a exclusão é confirmada e enviada para o ViewModel.
-                                if (event != DISMISS_EVENT_ACTION) {
-                                    viewModel.deleteDraft(ideiaParaExcluir.getId());
-                                }
-                            }
-                        }).show();
+                // --- LÓGICA DO SNACKBAR REMOVIDA ---
+                // Mostra o diálogo de confirmação
+                showConfirmDeleteDialog(ideiaParaExcluir, position);
             }
         }).attachToRecyclerView(binding.recyclerViewIdeias);
+    }
+
+    /**
+     * Mostra um diálogo customizado para confirmar a exclusão de um rascunho.
+     * @param ideia A ideia a ser excluída.
+     * @param position A posição do item no adapter, para reverter a animação se o usuário cancelar.
+     */
+    private void showConfirmDeleteDialog(final Ideia ideia, final int position) {
+        if (getContext() == null) return;
+
+        // Infla o layout customizado
+        DialogConfirmDeleteBinding dialogBinding = DialogConfirmDeleteBinding.inflate(LayoutInflater.from(getContext()));
+
+        // Cria o MaterialAlertDialog
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
+        builder.setView(dialogBinding.getRoot());
+        builder.setCancelable(false); // Mantém a lógica de não fechar ao clicar fora
+
+        // Cria o diálogo
+        AlertDialog dialog = builder.create();
+
+        if (dialog.getWindow() != null) {
+            // 1. Mantém o fundo transparente para o seu "Glass" CardView
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+
+            // --- ADIÇÃO: Configura o "DIM" (escurecimento) manualmente ---
+            WindowManager.LayoutParams lp = new WindowManager.LayoutParams();
+            lp.copyFrom(dialog.getWindow().getAttributes());
+            lp.dimAmount = 0.7f; // Define a força do escurecimento (0.0 = 0%, 1.0 = 100%)
+            lp.flags |= WindowManager.LayoutParams.FLAG_DIM_BEHIND; // Adiciona a flag que ativa o dim
+            dialog.getWindow().setAttributes(lp);
+            // --- Fim da Adição ---
+        }
+
+        // Configura o botão "Cancelar"
+        dialogBinding.dialogButtonNegative.setOnClickListener(v -> {
+            dialog.dismiss();
+            if (ideiasAdapter != null) {
+                ideiasAdapter.notifyItemChanged(position);
+            }
+        });
+
+        // Configura o botão "Confirmar" (Excluir)
+        dialogBinding.dialogButtonPositive.setOnClickListener(v -> {
+            viewModel.deleteDraft(ideia.getId());
+            dialog.dismiss();
+        });
+
+        dialog.show();
     }
 
     @Override

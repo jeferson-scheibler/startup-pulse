@@ -5,4 +5,6 @@
     <color name="background_color">@color/colorSurface</color>
     <color name="white">@android:color/white</color>
     <color name="white_translucent">#80FFFFFF</color>
+    <color name="black_translucent">#80000000</color>
+    <color name="grafitero_color">#383838</color>
 </resources>

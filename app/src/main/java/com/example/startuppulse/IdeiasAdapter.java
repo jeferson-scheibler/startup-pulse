@@ -1,18 +1,21 @@
 package com.example.startuppulse;
 
 import android.annotation.SuppressLint;
-import android.content.res.ColorStateList;
+// Imports removidos (não são mais necessários)
+// import android.content.res.ColorStateList;
+// import android.widget.ImageView;
+// import androidx.core.content.ContextCompat;
+
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
-import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.airbnb.lottie.LottieAnimationView; // <-- IMPORT ADICIONADO
 import com.example.startuppulse.data.models.Ideia;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -50,15 +53,25 @@ public class IdeiasAdapter extends ListAdapter<Ideia, IdeiasAdapter.IdeiaViewHol
 
     static class IdeiaViewHolder extends RecyclerView.ViewHolder {
         TextView titulo, autor;
-        View highlightView;
-        ImageView statusIcon;
-
+        LottieAnimationView mentorHighlightView;
+        LottieAnimationView statusAguardando;
+        LottieAnimationView statusAprovada;
+        LottieAnimationView statusReprovada;
+        View iconContainer;
         IdeiaViewHolder(@NonNull View itemView) {
             super(itemView);
             titulo = itemView.findViewById(R.id.textViewTituloIdeia);
             autor = itemView.findViewById(R.id.textViewAutorIdeia);
-            highlightView = itemView.findViewById(R.id.mentor_highlight_view);
-            statusIcon = itemView.findViewById(R.id.icon_status_avaliacao);
+
+            iconContainer = itemView.findViewById(R.id.icon_container);
+
+            // --- MUDANÇA: Encontrando os IDs corretos do Lottie ---
+            mentorHighlightView = itemView.findViewById(R.id.mentor_highlight_view);
+            statusAguardando = itemView.findViewById(R.id.icon_status_aguardando);
+            statusAprovada = itemView.findViewById(R.id.icon_status_avaliacao_ok);
+            statusReprovada = itemView.findViewById(R.id.icon_status_reprovada);
+
+            // statusIcon = itemView.findViewById(R.id.icon_status_avaliacao); // Removido
         }
 
         @SuppressLint("SetTextI18n")
@@ -74,29 +87,40 @@ public class IdeiasAdapter extends ListAdapter<Ideia, IdeiasAdapter.IdeiaViewHol
             String uid = (user != null) ? user.getUid() : null;
 
             boolean souMentor = uid != null && uid.equals(ideia.getMentorId());
-            highlightView.setVisibility(souMentor ? View.VISIBLE : View.GONE);
-
             boolean souDono = uid != null && uid.equals(ideia.getOwnerId());
 
-            // Lógica para mostrar o status (ícone de avaliação)
-            if (souDono && !"RASCUNHO".equals(ideia.getStatus())) {
-                statusIcon.setVisibility(View.VISIBLE);
-                if ("AVALIADA_APROVADA".equals(ideia.getStatus()) || "AVALIADA_REPROVADA".equals(ideia.getStatus())) {
-                    statusIcon.setImageResource(R.drawable.ic_check);
-                    statusIcon.setImageTintList(ColorStateList.valueOf(
-                            ContextCompat.getColor(itemView.getContext(), R.color.green_success)
-                    ));
-                    statusIcon.setContentDescription("Ideia avaliada");
-                } else { // EM_AVALIACAO
-                    statusIcon.setImageResource(R.drawable.ic_hourglass);
-                    statusIcon.setImageTintList(ColorStateList.valueOf(
-                            ContextCompat.getColor(itemView.getContext(), R.color.colorPrimary)
-                    ));
-                    statusIcon.setContentDescription("Ideia em avaliação");
+            // 1. Esconda todos os ícones individuais primeiro
+            mentorHighlightView.setVisibility(View.GONE);
+            statusAguardando.setVisibility(View.GONE);
+            statusAprovada.setVisibility(View.GONE);
+            statusReprovada.setVisibility(View.GONE);
+
+            // 2. Assuma que o CONTAINER está escondido
+            iconContainer.setVisibility(View.GONE);
+
+            // 3. Decida qual ícone mostrar (e torne o CONTAINER visível)
+            if (souMentor) {
+                iconContainer.setVisibility(View.VISIBLE); // Mostra o container
+                mentorHighlightView.setVisibility(View.VISIBLE);
+
+            } else if (souDono && !"RASCUNHO".equals(ideia.getStatus())) {
+                iconContainer.setVisibility(View.VISIBLE); // Mostra o container
+
+                String status = String.valueOf(ideia.getStatus());
+                if ("AVALIADA_APROVADA".equals(status)) {
+                    statusAprovada.setVisibility(View.VISIBLE);
+                    statusAprovada.setContentDescription("Ideia avaliada e aprovada");
+                } else if ("AVALIADA_REPROVADA".equals(status)) {
+                    statusReprovada.setVisibility(View.VISIBLE);
+                    statusReprovada.setContentDescription("Ideia avaliada e reprovada");
+                } else if ("EM_AVALIACAO".equals(status)){
+                    statusAguardando.setVisibility(View.VISIBLE);
+                    statusAguardando.setContentDescription("Ideia em avaliação");
+                }else {
+                    iconContainer.setVisibility(View.GONE);
                 }
-            } else {
-                statusIcon.setVisibility(View.GONE);
             }
+            // Se não for nem mentor, nem dono vendo status, todos ícones ficam GONE (já feito acima).
         }
     }
 

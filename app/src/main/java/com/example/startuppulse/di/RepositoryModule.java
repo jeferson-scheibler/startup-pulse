@@ -21,9 +21,9 @@ public abstract class RepositoryModule {
 //    @Singleton
 //    public abstract IInvestorRepository bindInvestorRepository(InvestorRepository impl);
 
-//    @Binds
-//    @Singleton
-//    public abstract IMentorRepository bindMentorRepository(MentorRepository impl);
+    @Binds
+    @Singleton
+    public abstract IMentorRepository bindMentorRepository(MentorRepository impl);
 
     @Binds
     @Singleton

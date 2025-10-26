@@ -7,12 +7,15 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.startuppulse.data.PostIt;
+import com.example.startuppulse.ui.canvas.CanvasIdeiaViewModel; // Certifique-se que o import está correto
 import com.google.android.material.card.MaterialCardView;
 
 import java.util.Date;
@@ -21,44 +24,50 @@ import java.util.Objects;
 /**
  * Adapter otimizado para exibir Post-its em um RecyclerView.
  * Utiliza ListAdapter e DiffUtil para performance superior em atualizações de lista.
+ * Usa um ViewModel compartilhado para lidar com interações (cliques).
  */
 public class PostItAdapter extends ListAdapter<PostIt, PostItAdapter.PostItViewHolder> {
 
-    private static OnPostItClickListener clickListener = null;
-    private boolean isReadOnly = false;
+    private final CanvasIdeiaViewModel sharedViewModel;
+    private boolean isReadOnly = false; // Estado de somente leitura
 
-    public interface OnPostItClickListener {
-        void onPostItClick(PostIt postit);
-        void onPostItLongClick(PostIt postit);
-    }
+    // --- REMOVIDO: A interface OnPostItClickListener foi removida ---
 
     /**
-     * O construtor agora só precisa do listener. A lista é gerenciada pelo ListAdapter.
+     * O construtor agora recebe o ViewModel compartilhado e o estado inicial de readOnly.
      */
-    public PostItAdapter(@NonNull OnPostItClickListener clickListener) {
+    public PostItAdapter(CanvasIdeiaViewModel viewModel, boolean isReadOnly) {
         super(DIFF_CALLBACK);
-        this.clickListener = clickListener;
+        this.sharedViewModel = viewModel;
+        this.isReadOnly = isReadOnly; // Define o estado inicial
     }
 
     /**
-     * MODIFICAÇÃO 1: Novo método para controlar o modo de "somente leitura".
-     * Isso evita a necessidade de passar um listener nulo.
+     * Método para atualizar o modo de "somente leitura" dinamicamente.
+     * Requer que você chame notifyDataSetChanged() ou use DiffUtil para atualizar a UI.
+     * Geralmente, é melhor recriar o adapter ou invalidar o layout se isso mudar frequentemente.
      */
     public void setReadOnly(boolean readOnly) {
-        this.isReadOnly = readOnly;
+        // Verifica se o estado realmente mudou para evitar atualizações desnecessárias
+        if (this.isReadOnly != readOnly) {
+            this.isReadOnly = readOnly;
+            notifyDataSetChanged(); // Notifica que os itens precisam ser redesenhados (afeta listeners)
+        }
     }
 
     @NonNull
     @Override
     public PostItViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_postit, parent, false);
-        return new PostItViewHolder(view, clickListener); // Listener é passado aqui
+        // --- CORREÇÃO: Não passa mais o listener antigo ---
+        return new PostItViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull PostItViewHolder holder, int position) {
         PostIt postIt = getItem(position);
-        holder.bind(postIt, isReadOnly); // Passa o post-it e o estado read-only
+        // Passa o PostIt, ViewModel e o estado readOnly atual para o bind
+        holder.bind(postIt, sharedViewModel, isReadOnly);
     }
 
     // ===================================================================
@@ -68,54 +77,41 @@ public class PostItAdapter extends ListAdapter<PostIt, PostItAdapter.PostItViewH
         TextView textViewPostIt, textViewLastModified;
         MaterialCardView cardView;
 
-        /**
-         * MODIFICAÇÃO 2: O listener é recebido uma vez no construtor.
-         * Isso evita a criação de novos objetos de listener a cada 'bind'.
-         */
-        public PostItViewHolder(@NonNull View itemView, OnPostItClickListener listener) {
+        // --- CORREÇÃO: Construtor não precisa mais do listener ---
+        public PostItViewHolder(@NonNull View itemView) {
             super(itemView);
             textViewPostIt = itemView.findViewById(R.id.text_view_postit_content);
             cardView = itemView.findViewById(R.id.postit_card);
             textViewLastModified = itemView.findViewById(R.id.text_view_last_modified);
-
-            // Os listeners são configurados uma única vez, melhorando a performance.
-            itemView.setOnClickListener(v -> {
-                int position = getAdapterPosition();
-                if (listener != null && position != RecyclerView.NO_POSITION) {
-                    // O item é obtido do adapter no momento do clique
-                    // Esta é uma prática mais segura, mas requer acesso ao adapter ou que o adapter use ListAdapter.
-                    // Como estamos migrando para ListAdapter, obteremos o item no onBind e passaremos para o bind.
-                }
-            });
-
-            itemView.setOnLongClickListener(v -> {
-                int position = getAdapterPosition();
-                if (listener != null && position != RecyclerView.NO_POSITION) {
-                    // Lógica similar ao onClick
-                    return true;
-                }
-                return false;
-            });
+            // Listeners são configurados no bind agora, onde temos o objeto PostIt específico
         }
 
-        public void bind(final PostIt postit, boolean isReadOnly) {
-            textViewPostIt.setText(postit.getTexto());
-            setCardColor(postit.getCor());
-            setLastModified(postit.getLastModified());
+        @SuppressLint("SetTextI18n") // Para o DateFormat
+        void bind(final PostIt postIt, final CanvasIdeiaViewModel viewModel, boolean isReadOnly) {
+            textViewPostIt.setText(postIt.getTexto());
+            setCardColor(postIt.getCor());
+            setLastModified(postIt.getLastModified());
 
-            // A lógica de clique agora usa o estado 'isReadOnly'
+            // Configura o OnClickListener para chamar o ViewModel
             itemView.setOnClickListener(v -> {
-                if (!isReadOnly && clickListener != null) {
-                    clickListener.onPostItClick(postit);
+                if (!isReadOnly) { // Só permite editar se não for read-only
+                    viewModel.requestEditPostIt(postIt); // Chama o ViewModel
                 }
             });
 
+            // --- CORREÇÃO: Configura o OnLongClickListener para chamar o ViewModel ---
+            // (Assumindo que você adicione um método requestDeletePostIt no ViewModel)
             itemView.setOnLongClickListener(v -> {
-                if (!isReadOnly && clickListener != null) {
-                    clickListener.onPostItLongClick(postit);
+                if (!isReadOnly) {
+                    // Exemplo: Chamar um método no ViewModel para exclusão
+                    // viewModel.requestDeletePostIt(postIt);
+                    // Retorne true para indicar que o evento foi consumido
+                    // Se você não tiver a lógica de exclusão ainda, pode deixar comentado
+                    // ou retornar false.
+                    Toast.makeText(v.getContext(), "Segure para excluir (TODO)", Toast.LENGTH_SHORT).show(); // Placeholder
                     return true;
                 }
-                return false;
+                return false; // Não consome o evento se for read-only
             });
         }
 
@@ -123,27 +119,26 @@ public class PostItAdapter extends ListAdapter<PostIt, PostItAdapter.PostItViewH
             try {
                 int backgroundColor = Color.parseColor(corHex != null && !corHex.isEmpty() ? corHex : "#FFFF00"); // Amarelo padrão
                 cardView.setCardBackgroundColor(backgroundColor);
-                // Lógica de contraste simples: cores muito claras recebem texto escuro.
                 textViewPostIt.setTextColor(isColorLight(backgroundColor) ? Color.BLACK : Color.WHITE);
+                textViewLastModified.setTextColor(isColorLight(backgroundColor) ? Color.parseColor("#80000000") : Color.parseColor("#80FFFFFF")); // Cor semi-transparente
             } catch (IllegalArgumentException e) {
                 cardView.setCardBackgroundColor(Color.YELLOW);
                 textViewPostIt.setTextColor(Color.BLACK);
+                textViewLastModified.setTextColor(Color.parseColor("#80000000"));
             }
         }
 
         private void setLastModified(Date lastModified) {
             if (lastModified != null) {
+                // Formato mais conciso
                 String dataFormatada = (String) DateFormat.format("dd/MM HH:mm", lastModified);
-                textViewLastModified.setText("Editado em " + dataFormatada);
+                textViewLastModified.setText(dataFormatada);
                 textViewLastModified.setVisibility(View.VISIBLE);
             } else {
                 textViewLastModified.setVisibility(View.GONE);
             }
         }
 
-        /**
-         * Função utilitária para determinar se uma cor é clara, para ajustar o texto.
-         */
         private boolean isColorLight(int color) {
             double darkness = 1 - (0.299 * Color.red(color) + 0.587 * Color.green(color) + 0.114 * Color.blue(color)) / 255;
             return darkness < 0.5;
@@ -151,22 +146,20 @@ public class PostItAdapter extends ListAdapter<PostIt, PostItAdapter.PostItViewH
     }
 
     /**
-     * MODIFICAÇÃO 3: Implementação do DiffUtil.
-     * Isso torna as atualizações da lista extremamente eficientes, animando apenas
-     * os itens que realmente mudaram, foram adicionados ou removidos.
+     * Implementação do DiffUtil para atualizações eficientes.
      */
     private static final DiffUtil.ItemCallback<PostIt> DIFF_CALLBACK =
             new DiffUtil.ItemCallback<PostIt>() {
                 @Override
                 public boolean areItemsTheSame(@NonNull PostIt oldItem, @NonNull PostIt newItem) {
-                    // Um post-it é o mesmo se o seu ID (ou texto, se ID não disponível) for o mesmo.
+                    // Assumindo que PostIt tem um getId() estável
                     return Objects.equals(oldItem.getId(), newItem.getId());
                 }
 
-                @SuppressLint("DiffUtilEquals")
+                @SuppressLint("DiffUtilEquals") // Suprime aviso se PostIt.equals() for complexo
                 @Override
                 public boolean areContentsTheSame(@NonNull PostIt oldItem, @NonNull PostIt newItem) {
-                    // O conteúdo é o mesmo se todos os campos forem iguais.
+                    // Assumindo que PostIt tem um método equals() que compara todos os campos relevantes (texto, cor, data)
                     return oldItem.equals(newItem);
                 }
             };

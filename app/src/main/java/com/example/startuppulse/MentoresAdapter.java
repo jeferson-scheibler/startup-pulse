@@ -74,7 +74,7 @@ public class MentoresAdapter extends ListAdapter<Mentor, MentoresAdapter.MentorV
             itemView.setContentDescription("Mentor " + safeName);
 
             // Avatar (com fallback gerado a partir da primeira letra do nome)
-            String fotoUrl = mentor.getImageUrl();
+            String fotoUrl = mentor.getFotoUrl();
             Resources res = itemView.getResources();
             int px = (int) (56 * res.getDisplayMetrics().density); // 56dp
             BitmapDrawable fallback = new BitmapDrawable(
@@ -132,7 +132,7 @@ public class MentoresAdapter extends ListAdapter<Mentor, MentoresAdapter.MentorV
 
         private Chip createChip(String text) {
             android.view.ContextThemeWrapper themedContext = new android.view.ContextThemeWrapper(itemView.getContext(),
-                    R.style.Widget_StartupPulse_Chip_Area_Compact);
+                    R.style.ThemeOverlay_StartupPulse_Chip_Area_Compact);
             Chip chip = new Chip(themedContext);
             chip.setText(text);
             chip.setClickable(false); // Apenas visual
@@ -153,7 +153,7 @@ public class MentoresAdapter extends ListAdapter<Mentor, MentoresAdapter.MentorV
             // Conteúdo é o mesmo se esses campos não mudaram
             return Objects.equals(oldItem.getName(), newItem.getName())
                     && oldItem.isVerified() == newItem.isVerified()
-                    && Objects.equals(oldItem.getImageUrl(), newItem.getImageUrl())
+                    && Objects.equals(oldItem.getFotoUrl(), newItem.getFotoUrl())
                     && Objects.equals(oldItem.getAreas(), newItem.getAreas());
         }
     };

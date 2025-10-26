@@ -19,8 +19,9 @@ public class Mentor implements Serializable {
     private String bio;      // Uma biografia mais completa
     private String city;
     private String state;
-    private String imageUrl;
-    private List<String> areas;
+    private String fotoUrl;
+    private List<String> areasAtuacao;
+    private String linkedinUrl;
     private boolean verified;
 
     // Campos que podem ser úteis, mas não foram implementados na UI ainda
@@ -29,6 +30,8 @@ public class Mentor implements Serializable {
     private double longitude;
     private boolean activePublic;
     private String status = "ativo";
+
+    private String bannerUrl;
 
     public Mentor() {
         // Construtor vazio necessário para o Firestore
@@ -41,10 +44,26 @@ public class Mentor implements Serializable {
     @Exclude
     public void setId(String id) { this.id = id; }
 
+    public void setBannerUrl(String bannerUrl) {
+        this.bannerUrl = bannerUrl;
+    }
+
+    public String getBannerUrl() {
+        return bannerUrl;
+    }
+
     @PropertyName("nome")
     public String getName() { return name; }
     @PropertyName("nome")
     public void setName(String name) { this.name = name; }
+    @PropertyName("linkedinUrl")
+    public String getLinkedinUrl() {
+        return linkedinUrl;
+    }
+
+    public void setLinkedinUrl(String linkedinUrl) {
+        this.linkedinUrl = linkedinUrl;
+    }
 
     @PropertyName("profissao")
     public String getHeadline() { return headline; }
@@ -67,15 +86,15 @@ public class Mentor implements Serializable {
     @PropertyName("estado")
     public void setState(String state) { this.state = state; }
 
-    @PropertyName("imagem")
-    public String getImageUrl() { return imageUrl; }
-    @PropertyName("imagem")
-    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    @PropertyName("fotoUrl")
+    public String getFotoUrl() { return fotoUrl; }
+    @PropertyName("fotoUrl")
+    public void setFotoUrl(String fotoUrl) { this.fotoUrl = fotoUrl; }
 
     @PropertyName("areas")
-    public List<String> getAreas() { return areas; }
+    public List<String> getAreas() { return areasAtuacao; }
     @PropertyName("areas")
-    public void setAreas(List<String> areas) { this.areas = areas; }
+    public void setAreas(List<String> areas) { this.areasAtuacao = areas; }
 
     @PropertyName("verificado")
     public boolean isVerified() { return verified; }

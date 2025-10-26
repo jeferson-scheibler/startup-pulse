@@ -30,9 +30,6 @@ public class Avaliacao implements Serializable {
     @PropertyName("nota")
     public void setNota(double nota) { this.nota = nota; }
 
-    @PropertyName("justificativa")
     public String getFeedback() { return feedback; }
-
-    @PropertyName("justificativa")
     public void setFeedback(String feedback) { this.feedback = feedback; }
 }

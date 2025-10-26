@@ -39,6 +39,4 @@
 
     <color name="mentorCardVignetteStart">#22000000</color>
     <color name="mentorCardVignetteEnd">#00000000</color>
-
-    <color name="mentorCardStrokeAccent">#26FFC700</color>
 </resources>
