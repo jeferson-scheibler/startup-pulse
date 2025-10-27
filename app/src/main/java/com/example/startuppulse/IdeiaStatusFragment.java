@@ -37,6 +37,8 @@ import com.example.startuppulse.ui.canvas.CanvasIdeiaViewModel;
 import com.example.startuppulse.util.PdfGenerator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+
 import dagger.hilt.android.AndroidEntryPoint;
 
 import android.location.Location;
@@ -87,10 +89,8 @@ public class IdeiaStatusFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        // Obtém o ViewModel compartilhado com o fragmento pai (CanvasIdeiaFragment)
         sharedViewModel = new ViewModelProvider(requireParentFragment()).get(CanvasIdeiaViewModel.class);
         navController = NavHostFragment.findNavController(this);
-
         locationService = new LocationService(requireActivity());
 
         setupClickListeners();
@@ -112,11 +112,23 @@ public class IdeiaStatusFragment extends Fragment {
 
         binding.btnPrepararInvestidores.setOnClickListener(v -> {
             if (currentIdeia != null && currentIdeia.getId() != null) {
-                // CORRIGIDO: Usando NavController para navegação segura
                 Bundle args = new Bundle();
                 args.putString("ideiaId", currentIdeia.getId());
                 // A action 'action_global_to_preparacaoInvestidorFragment' precisa estar definida no seu nav_graph
                 navController.navigate(R.id.action_global_to_preparacaoInvestidorFragment, args);
+            }
+        });
+
+        // --- Listeners da IA (Corretos) ---
+        binding.btnSolicitarAnaliseIa.setOnClickListener(v -> {
+            sharedViewModel.solicitarAnaliseIA();
+        });
+
+        binding.btnVerAnaliseIa.setOnClickListener(v -> {
+            if (currentIdeia != null && currentIdeia.getAvaliacaoIA() != null) {
+                mostrarDialogAnalise(currentIdeia.getAvaliacaoIA());
+            } else {
+                Toast.makeText(getContext(), "Análise ainda não disponível.", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -124,7 +136,7 @@ public class IdeiaStatusFragment extends Fragment {
     private void setupObservers() {
         // Observa a ideia principal para atualizar toda a UI
         sharedViewModel.ideia.observe(getViewLifecycleOwner(), ideia -> {
-            if (ideia == null || !isAdded()) return;
+            if (ideia == null || !isAdded() || binding == null) return;
             this.currentIdeia = ideia;
             updateUI(ideia);
         });
@@ -136,7 +148,6 @@ public class IdeiaStatusFragment extends Fragment {
             }
         });
 
-        // Observa eventos de Toast para feedback do matchmaking e outras operações
         sharedViewModel.toastEvent.observe(getViewLifecycleOwner(), event -> {
             String message = event.getContentIfNotHandled();
             if (message != null && getContext() != null) {
@@ -144,13 +155,27 @@ public class IdeiaStatusFragment extends Fragment {
             }
         });
 
-        // Observa o estado de carregamento para dar feedback visual
+        // Observa o carregamento do MATCHMAKING
         sharedViewModel.isLoading.observe(getViewLifecycleOwner(), isLoading -> {
             if (binding != null) {
                 binding.btnProcurarMentor.setEnabled(!isLoading);
                 if (isLoading && (currentIdeia == null || currentIdeia.getMentorId() == null)) {
                     binding.textMentorName.setText("Procurando...");
                 }
+            }
+        });
+
+        // Observa o carregamento da ANÁLISE DE IA
+        sharedViewModel.isIaLoading.observe(getViewLifecycleOwner(), isLoading -> {
+            if (binding == null || !isAdded()) return;
+            if (isLoading) {
+                binding.progressBarIa.setVisibility(View.VISIBLE);
+                binding.btnSolicitarAnaliseIa.setEnabled(false);
+                binding.btnSolicitarAnaliseIa.setText("Analisando...");
+            } else {
+                binding.progressBarIa.setVisibility(View.GONE);
+                binding.btnSolicitarAnaliseIa.setEnabled(true);
+                binding.btnSolicitarAnaliseIa.setText("Solicitar Pré-Análise com IA");
             }
         });
     }
@@ -163,40 +188,91 @@ public class IdeiaStatusFragment extends Fragment {
 
         boolean isOwner = sharedViewModel.isCurrentUserOwner();
         boolean hasMentor = ideia.getMentorId() != null && !ideia.getMentorId().isEmpty();
+        boolean isMentor = sharedViewModel.isCurrentUserTheMentor();
 
         // --- Lógica do Mentor ---
-        int colorInactive = ContextCompat.getColor(requireContext(), R.color.strokeSoft);
+        int colorInactive = ContextCompat.getColor(requireContext(), R.color.white_translucent);
         int colorActive = ContextCompat.getColor(requireContext(), R.color.colorPrimary);
 
         binding.cardMentor.setStrokeColor(hasMentor ? colorActive : colorInactive);
         binding.iconMentor.setImageTintList(ColorStateList.valueOf(hasMentor ? colorActive : colorInactive));
         binding.btnProcurarMentor.setVisibility(isOwner && !hasMentor ? View.VISIBLE : View.GONE);
+        binding.btnVerFeedback.setEnabled(false);
+        binding.btnDownloadPdf.setEnabled(false);
+        binding.btnPrepararInvestidores.setEnabled(false);
+
 
         if (!hasMentor) {
             binding.textMentorName.setText("A procurar o mentor ideal...");
         }
 
-        // --- Lógica da Avaliação ---
-        boolean isAvaliada = "Avaliada".equals(ideia.getAvaliacaoStatus());
+        Ideia.Status status = ideia.getStatus();
+
+        // 2. Defina os booleanos com base no Enum (MUITO MAIS SEGURO)
+        boolean isAprovada = (status == Ideia.Status.AVALIADA_APROVADA);
+        boolean isReprovada = (status == Ideia.Status.AVALIADA_REPROVADA);
+        boolean isAvaliada = isAprovada || isReprovada; // Verdadeiro para ambos
+
         int colorSuccess = ContextCompat.getColor(requireContext(), R.color.green_success);
 
-        binding.cardAvaliacao.setStrokeColor(isAvaliada ? colorSuccess : colorInactive);
-        binding.iconAvaliacao.setImageTintList(ColorStateList.valueOf(isAvaliada ? colorSuccess : colorInactive));
-        binding.textAvaliacaoStatus.setText(isAvaliada ? "Ideia Avaliada!" : "Aguardando avaliação do mentor");
-        binding.btnVerFeedback.setVisibility(isAvaliada && ideia.getAvaliacoes() != null && !ideia.getAvaliacoes().isEmpty() ? View.VISIBLE : View.GONE);
+        int colorFailure = ContextCompat.getColor(requireContext(), R.color.colorError);
 
-        // --- Lógica dos Botões de Ação ---
-        binding.btnDownloadPdf.setVisibility(isAvaliada ? View.VISIBLE : View.GONE);
-        binding.btnPrepararInvestidores.setVisibility(isAvaliada && !ideia.isProntaParaInvestidores() ? View.VISIBLE : View.GONE);
-
-        if (ideia.isProntaParaInvestidores()) {
-            binding.textAvaliacaoStatus.setText("Ideia Pronta para Investidores!");
-            binding.textAvaliacaoStatus.setTextColor(colorSuccess);
+        // 3. Atualize o card de Avaliação
+        int avaliacaoColor = colorInactive;
+        if (isAprovada) {
+            avaliacaoColor = colorSuccess;
+        } else if (isReprovada) {
+            avaliacaoColor = colorFailure;
         }
 
-        // --- Animação Lottie ---
-        if (isAvaliada) {
+        binding.cardAvaliacao.setStrokeColor(avaliacaoColor);
+        binding.iconAvaliacao.setImageTintList(ColorStateList.valueOf(avaliacaoColor));
+
+        binding.textAvaliacaoStatus.setTextColor(colorInactive);
+
+        if (ideia.isProntaParaInvestidores() && isAprovada) {
+            binding.textAvaliacaoStatus.setText("Ideia pronta para investidores!");
+            binding.textAvaliacaoStatus.setTextColor(colorSuccess);
+        } else if (isAprovada) {
+            binding.textAvaliacaoStatus.setText("Ideia aprovada!");
+            binding.textAvaliacaoStatus.setTextColor(colorSuccess);
+        } else if (isReprovada) {
+            binding.textAvaliacaoStatus.setText("Ideia reprovada");
+            binding.textAvaliacaoStatus.setTextColor(colorFailure);
+        } else {
+            binding.textAvaliacaoStatus.setText("Aguardando avaliação do mentor");
+        }
+
+        // --- Lógica da IA (NOVO) ---
+        boolean hasIAAnalysis = ideia.getAvaliacaoIA() != null;
+        int iaColor = hasIAAnalysis ? colorActive : colorInactive; // Reutiliza a cor ativa
+
+        binding.cardIa.setStrokeColor(iaColor);
+        binding.iconIa.setImageTintList(ColorStateList.valueOf(iaColor));
+
+        if (hasIAAnalysis) {
+            binding.textIaStatus.setText("Sua análise de IA está pronta.");
+            binding.btnVerAnaliseIa.setVisibility(View.VISIBLE);
+            // Mostra o botão de solicitar novamente, caso o usuário queira atualizar
+            binding.btnSolicitarAnaliseIa.setVisibility(isOwner ? View.VISIBLE : View.GONE);
+            binding.btnSolicitarAnaliseIa.setText("Solicitar nova análise");
+        } else {
+            binding.textIaStatus.setText("Receba um feedback instantâneo sobre sua ideia.");
+            binding.btnVerAnaliseIa.setVisibility(View.GONE);
+            binding.btnSolicitarAnaliseIa.setVisibility(isOwner ? View.VISIBLE : View.GONE);
+            binding.btnSolicitarAnaliseIa.setText("Solicitar pré-análise com IA");
+        }
+        // Oculta tudo se não for o dono
+        binding.cardIa.setVisibility(isOwner ? View.VISIBLE : View.GONE);
+
+        binding.btnVerFeedback.setEnabled(isAvaliada && ideia.getAvaliacoes() != null && !ideia.getAvaliacoes().isEmpty());
+        binding.btnDownloadPdf.setEnabled(isOwner || isMentor);
+        binding.btnPrepararInvestidores.setEnabled(isOwner && isAprovada && !ideia.isProntaParaInvestidores());
+
+        if (isAprovada) {
             binding.lottieStatusAnimation.setAnimation(R.raw.anim_sucess);
+        } else if (isReprovada) {
+            binding.lottieStatusAnimation.setAnimation(R.raw.anim_ambiente_distracao);
         } else if (hasMentor) {
             binding.lottieStatusAnimation.setAnimation(R.raw.anim_analise_mentor);
         } else {
@@ -205,6 +281,50 @@ public class IdeiaStatusFragment extends Fragment {
         binding.lottieStatusAnimation.playAnimation();
     }
 
+    /**
+     * Cria e exibe um Dialog simples com os resultados da IA.
+     */
+    private void mostrarDialogAnalise(Map<String, Object> avaliacaoIA) {
+        if (getContext() == null) return;
+        // Extrai os dados do Map (com checagem de tipo)
+        StringBuilder mensagem = new StringBuilder();
+
+        String resumo = (String) avaliacaoIA.get("resumo_geral");
+        mensagem.append("Resumo Geral:\n").append(resumo).append("\n\n");
+
+        List<String> fortes = (List<String>) avaliacaoIA.get("pontos_fortes");
+        if (fortes != null) {
+            mensagem.append("Pontos Fortes:\n");
+            for (String ponto : fortes) {
+                mensagem.append("- ").append(ponto).append("\n");
+            }
+            mensagem.append("\n");
+        }
+
+        List<String> fracos = (List<String>) avaliacaoIA.get("pontos_fracos_e_riscos");
+        if (fracos != null) {
+            mensagem.append("Pontos Fracos e Riscos:\n");
+            for (String ponto : fracos) {
+                mensagem.append("- ").append(ponto).append("\n");
+            }
+            mensagem.append("\n");
+        }
+
+        List<String> sugestoes = (List<String>) avaliacaoIA.get("sugestoes_proximos_passos");
+        if (sugestoes != null) {
+            mensagem.append("Próximos Passos Sugeridos:\n");
+            for (String passo : sugestoes) {
+                mensagem.append("- ").append(passo).append("\n");
+            }
+        }
+
+        // Exibe o Dialog
+        new AlertDialog.Builder(getContext())
+                .setTitle("Análise do Mentor IA")
+                .setMessage(mensagem.toString())
+                .setPositiveButton("Entendido", null)
+                .show();
+    }
     // --- Métodos de Ação do Usuário ---
 
     private void tentarNovoMatchmaking() {

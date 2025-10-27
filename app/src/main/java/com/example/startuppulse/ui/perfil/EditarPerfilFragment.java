@@ -115,6 +115,7 @@ public class EditarPerfilFragment extends Fragment {
                 User user = ((Result.Success<User>) result).data;
                 if (user != null) {
                     binding.inputEditTextNome.setText(user.getNome());
+                    binding.inputEditTextBio.setText(user.getBio());
                     binding.inputEditTextProfissao.setText(user.getProfissao());
                     binding.inputEditTextLinkedin.setText(user.getLinkedinUrl());
                     String fullLinkedinUrl = user.getLinkedinUrl();

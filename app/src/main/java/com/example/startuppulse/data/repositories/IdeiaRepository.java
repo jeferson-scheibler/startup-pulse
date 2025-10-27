@@ -17,6 +17,9 @@ import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.WriteBatch;
+import com.google.firebase.functions.FirebaseFunctions;
+import com.google.firebase.functions.HttpsCallableResult;
+import com.google.android.gms.tasks.Task;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,16 +42,18 @@ public class IdeiaRepository implements IIdeiaRepository {
     private final FirebaseFirestore firestore;
     private final IAuthRepository authRepository;
     private final IStorageRepository storageRepository;
+    private final FirebaseFunctions functions;
 
     private static final String IDEIAS_COLLECTION = "ideias";
     private static final String PITCH_DECKS_FOLDER = "pitch_decks";
     private static final String TAG = "IdeiaRepository";
 
     @Inject
-    public IdeiaRepository(FirebaseFirestore firestore, IAuthRepository authRepository, IStorageRepository storageRepository) {
+    public IdeiaRepository(FirebaseFirestore firestore, IAuthRepository authRepository, IStorageRepository storageRepository,FirebaseFunctions functions) {
         this.firestore = firestore;
         this.authRepository = authRepository;
         this.storageRepository = storageRepository;
+        this.functions = functions;
     }
 
     // ============================================================
@@ -326,10 +331,11 @@ public class IdeiaRepository implements IIdeiaRepository {
     }
 
     @Override
-    public void salvarAvaliacao(@NonNull String ideiaId, @NonNull List<Map<String, Object>> avaliacoes, @NonNull ResultCallback<Void> callback) {
+    public void salvarAvaliacao(@NonNull String ideiaId, @NonNull List<Map<String, Object>> avaliacoes, @NonNull Ideia.Status novoStatus, @NonNull ResultCallback<Void> callback) {
         Map<String, Object> updates = new HashMap<>();
         updates.put("avaliacoes", avaliacoes);
         updates.put("avaliacaoStatus", "Avaliada");
+        updates.put("status", novoStatus.name());
 
         firestore.collection(IDEIAS_COLLECTION).document(ideiaId).update(updates)
                 .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(null)))
@@ -362,5 +368,48 @@ public class IdeiaRepository implements IIdeiaRepository {
                 .update(key, FieldValue.arrayRemove(postitParaApagar))
                 .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(null)))
                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+    }
+
+    // ============================================================
+    // FUNÇÕES DE IA
+    // ============================================================
+
+    /**
+     * Chama a Cloud Function 'gerar_pre_analise_ia' para uma ideia específica.
+     * Retorna um Result com a mensagem de sucesso ou erro.
+     */
+    @Override
+    public void solicitarAnaliseIA(@NonNull String ideiaId, @NonNull ResultCallback<String> callback) {
+        // 1. Preparar os dados para enviar
+        Map<String, Object> data = new HashMap<>();
+        data.put("ideiaId", ideiaId);
+
+        // 2. Chamar a função
+        functions.getHttpsCallable("gerar_pre_analise_ia")
+                .call(data)
+                .continueWith(task -> {
+                    // 3. Processar a resposta
+                    if (!task.isSuccessful()) {
+                        Exception e = task.getException();
+                        Log.w(TAG, "solicitarAnaliseIA: FALHA", e);
+                        return new Result.Error<String>(e);
+                    } else {
+                        // A função retorna um Map, ex: {"status": "success", "message": "..."}
+                        HttpsCallableResult result = task.getResult();
+                        Map<String, Object> resultMap = (Map<String, Object>) result.getData();
+                        String message = (String) resultMap.get("message");
+                        Log.d(TAG, "solicitarAnaliseIA: SUCESSO: " + message);
+                        return new Result.Success<String>(message);
+                    }
+                })
+                .addOnCompleteListener(task -> {
+                    // 4. Enviar o resultado de volta para o ViewModel
+                    if (task.isSuccessful()) {
+                        callback.onResult(task.getResult());
+                    } else {
+                        // Este caso não deve acontecer por causa do continueWith, mas é uma boa prática
+                        callback.onResult(new Result.Error<>(task.getException()));
+                    }
+                });
     }
 }
