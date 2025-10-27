@@ -21,7 +21,9 @@ import com.example.startuppulse.MentorMatchService;
 import com.example.startuppulse.common.Result;
 import com.example.startuppulse.data.repositories.AuthRepository;
 import com.example.startuppulse.data.models.Ideia;
+import com.example.startuppulse.data.repositories.IAuthRepository;
 import com.example.startuppulse.data.repositories.IIdeiaRepository;
+import com.example.startuppulse.data.repositories.IMentorRepository;
 import com.example.startuppulse.data.repositories.IdeiaRepository;
 import com.example.startuppulse.data.repositories.MentorRepository;
 import com.example.startuppulse.data.PostIt;
@@ -44,15 +46,17 @@ public class CanvasIdeiaViewModel extends ViewModel {
 
     // --- Repositórios Injetados ---
     private final IIdeiaRepository ideiaRepository;
-    private final MentorRepository mentorRepository;
-    private final AuthRepository authRepository;
+    private final IMentorRepository mentorRepository;
+    private final IAuthRepository authRepository;
 
     private ListenerRegistration ideiaListener;
+    private String ideiaId;
 
     // --- LiveData para a UI ---
 
     private final MutableLiveData<Ideia> _ideia = new MutableLiveData<>();
     public final LiveData<Ideia> ideia = _ideia;
+
 
     // ===== CORREÇÃO: O LiveData de 'etapas' foi restaurado =====
     private final MutableLiveData<List<CanvasEtapa>> _etapas = new MutableLiveData<>();
@@ -62,6 +66,8 @@ public class CanvasIdeiaViewModel extends ViewModel {
 
     private final MutableLiveData<Boolean> _isLoading = new MutableLiveData<>(true);
     public final LiveData<Boolean> isLoading = _isLoading;
+    private final MutableLiveData<Boolean> _isIaLoading = new MutableLiveData<>(false);
+    public final LiveData<Boolean> isIaLoading = _isIaLoading;
 
     // --- Eventos para Ações Únicas ---
     private final MutableLiveData<Event<String>> _toastEvent = new MutableLiveData<>();
@@ -86,16 +92,19 @@ public class CanvasIdeiaViewModel extends ViewModel {
     );
 
     @Inject
-    public CanvasIdeiaViewModel(IIdeiaRepository ideiaRepository, MentorRepository mentorRepository, AuthRepository authRepository) {
+    public CanvasIdeiaViewModel(IIdeiaRepository ideiaRepository, IMentorRepository mentorRepository, IAuthRepository authRepository) {
         this.ideiaRepository = ideiaRepository;
         this.mentorRepository = mentorRepository;
         this.authRepository = authRepository;
         isPublishEnabled = Transformations.map(_ideia, this::isIdeiaValidaParaPublicar);
         _etapas.setValue(new ArrayList<>());
+        _isIaLoading.setValue(false);
     }
 
     public void loadIdeia(@Nullable String ideiaId) {
         Log.d(TAG, "loadIdeia: Método chamado com ideiaId = " + ideiaId);
+
+        this.ideiaId = ideiaId;
 
         if (ideiaListener != null) {
             ideiaListener.remove();
@@ -104,12 +113,43 @@ public class CanvasIdeiaViewModel extends ViewModel {
 
         if (ideiaId == null) {
             Log.d(TAG, "loadIdeia: ID é nulo. Criando uma nova ideia em branco.");
-            Ideia novaIdeia = new Ideia();
-            novaIdeia.setId(ideiaRepository.getNewIdeiaId());
-            novaIdeia.setOwnerId(authRepository.getCurrentUserId());
-            _ideia.setValue(novaIdeia);
-            setupEtapas(novaIdeia);
-            _isLoading.setValue(false);
+
+            String currentUserId = authRepository.getCurrentUserId();
+            if (currentUserId == null) {
+                // Caso de segurança: usuário deslogou no meio do processo
+                Log.e(TAG, "loadIdeia: Usuário não está logado. Encerrando.");
+                _toastEvent.setValue(new Event<>("Erro: Usuário não autenticado."));
+                _closeScreenEvent.setValue(new Event<>(true));
+                _isLoading.setValue(false);
+                return;
+            }
+
+            authRepository.getUserProfile(currentUserId, result -> {
+                if (result instanceof Result.Success) {
+                    User currentUser = ((Result.Success<User>) result).data;
+
+                    String autorNome = (currentUser != null && currentUser.getNome() != null) ? currentUser.getNome() : "Autor Desconhecido";
+
+                    // Agora sim, cria a nova ideia com todos os dados
+                    Ideia novaIdeia = new Ideia();
+                    novaIdeia.setId(ideiaRepository.getNewIdeiaId());
+                    novaIdeia.setOwnerId(currentUserId);
+                    novaIdeia.setAutorNome(autorNome);
+
+                    this.ideiaId = novaIdeia.getId();
+
+                    _ideia.setValue(novaIdeia);
+                    setupEtapas(novaIdeia);
+                    _isLoading.setValue(false);
+
+                } else {
+                    // Falha ao buscar o perfil do usuário
+                    Log.e(TAG, "loadIdeia: Falha ao buscar perfil do usuário para nova ideia.", (result instanceof Result.Error) ? ((Result.Error<User>) result).error : null);
+                    _toastEvent.setValue(new Event<>("Erro ao carregar dados do usuário."));
+                    _closeScreenEvent.setValue(new Event<>(true));
+                    _isLoading.setValue(false);
+                }
+            });
         } else {
             Log.d(TAG, "loadIdeia: ID não é nulo. A escutar a ideia no repositório.");
             ideiaListener = ideiaRepository.listenToIdeia(ideiaId, result -> {
@@ -171,6 +211,7 @@ public class CanvasIdeiaViewModel extends ViewModel {
         ideiaRepository.unpublishIdeia(ideiaAtual.getId(), result -> {
             if (result instanceof Result.Success) {
                 _toastEvent.setValue(new Event<>("Ideia revertida para rascunho."));
+                _closeScreenEvent.postValue(new Event<>(true));
                 // O listener em tempo real cuidará de atualizar a UI para o estado de rascunho.
             } else {
                 _toastEvent.setValue(new Event<>("Erro ao despublicar a ideia."));
@@ -257,13 +298,51 @@ public class CanvasIdeiaViewModel extends ViewModel {
         Ideia ideiaAtual = _ideia.getValue();
         if (ideiaAtual == null) return;
 
+        // --- CORREÇÃO: SÓ SALVA SE FOR RASCUNHO ---
+        // Impede a alteração de dados básicos se a ideia já estiver publicada
+        if (ideiaAtual.getStatus() != Ideia.Status.RASCUNHO) {
+            Log.w(TAG, "updateIdeiaBasics: Tentativa de alterar ideia não-rascunho. Ignorado.");
+            return;
+        }
+        // --- FIM DA CORREÇÃO ---
+
         // Atualiza os campos do objeto de ideia atual
         ideiaAtual.setNome(nome);
         ideiaAtual.setDescricao(descricao); // Usando o campo 'bio' do novo modelo Mentor/Ideia
         ideiaAtual.setAreasNecessarias(areas);
 
-        // Emite o objeto modificado. O LiveData notificará os observers.
+        // Emite o objeto modificado. O LiveData notificará os observers (UI otimista).
         _ideia.setValue(ideiaAtual);
+
+        // --- CORREÇÃO PRINCIPAL: SALVAR NO DEBOUNCE ---
+        // Agora, também persiste essa mudança no repositório.
+        // O repositório usará 'set' (saveIdeia), que funciona para CRIAR ou ATUALIZAR.
+        ideiaRepository.saveIdeia(ideiaAtual, result -> {
+            if (result instanceof Result.Error) {
+                // Se falhar, registra o erro. O debounce tentará salvar de novo na próxima.
+                Log.e(TAG, "Falha ao salvar (debounce) updateIdeiaBasics", ((Result.Error<Void>) result).error);
+                // _toastEvent.postValue(new Event<>("Falha ao salvar rascunho.")); // Opcional
+            } else if (result instanceof Result.Success) {
+                // Sucesso.
+                // Se a ideia era NOVA (ideiaListener == null), agora ela existe no banco.
+                // Precisamos iniciar o listener para ela.
+                garantirListenerAtivo();
+            }
+        });
+        // --- FIM DA CORREÇÃO ---
+    }
+
+    private void garantirListenerAtivo() {
+        // Checa se o listener está nulo E se a ideia já tem um ID (o que ela terá)
+        if (ideiaListener == null && _ideia.getValue() != null && _ideia.getValue().getId() != null) {
+            String ideiaId = _ideia.getValue().getId();
+            Log.d(TAG, "garantirListenerAtivo: Primeiro salvamento detectado. Ativando listener para a ideia ID: " + ideiaId);
+
+            // Chamar loadIdeia(ideiaId) fará com que o ViewModel
+            // se registre para ouvir mudanças em tempo real no documento
+            // que acabamos de criar.
+            loadIdeia(ideiaId);
+        }
     }
 
     public void addMembroEquipe(@NonNull MembroEquipe novoMembro) {
@@ -386,8 +465,13 @@ public class CanvasIdeiaViewModel extends ViewModel {
     private void buscarTodosOsMentores(@NonNull Ideia ideia, @Nullable Location location, @NonNull List<String> areasDaIdeia) {
         // Se não tivermos a localização do usuário, não há como ordenar por proximidade.
         if (location == null) {
-            finalizarBuscaComErro("Não foi possível encontrar mentores. Ative a localização para buscar por proximidade.");
+            // --- CORREÇÃO AQUI ---
+            // Antigo: finalizarBuscaComErro(...)
+            // Novo: Publica sem mentor, pois não podemos tentar o Plano B (proximidade).
+            Log.d(TAG, "buscarTodosOsMentores: Localização nula. Publicando sem mentor.");
+            publicarIdeiaSemMentor(ideia);
             return;
+            // --- FIM DA CORREÇÃO ---
         }
 
         mentorRepository.getAllMentores(ideia.getOwnerId(), result -> {
@@ -398,16 +482,15 @@ public class CanvasIdeiaViewModel extends ViewModel {
                 List<Mentor> ordenados = MentorMatchService.ordenarPorAfinidadeEProximidade(mentores, areasDaIdeia, location);
                 vincularMelhorMentor(ideia, ordenados.get(0), "Mentor encontrado por proximidade.");
             } else {
+                // --- CORREÇÃO AQUI ---
                 // FALHA GERAL: Não encontrou nenhum mentor no banco de dados.
-                finalizarBuscaComErro("Nenhum mentor disponível foi encontrado no momento.");
+                // Antigo: finalizarBuscaComErro("Nenhum mentor disponível foi encontrado...")
+                // Novo: Publica sem mentor.
+                Log.d(TAG, "buscarTodosOsMentores: Nenhum mentor encontrado. Publicando sem mentor.");
+                publicarIdeiaSemMentor(ideia);
+                // --- FIM DA CORREÇÃO ---
             }
         });
-    }
-
-    private void finalizarBuscaComErro(String mensagem) {
-        _isLoading.postValue(false);
-        _toastEvent.postValue(new Event<>(mensagem));
-        _ideia.postValue(_ideia.getValue());
     }
 
     private void vincularMelhorMentor(Ideia ideia, Mentor mentor, String log) {
@@ -421,8 +504,31 @@ public class CanvasIdeiaViewModel extends ViewModel {
             if (result instanceof Result.Success) {
                 // O nome do mentor será atualizado pelo listener da ideia, que chama 'fetchMentorName'
                 _toastEvent.postValue(new Event<>("Mentor encontrado: " + mentor.getName()));
+                _closeScreenEvent.postValue(new Event<>(true));
             } else {
                 _toastEvent.postValue(new Event<>("Erro ao vincular o mentor. Tente novamente."));
+            }
+        });
+    }
+
+    /**
+     * Publica a ideia no estado EM_AVALIACAO, mas sem um mentor vinculado.
+     * Isso permite que o usuário procure um mentor mais tarde.
+     */
+    private void publicarIdeiaSemMentor(Ideia ideia) {
+        ideia.setStatus(Ideia.Status.EM_AVALIACAO);
+        // O mentorId já é nulo, então não precisamos definir.
+
+        // Chama o repositório com mentorId nulo
+        ideiaRepository.publicarIdeia(ideia.getId(), null, result -> {
+            _isLoading.postValue(false);
+            if (result instanceof Result.Success) {
+                // Sucesso: Ideia publicada, evento para fechar a tela.
+                _toastEvent.postValue(new Event<>("Ideia publicada! Você pode buscar um mentor mais tarde."));
+                _closeScreenEvent.postValue(new Event<>(true));
+            } else {
+                // Erro ao tentar publicar
+                _toastEvent.postValue(new Event<>("Erro ao publicar a ideia. Tente novamente."));
             }
         });
     }
@@ -540,6 +646,74 @@ public class CanvasIdeiaViewModel extends ViewModel {
                 }
             });
         }
+    }
+
+    /**
+     * Força o salvamento dos dados atuais da ideia no repositório.
+     * Útil antes de ações críticas como 'publicar' ou 'solicitar IA'.
+     */
+    private void salvarCanvasAtual() {
+        Ideia ideiaAtual = _ideia.getValue();
+        if (ideiaAtual == null) return;
+
+        // Só salva se for um rascunho
+        if (ideiaAtual.getStatus() == Ideia.Status.RASCUNHO) {
+            Log.d(TAG, "salvarCanvasAtual: Forçando salvamento da ideia ID: " + ideiaAtual.getId());
+            ideiaRepository.saveIdeia(ideiaAtual, result -> {
+                if (result instanceof Result.Error) {
+                    Log.e(TAG, "salvarCanvasAtual: Falha ao salvar.", ((Result.Error<Void>) result).error);
+                } else {
+                    Log.d(TAG, "salvarCanvasAtual: Salvo com sucesso.");
+                    // Garante que o listener está ativo após o primeiro save
+                    garantirListenerAtivo();
+                }
+            });
+        }
+    }
+
+    /**
+     * Solicita que o backend gere uma análise de IA para a ideia atual.
+     */
+    public void solicitarAnaliseIA() {
+        // <<< CORREÇÃO 1 (Continuação): Usa o campo `this.ideiaId`
+        if (this.ideiaId == null) {
+            _toastEvent.setValue(new Event<>("Erro: ID da ideia não encontrado."));
+            return;
+        }
+
+        // Garante que os dados mais recentes foram salvos antes de analisar
+        // <<< CORREÇÃO 3 (Continuação): Agora este método existe
+        salvarCanvasAtual();
+
+        _isIaLoading.setValue(true); // <<< CORREÇÃO 2 (Continuação): Usa o LiveData correto
+
+        ideiaRepository.solicitarAnaliseIA(this.ideiaId, result -> {
+            _isIaLoading.setValue(false); // <<< CORREÇÃO 2 (Continuação): Usa o LiveData correto
+
+            if (result instanceof Result.Success) {
+                _toastEvent.setValue(new Event<>("Análise da IA solicitada! Os resultados aparecerão em breve."));
+                // O listener 'listenToIdeia' (que já existe no seu loadIdeia)
+                // irá automaticamente capturar a atualização no campo 'avaliacaoIA'
+                // e atualizar o LiveData '_ideia'.
+            } else {
+                String errorMsg = "Erro ao solicitar análise.";
+                if (result instanceof Result.Error) {
+                    Exception e = ((Result.Error<String>) result).error;
+                    if (e != null) {
+                        // Tenta extrair a mensagem de erro da Firebase Function
+                        String functionError = e.getMessage();
+                        if(functionError != null && functionError.contains("PERMISSION_DENIED")) {
+                            errorMsg = "Você não é o dono desta ideia.";
+                        } else if (functionError != null && functionError.contains("NOT_FOUND")) {
+                            errorMsg = "Ideia não encontrada no servidor.";
+                        } else if(e.getMessage() != null) {
+                            errorMsg = e.getMessage();
+                        }
+                    }
+                }
+                _toastEvent.setValue(new Event<>(errorMsg));
+            }
+        });
     }
 
     @Override

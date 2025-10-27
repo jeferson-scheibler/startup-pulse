@@ -192,7 +192,7 @@ public class CanvasIdeiaFragment extends Fragment {
         if (isOwner) {
             if (ideia.getStatus() == Ideia.Status.RASCUNHO) {
                 binding.btnPublicarIdeia.setVisibility(View.VISIBLE);
-            } else {
+            } else if (ideia.getStatus() == Ideia.Status.EM_AVALIACAO) {
                 binding.btnDespublicarIdeia.setVisibility(View.VISIBLE);
             }
         } else if (isMentorPodeAvaliar) {

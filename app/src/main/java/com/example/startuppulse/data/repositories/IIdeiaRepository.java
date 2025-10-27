@@ -115,7 +115,7 @@ public interface IIdeiaRepository {
     /**
      * Salva uma avaliação (lista de mapas com respostas/nota) para a ideia.
      */
-    void salvarAvaliacao(@NonNull String ideiaId, @NonNull List<Map<String, Object>> avaliacoes, @NonNull ResultCallback<Void> callback);
+    void salvarAvaliacao(@NonNull String ideiaId, @NonNull List<Map<String, Object>> avaliacoes, @NonNull Ideia.Status novoStatus, @NonNull ResultCallback<Void> callback);
 
     // ------------------------------
     // Upload de arquivos
@@ -145,4 +145,6 @@ public interface IIdeiaRepository {
      * Remove um post-it de uma ideia.
      */
     void deletePostitFromIdeia(@NonNull String ideiaId, @NonNull String etapaChave, @NonNull PostIt postitParaApagar, @NonNull ResultCallback<Void> callback);
+
+    void solicitarAnaliseIA(@NonNull String ideiaId, @NonNull ResultCallback<String> callback);
 }

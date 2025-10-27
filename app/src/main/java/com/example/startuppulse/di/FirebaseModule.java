@@ -2,6 +2,7 @@ package com.example.startuppulse.di;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.functions.FirebaseFunctions;
 import com.google.firebase.storage.FirebaseStorage;
 
 import javax.inject.Singleton;
@@ -29,5 +30,11 @@ public class FirebaseModule {
     @Singleton
     public FirebaseStorage provideFirebaseStorage() {
         return FirebaseStorage.getInstance();
+    }
+
+    @Provides
+    @Singleton
+    public FirebaseFunctions provideFirebaseFunctions() {
+        return FirebaseFunctions.getInstance("southamerica-east1");
     }
 }

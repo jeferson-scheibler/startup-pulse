@@ -22,6 +22,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder; // <-- MUD
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import dagger.hilt.android.AndroidEntryPoint;
 
@@ -66,11 +67,16 @@ public class CanvasInicioFragment extends Fragment {
             boolean isReadOnly = ideia.getStatus() != Ideia.Status.RASCUNHO;
             suppressWatcher = true;
 
-            if (!binding.editTextTituloIdeia.getText().toString().equals(ideia.getNome())) {
-                binding.editTextTituloIdeia.setText(ideia.getNome());
+            if (!binding.editTextTituloIdeia.hasFocus()) {
+                if (!Objects.requireNonNull(binding.editTextTituloIdeia.getText()).toString().trim().equals(ideia.getNome())) {
+                    binding.editTextTituloIdeia.setText(ideia.getNome());
+                }
             }
-            if (!binding.editTextDescricaoIdeia.getText().toString().equals(ideia.getDescricao())) {
-                binding.editTextDescricaoIdeia.setText(ideia.getDescricao());
+
+            if (!binding.editTextDescricaoIdeia.hasFocus()) {
+                if (!Objects.requireNonNull(binding.editTextDescricaoIdeia.getText()).toString().trim().equals(ideia.getDescricao())) {
+                    binding.editTextDescricaoIdeia.setText(ideia.getDescricao());
+                }
             }
 
             setReadOnlyMode(isReadOnly);

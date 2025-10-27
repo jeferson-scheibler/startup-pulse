@@ -47,6 +47,8 @@ public class Ideia implements Serializable {
     private boolean prontaParaInvestidores = false;
     private Date ultimaBuscaMentorTimestamp;
 
+    private Map<String, Object> avaliacaoIA;
+
     public Ideia() {
         this.postIts = new HashMap<>();
         this.avaliacoes = new ArrayList<>();
@@ -114,6 +116,11 @@ public class Ideia implements Serializable {
         }
         List<PostIt> result = postIts.get(etapaChave);
         return result != null ? result : new ArrayList<>();
+    }
+
+    public Map<String, Object> getAvaliacaoIA() { return avaliacaoIA; }
+    public void setAvaliacaoIA(Map<String, Object> avaliacaoIA) {
+        this.avaliacaoIA = avaliacaoIA;
     }
 
     public String getMatchmakingLog() { return matchmakingLog; }
