@@ -14,10 +14,12 @@ import android.provider.Settings;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.style.StyleSpan;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -35,6 +37,8 @@ import com.example.startuppulse.databinding.DialogMentorFeedbackBinding;
 import com.example.startuppulse.databinding.FragmentIdeiaStatusBinding;
 import com.example.startuppulse.ui.canvas.CanvasIdeiaViewModel;
 import com.example.startuppulse.util.PdfGenerator;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -110,6 +114,11 @@ public class IdeiaStatusFragment extends Fragment {
         binding.btnProcurarMentor.setOnClickListener(v -> tentarNovoMatchmaking());
         binding.btnVerFeedback.setOnClickListener(v -> showFeedbackDialog());
 
+        binding.pulseVoteView.setOnVoteListener(score -> {
+            Log.d("IdeiaStatusFragment", "PulseVote confirmou: " + score);
+            sharedViewModel.votarNaComunidade(score);
+        });
+
         binding.btnPrepararInvestidores.setOnClickListener(v -> {
             if (currentIdeia != null && currentIdeia.getId() != null) {
                 Bundle args = new Bundle();
@@ -139,6 +148,19 @@ public class IdeiaStatusFragment extends Fragment {
             if (ideia == null || !isAdded() || binding == null) return;
             this.currentIdeia = ideia;
             updateUI(ideia);
+
+            boolean isVisitor = !sharedViewModel.isCurrentUserOwner() && !sharedViewModel.isCurrentUserTheMentor();
+            if (isVisitor) {
+                binding.pulseVoteView.setAverageScore((float)ideia.getMediaPonderadaVotosComunidade());
+            }
+        });
+
+        sharedViewModel.userVote.observe(getViewLifecycleOwner(), currentVote -> {
+            if (binding != null && isAdded() && currentVote != null && currentVote > 0f) { // <<< Usa 0f
+                binding.pulseVoteView.setCurrentScore(currentVote); // Passa o float
+            } else if (binding != null && isAdded()) {
+                binding.pulseVoteView.setCurrentScore(1.0f); // Reseta para 1.0f
+            }
         });
 
         // Observa o nome do mentor para preencher o campo específico
@@ -178,6 +200,13 @@ public class IdeiaStatusFragment extends Fragment {
                 binding.btnSolicitarAnaliseIa.setText("Solicitar Pré-Análise com IA");
             }
         });
+
+        sharedViewModel.isVoting.observe(getViewLifecycleOwner(), isVoting -> {
+            if (binding == null || !isAdded()) return;
+            binding.progressBarVoting.setVisibility(isVoting ? View.VISIBLE : View.GONE);
+            binding.pulseVoteView.setEnabled(!isVoting); // Desabilita a view inteira
+            binding.pulseVoteView.setAlpha(isVoting ? 0.5f : 1.0f);
+        });
     }
 
     private void updateUI(Ideia ideia) {
@@ -189,6 +218,7 @@ public class IdeiaStatusFragment extends Fragment {
         boolean isOwner = sharedViewModel.isCurrentUserOwner();
         boolean hasMentor = ideia.getMentorId() != null && !ideia.getMentorId().isEmpty();
         boolean isMentor = sharedViewModel.isCurrentUserTheMentor();
+        boolean isVisitor = !isOwner && !isMentor;
 
         // --- Lógica do Mentor ---
         int colorInactive = ContextCompat.getColor(requireContext(), R.color.white_translucent);
@@ -200,6 +230,25 @@ public class IdeiaStatusFragment extends Fragment {
         binding.btnVerFeedback.setEnabled(false);
         binding.btnDownloadPdf.setEnabled(false);
         binding.btnPrepararInvestidores.setEnabled(false);
+
+        if (isVisitor) {
+            binding.cardComunidade.setVisibility(View.VISIBLE);
+
+            // Formata a média e o total de votos
+            double media = ideia.getMediaPonderadaVotosComunidade();
+            int totalVotos = ideia.getTotalVotosComunidade();
+
+            if (totalVotos > 0) {
+                binding.textComunidadeMedia.setText(String.format(Locale.getDefault(), "%s %.1f", getEmojiForScore(media), media));
+                binding.textComunidadeTotalVotos.setText(String.format(Locale.getDefault(), "(%d %s)", totalVotos, totalVotos == 1 ? "voto" : "votos"));
+            } else {
+                binding.textComunidadeMedia.setText("--") ; // Sem votos ainda
+                binding.textComunidadeTotalVotos.setText("(Nenhum voto)");
+            }
+            // O estado dos botões (selecionado/habilitado) é atualizado pelo observer de `userVote`
+        } else {
+            binding.cardComunidade.setVisibility(View.GONE); // Esconde para dono e mentor
+        }
 
 
         if (!hasMentor) {
@@ -279,6 +328,15 @@ public class IdeiaStatusFragment extends Fragment {
             binding.lottieStatusAnimation.setAnimation(R.raw.anim_mapa_procurando);
         }
         binding.lottieStatusAnimation.playAnimation();
+    }
+
+    private String getEmojiForScore(double score) {
+        if (score >= 4.5) return "🚀";
+        if (score >= 3.5) return "👍";
+        if (score >= 2.5) return "🤔";
+        if (score >= 1.5) return "👎";
+        if (score >= 1.0) return "🗑️";
+        return ""; // Ou um emoji padrão caso score seja 0 ou inválido
     }
 
     /**

@@ -249,5 +249,14 @@
         <item name="rippleColor">@color/ripplePrimary</item> <item name="elevation">2dp</item>
     </style>
 
+    <style name="VoteEmojiButton" parent="Widget.Material3.Button.TextButton">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:textSize">25sp</item> <item name="android:paddingTop">8dp</item>
+        <item name="android:paddingBottom">8dp</item>
+        <item name="android:background">@drawable/bg_vote_button_selector</item> <item name="android:textColor">@color/colorOnSurface</item> <item name="android:layout_marginStart">4dp</item>
+        <item name="android:layout_marginEnd">4dp</item>
+    </style>
 
 </resources>

@@ -29,6 +29,8 @@ import com.example.startuppulse.data.repositories.MentorRepository;
 import com.example.startuppulse.data.PostIt;
 import com.example.startuppulse.data.models.User;
 import com.example.startuppulse.util.Event;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.ArrayList;
@@ -48,6 +50,7 @@ public class CanvasIdeiaViewModel extends ViewModel {
     private final IIdeiaRepository ideiaRepository;
     private final IMentorRepository mentorRepository;
     private final IAuthRepository authRepository;
+    private final FirebaseFirestore firestore;
 
     private ListenerRegistration ideiaListener;
     private String ideiaId;
@@ -83,6 +86,12 @@ public class CanvasIdeiaViewModel extends ViewModel {
     private final MutableLiveData<Event<PostIt>> _deletePostItEvent = new MutableLiveData<>();
     public LiveData<Event<PostIt>> deletePostItEvent = _deletePostItEvent;
 
+    private final MutableLiveData<Boolean> _isVoting = new MutableLiveData<>(false);
+    public final LiveData<Boolean> isVoting = _isVoting;
+
+    private final MutableLiveData<Float> _userVote = new MutableLiveData<>(0f);
+    public final LiveData<Float> userVote = _userVote;
+
     private final List<String> etapasObrigatorias = Arrays.asList(
             CanvasEtapa.CHAVE_PROPOSTA_VALOR, CanvasEtapa.CHAVE_SEGMENTO_CLIENTES,
             CanvasEtapa.CHAVE_CANAIS, CanvasEtapa.CHAVE_RELACIONAMENTO_CLIENTES,
@@ -92,19 +101,23 @@ public class CanvasIdeiaViewModel extends ViewModel {
     );
 
     @Inject
-    public CanvasIdeiaViewModel(IIdeiaRepository ideiaRepository, IMentorRepository mentorRepository, IAuthRepository authRepository) {
+    public CanvasIdeiaViewModel(IIdeiaRepository ideiaRepository, IMentorRepository mentorRepository, IAuthRepository authRepository, FirebaseFirestore firestore) {
         this.ideiaRepository = ideiaRepository;
         this.mentorRepository = mentorRepository;
         this.authRepository = authRepository;
+        this.firestore = firestore;
         isPublishEnabled = Transformations.map(_ideia, this::isIdeiaValidaParaPublicar);
         _etapas.setValue(new ArrayList<>());
         _isIaLoading.setValue(false);
+        _isVoting.setValue(false);
+        _userVote.setValue(0f);
     }
 
     public void loadIdeia(@Nullable String ideiaId) {
         Log.d(TAG, "loadIdeia: Método chamado com ideiaId = " + ideiaId);
 
         this.ideiaId = ideiaId;
+        _userVote.setValue(0f);
 
         if (ideiaListener != null) {
             ideiaListener.remove();
@@ -165,6 +178,7 @@ public class CanvasIdeiaViewModel extends ViewModel {
                         if (ideiaAtualizada.getMentorId() != null && !ideiaAtualizada.getMentorId().isEmpty()) {
                             fetchMentorName(ideiaAtualizada.getMentorId());
                         }
+                        loadUserVote();
                     }
                 } else if (result instanceof Result.Error) {
                     Log.e(TAG, "listenToIdeia Callback: Erro ao carregar ideia.", ((Result.Error<Ideia>) result).error);
@@ -172,6 +186,115 @@ public class CanvasIdeiaViewModel extends ViewModel {
                     _closeScreenEvent.setValue(new Event<>(true));
                 }
             });
+        }
+    }
+
+    private void loadUserVote() {
+        String currentUserId = authRepository.getCurrentUserId();
+        Ideia ideiaAtual = _ideia.getValue();
+
+        // Só tenta carregar se for um visitante e a ideia estiver carregada
+        if (currentUserId == null || ideiaAtual == null || isCurrentUserOwner() || isCurrentUserTheMentor()) {
+            _userVote.postValue(0f); // Garante que está zerado se não for visitante
+            return;
+        }
+
+        // Busca o documento do voto específico deste usuário nesta ideia
+        firestore.collection("ideias").document(ideiaAtual.getId())
+                .collection("votosComunidade").document(currentUserId)
+                .get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        DocumentSnapshot document = task.getResult();
+                        if (document != null && document.exists()) {
+                            // Voto encontrado, pega o valor
+                            Double votoDouble = document.getDouble("voto");
+                            _userVote.postValue(votoDouble != null ? votoDouble.floatValue() : 0f);
+                        } else {
+                            // Documento não existe = usuário não votou ainda
+                            _userVote.postValue(0f);
+                        }
+                    } else {
+                        // Erro ao buscar o voto (não crítico, assume que não votou)
+                        Log.w(TAG, "Erro ao buscar voto do usuário.", task.getException());
+                        _userVote.postValue(0f);
+                    }
+                });
+    }
+
+    public void votarNaComunidade(float voto) {
+        Ideia ideiaAtual = _ideia.getValue();
+        String currentUserId = authRepository.getCurrentUserId();
+        if (ideiaAtual == null || currentUserId == null || ideiaId == null) { // Usa o ideiaId da classe
+            _toastEvent.setValue(new Event<>("Erro ao obter dados para votar."));
+            return;
+        }
+        // Impede dono e mentor de votar
+        if (isCurrentUserOwner() || isCurrentUserTheMentor()) {
+            _toastEvent.setValue(new Event<>("Dono e Mentor não podem votar."));
+            return;
+        }
+        // Impede votos repetidos (opcional, mas bom para UI)
+        if (_userVote.getValue() != null && Math.abs(_userVote.getValue() - voto) < 0.01f) {
+            _toastEvent.setValue(new Event<>("Você já deu essa avaliação."));
+            return;
+        }
+
+
+        _isVoting.setValue(true); // <<< Mostra loading
+
+        // 1. Buscar perfil do usuário para obter áreas
+        authRepository.getUserProfile(currentUserId, userResult -> {
+            if (userResult instanceof Result.Success) {
+                User currentUser = ((Result.Success<User>) userResult).data;
+                List<String> userAreas = (currentUser != null && currentUser.getAreasDeInteresse() != null)
+                        ? currentUser.getAreasDeInteresse() : new ArrayList<>();
+                List<String> ideiaAreas = ideiaAtual.getAreasNecessarias() != null
+                        ? ideiaAtual.getAreasNecessarias() : new ArrayList<>();
+
+                // 2. Calcular Peso
+                int peso = calcularPesoVoto(userAreas, ideiaAreas);
+                Log.d(TAG, "Calculando peso para voto: UserAreas=" + userAreas.size() + ", IdeiaAreas=" + ideiaAreas.size() + " -> Peso=" + peso);
+
+
+                // 3. Chamar o Repositório para salvar
+                ideiaRepository.salvarVotoComunidade(ideiaId, currentUserId, voto, peso, saveResult -> {
+                    _isVoting.setValue(false); // <<< Esconde loading
+                    if (saveResult instanceof Result.Success) {
+                        _toastEvent.setValue(new Event<>("Voto registrado!"));
+                        _userVote.setValue((float) voto); // <<< Atualiza o LiveData do voto do usuário
+                        // A Cloud Function cuidará da média. O listener da ideia pegará a atualização.
+                    } else {
+                        Log.e(TAG, "Erro ao salvar voto", ((Result.Error<Void>)saveResult).error);
+                        _toastEvent.setValue(new Event<>("Erro ao registrar voto. Tente novamente."));
+                    }
+                });
+
+            } else {
+                _isVoting.setValue(false); // <<< Esconde loading em caso de erro
+                Log.e(TAG, "Erro ao buscar perfil do usuário para votar", ((Result.Error<User>)userResult).error);
+                _toastEvent.setValue(new Event<>("Erro ao buscar seu perfil para votar."));
+            }
+        });
+    }
+
+    private int calcularPesoVoto(List<String> userAreas, List<String> ideiaAreas) {
+        if (userAreas == null || ideiaAreas == null || userAreas.isEmpty() || ideiaAreas.isEmpty()) {
+            return 1; // Leigo
+        }
+        // Usa conjuntos para eficiência na interseção
+        java.util.Set<String> userAreaSet = new java.util.HashSet<>(userAreas);
+        java.util.Set<String> ideiaAreaSet = new java.util.HashSet<>(ideiaAreas);
+
+        userAreaSet.retainAll(ideiaAreaSet); // Mantém apenas os elementos comuns
+        long commonAreas = userAreaSet.size();
+
+        if (commonAreas > 1) {
+            return 3; // Especialista
+        } else if (commonAreas == 1) {
+            return 2; // Relacionado
+        } else {
+            return 1; // Leigo
         }
     }
 

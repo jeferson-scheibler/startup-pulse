@@ -10,12 +10,14 @@ import com.example.startuppulse.common.Result;
 import com.example.startuppulse.data.PostIt;
 import com.example.startuppulse.data.ResultCallback;
 import com.example.startuppulse.data.models.Ideia;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.SetOptions;
 import com.google.firebase.firestore.WriteBatch;
 import com.google.firebase.functions.FirebaseFunctions;
 import com.google.firebase.functions.HttpsCallableResult;
@@ -410,6 +412,55 @@ public class IdeiaRepository implements IIdeiaRepository {
                         // Este caso não deve acontecer por causa do continueWith, mas é uma boa prática
                         callback.onResult(new Result.Error<>(task.getException()));
                     }
+                });
+    }
+
+    /**
+     * Salva ou atualiza o voto de um usuário na subcoleção de votos da comunidade.
+     */
+    @Override
+    public void salvarVotoComunidade(
+            @NonNull String ideiaId,
+            @NonNull String userId,
+            float voto, // 1 a 5
+            int peso, // 1 a 3
+            @NonNull ResultCallback<Void> callback) {
+
+        // Validações básicas (opcional, mas bom ter)
+        if (voto < 1.0f || voto > 5.0f) {
+            callback.onResult(new Result.Error<>(new IllegalArgumentException("Voto deve ser entre 1 e 5.")));
+            return;
+        }
+        if (peso < 1 || peso > 3) {
+            callback.onResult(new Result.Error<>(new IllegalArgumentException("Peso deve ser entre 1 e 3.")));
+            return;
+        }
+
+        // Define o caminho para o documento do voto do usuário específico
+        DocumentReference votoRef = firestore.collection(IDEIAS_COLLECTION)
+                .document(ideiaId)
+                .collection("votosComunidade") // Nome da subcoleção
+                .document(userId); // Usa o userId como ID do documento do voto
+
+        // Cria o mapa de dados para o voto
+        Map<String, Object> votoData = new HashMap<>();
+        votoData.put("userId", userId); // Armazena o userId também no documento
+        votoData.put("voto", voto);
+        votoData.put("peso", peso);
+        votoData.put("timestamp", FieldValue.serverTimestamp()); // Usa o timestamp do servidor
+
+        // Usa set com merge:
+        // - Se o documento (voto do usuário) não existe, ele será criado.
+        // - Se já existe, os campos serão atualizados (ou criados se não existirem).
+        votoRef.set(votoData, SetOptions.merge())
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "Voto da comunidade salvo com sucesso para userId: " + userId + " na ideia: " + ideiaId);
+                    callback.onResult(new Result.Success<>(null));
+                    // A Cloud Function será acionada automaticamente para recalcular a média.
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Erro ao salvar voto da comunidade para userId: " + userId + " na ideia: " + ideiaId, e);
+                    callback.onResult(new Result.Error<>(e));
                 });
     }
 }
