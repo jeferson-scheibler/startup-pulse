@@ -1,17 +1,17 @@
 # main.py
 import os
-from firebase_functions import https_fn, options, pubsub_fn
+from firebase_functions import https_fn, options, pubsub_fn, firestore_fn
 from firebase_admin import initialize_app, firestore
 from google.auth import default as get_credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from google.api_core.exceptions import InvalidArgument
 import google.generativeai as genai
-from google.generativeai.types import GenerationConfig
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
+from google.generativeai.types import GenerationConfig, HarmCategory, HarmBlockThreshold
 
 import base64
 import json
+
 
 # Inicializa o Firebase Admin SDK para acesso ao Firestore.
 initialize_app()
@@ -332,3 +332,60 @@ def construir_prompt_especialista(ideia_data: dict) -> str:
     - Baseie o feedback e a nota estritamente nos dados do canvas.
     """
     return prompt
+
+# Gatilho: Acionado sempre que um documento em 'votosComunidade' for escrito (criado, atualizado, deletado)
+@firestore_fn.on_document_written(document="ideias/{ideiaId}/votosComunidade/{userId}")
+def calcular_media_votos_comunidade(event: firestore_fn.Event[firestore_fn.Change]) -> None:
+    """
+    Calcula a média ponderada dos votos da comunidade e atualiza o documento da ideia principal.
+    """
+    # Obtém o ID da ideia a partir do caminho do documento que disparou o evento
+    ideia_id = event.params["ideiaId"]
+    print(f"Evento de escrita detectado para votos da ideia: {ideia_id}")
+
+    db = firestore.client()
+    # Referência para a subcoleção de votos da ideia específica
+    votos_ref = db.collection("ideias").document(ideia_id).collection("votosComunidade")
+
+    try:
+        # Lê todos os documentos (votos) da subcoleção
+        votos_snapshot = list(votos_ref.stream()) # Converte para lista para poder contar
+
+        soma_votos_ponderados = 0.0
+        soma_pesos = 0.0
+        total_votos = len(votos_snapshot) # Conta quantos votos existem
+
+        # Itera sobre cada voto para calcular as somas
+        for voto_doc in votos_snapshot:
+            voto_data = voto_doc.to_dict()
+            voto = float(voto_data.get("voto", 0.0)) # Pega o valor do voto (default 0 se não existir)
+            peso = float(voto_data.get("peso", 1.0)) # Pega o peso (default 1 se não existir)
+
+            soma_votos_ponderados += voto * peso
+            soma_pesos += peso
+
+        # Calcula a média ponderada, tratando divisão por zero
+        media_ponderada = 0.0
+        if soma_pesos > 0:
+            media_ponderada = soma_votos_ponderados / soma_pesos
+            # Arredonda para 2 casas decimais (opcional)
+            media_ponderada = round(media_ponderada, 2)
+
+        print(f"Cálculo para {ideia_id}: Média={media_ponderada}, Total Votos={total_votos}, Soma Pesos={soma_pesos}")
+
+        # Prepara os dados para atualizar o documento principal da ideia
+        dados_atualizacao = {
+            "mediaPonderadaVotosComunidade": media_ponderada,
+            "totalVotosComunidade": total_votos
+        }
+
+        # Referência para o documento principal da ideia
+        ideia_ref = db.collection("ideias").document(ideia_id)
+        # Atualiza os campos no documento da ideia
+        ideia_ref.update(dados_atualizacao)
+
+        print(f"Documento da ideia {ideia_id} atualizado com sucesso.")
+
+    except Exception as e:
+        print(f"Erro ao calcular média de votos para a ideia {ideia_id}: {e}")
+        # É importante não relançar o erro aqui para evitar retentativas infinitas do gatilho

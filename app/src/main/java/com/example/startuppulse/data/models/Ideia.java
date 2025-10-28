@@ -47,6 +47,9 @@ public class Ideia implements Serializable {
     private boolean prontaParaInvestidores = false;
     private Date ultimaBuscaMentorTimestamp;
 
+    private double mediaPonderadaVotosComunidade = 0.0;
+    private int totalVotosComunidade = 0;
+
     private Map<String, Object> avaliacaoIA;
 
     public Ideia() {
@@ -125,4 +128,20 @@ public class Ideia implements Serializable {
 
     public String getMatchmakingLog() { return matchmakingLog; }
     public void setMatchmakingLog(String matchmakingLog) { this.matchmakingLog = matchmakingLog; }
+
+    public double getMediaPonderadaVotosComunidade() {
+        return mediaPonderadaVotosComunidade;
+    }
+
+    public void setMediaPonderadaVotosComunidade(double mediaPonderadaVotosComunidade) {
+        this.mediaPonderadaVotosComunidade = mediaPonderadaVotosComunidade;
+    }
+
+    public int getTotalVotosComunidade() {
+        return totalVotosComunidade;
+    }
+
+    public void setTotalVotosComunidade(int totalVotosComunidade) {
+        this.totalVotosComunidade = totalVotosComunidade;
+    }
 }

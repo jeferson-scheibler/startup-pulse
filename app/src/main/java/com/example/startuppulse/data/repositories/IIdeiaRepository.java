@@ -147,4 +147,12 @@ public interface IIdeiaRepository {
     void deletePostitFromIdeia(@NonNull String ideiaId, @NonNull String etapaChave, @NonNull PostIt postitParaApagar, @NonNull ResultCallback<Void> callback);
 
     void solicitarAnaliseIA(@NonNull String ideiaId, @NonNull ResultCallback<String> callback);
+
+    void salvarVotoComunidade(
+            @NonNull String ideiaId,
+            @NonNull String userId,
+            float voto, // 1 a 5
+            int peso, // 1 a 3
+            @NonNull ResultCallback<Void> callback
+    );
 }
