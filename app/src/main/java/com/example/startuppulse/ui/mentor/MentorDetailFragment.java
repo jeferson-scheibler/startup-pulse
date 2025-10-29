@@ -9,7 +9,6 @@ import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-// Removido: import android.widget.Button; (Usaremos o binding)
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
@@ -22,6 +21,7 @@ import androidx.navigation.fragment.NavHostFragment;
 import com.bumptech.glide.Glide;
 import com.example.startuppulse.R;
 import com.example.startuppulse.data.models.Mentor;
+import com.example.startuppulse.data.models.User; // ADICIONADO
 import com.example.startuppulse.common.Result;
 import com.example.startuppulse.databinding.FragmentMentorDetailBinding;
 import com.google.android.material.chip.Chip;
@@ -38,6 +38,10 @@ public class MentorDetailFragment extends Fragment {
     private MentorDetailViewModel viewModel;
     private NavController navController;
 
+    // ADICIONADO: Para guardar os dados separados
+    private User mUser;
+    private Mentor mMentor;
+
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentMentorDetailBinding.inflate(inflater, container, false);
@@ -50,7 +54,6 @@ public class MentorDetailFragment extends Fragment {
         viewModel = new ViewModelProvider(this).get(MentorDetailViewModel.class);
         navController = NavHostFragment.findNavController(this);
 
-        // Acessa o botão diretamente pelo binding
         binding.buttonLinkedin.setVisibility(View.GONE);
 
         setupToolbar();
@@ -63,41 +66,47 @@ public class MentorDetailFragment extends Fragment {
     }
 
     private void setupObservers() {
-        // Observador principal para os detalhes do mentor
-        viewModel.mentorDetails.observe(getViewLifecycleOwner(), result -> {
-            // Esconde todos os componentes antes de tratar o estado
-            binding.progressBar.setVisibility(View.GONE);
-            binding.errorView.setVisibility(View.GONE);
+
+        // MUDADO: Observador 1 - Dados do USER
+        viewModel.userDetails.observe(getViewLifecycleOwner(), result -> {
             if (result instanceof Result.Loading) {
                 binding.progressBar.setVisibility(View.VISIBLE);
+                binding.errorView.setVisibility(View.GONE);
             } else if (result instanceof Result.Success) {
-                Mentor mentor = ((Result.Success<Mentor>) result).data;
-                populateUI(mentor);
+                binding.progressBar.setVisibility(View.GONE);
+                this.mUser = ((Result.Success<User>) result).data;
+                populateUserUI(mUser); // Popula a parte do User
             } else if (result instanceof Result.Error) {
+                binding.progressBar.setVisibility(View.GONE);
                 binding.errorView.setVisibility(View.VISIBLE);
-                String errorMessage = ((Result.Error<Mentor>) result).error.getMessage();
+                String errorMessage = ((Result.Error<User>) result).error.getMessage();
                 Toast.makeText(getContext(), "Erro: " + errorMessage, Toast.LENGTH_LONG).show();
             }
         });
 
-        // Observador para verificar se o usuário é o dono
-        viewModel.isProfileOwner.observe(getViewLifecycleOwner(), isOwner -> {
-            if (isOwner) {
-                // Se for o dono, mostra o FAB de editar
-                binding.fabEditMentor.show();
-                // E esconde o botão "Solicitar Mentoria"
-                binding.btnRequestMentorship.setVisibility(View.GONE);
-            } else {
-                // Se NÃO for o dono, esconde o FAB
-                binding.fabEditMentor.hide();
-                // E mostra o botão "Solicitar Mentoria"
-                binding.btnRequestMentorship.setVisibility(View.VISIBLE);
+        // MUDADO: Observador 2 - Dados do MENTOR
+        viewModel.mentorDetails.observe(getViewLifecycleOwner(), result -> {
+            if (result instanceof Result.Loading) {
+                // O loading já é tratado pelo observador do User
+            } else if (result instanceof Result.Success) {
+                this.mMentor = ((Result.Success<Mentor>) result).data;
+                populateMentorUI(mMentor); // Popula a parte do Mentor
+            } else if (result instanceof Result.Error) {
+                // Erro ao carregar o mentor (bio, etc.) é menos crítico que o User
+                Toast.makeText(getContext(), "Erro ao carregar bio do mentor.", Toast.LENGTH_SHORT).show();
             }
         });
 
-        // REMOVIDO: O bloco 'viewModel.getMentorUser().observe' foi removido
-        // pois era contraditório. A lógica do LinkedIn foi movida
-        // para dentro do 'populateUI', usando o objeto Mentor.
+        // Observador para verificar se o usuário é o dono (sem mudança)
+        viewModel.isProfileOwner.observe(getViewLifecycleOwner(), isOwner -> {
+            if (isOwner) {
+                binding.fabEditMentor.show();
+                binding.btnRequestMentorship.setVisibility(View.GONE);
+            } else {
+                binding.fabEditMentor.hide();
+                binding.btnRequestMentorship.setVisibility(View.VISIBLE);
+            }
+        });
     }
 
     private void setupClickListeners() {
@@ -106,50 +115,60 @@ public class MentorDetailFragment extends Fragment {
         });
 
         binding.btnRequestMentorship.setOnClickListener(v -> {
-            // Lógica para solicitar mentoria...
             Toast.makeText(getContext(), "Funcionalidade ainda não implementada.", Toast.LENGTH_SHORT).show();
         });
-        binding.buttonLinkedin.setOnClickListener(v -> {
-            String url = (String) v.getTag();
-            if (url != null && !url.isEmpty()) {
-                abrirLink(url);
-            }
-        });
+
+        // O listener do LinkedIn foi movido para um método helper (setupLinkedIn)
     }
 
-    // Removido: handleMentorResult() não era necessário,
-    // a lógica foi movida para dentro do observador.
+    /**
+     * ADICIONADO: Popula a UI com dados do objeto User (nome, foto, linkedin, areas)
+     */
+    private void populateUserUI(User user) {
+        if (user == null || !isAdded()) return;
 
-    private void populateUI(Mentor mentor) {
-        if (mentor == null) return;
-
-        binding.mentorName.setText(mentor.getName());
-        binding.mentorHeadline.setText(mentor.getHeadline());
-        binding.mentorBio.setText(mentor.getBio());
-
-        // Lógica do LinkedIn, lendo do objeto Mentor
-        String url = mentor.getLinkedinUrl(); // Pega o link do objeto
-        if (url != null && !url.trim().isEmpty()) {
-            binding.buttonLinkedin.setVisibility(View.VISIBLE); // Mostra o botão
-            binding.buttonLinkedin.setTag(url);
-        } else {
-            binding.buttonLinkedin.setVisibility(View.GONE); // Esconde o botão
-        }
+        binding.mentorName.setText(user.getNome());
+        binding.mentorHeadline.setText(user.getProfissao());
 
         Glide.with(this)
-                .load(mentor.getFotoUrl())
-                .placeholder(R.drawable.ic_person) // Placeholder
-                .error(R.drawable.ic_person) // Imagem de erro
+                .load(user.getFotoUrl())
+                .placeholder(R.drawable.ic_person)
+                .error(R.drawable.ic_person)
                 .into(binding.mentorAvatar);
 
-         Glide.with(this)
+        setupChipGroup(user.getAreasDeInteresse());
+        setupLinkedIn(user.getLinkedinUrl());
+    }
+
+    /**
+     * ADICIONADO: Popula a UI com dados do objeto Mentor (bio, banner, etc.)
+     */
+    private void populateMentorUI(Mentor mentor) {
+        if (mentor == null || !isAdded()) return;
+
+        binding.mentorBio.setText(mentor.getBio());
+
+        Glide.with(this)
                 .load(mentor.getBannerUrl())
                 .placeholder(R.drawable.fundo_mentores)
                 .fallback(R.drawable.fundo_mentores)
                 .error(R.drawable.fundo_mentores)
                 .into(binding.mentorBannerImage);
 
-        setupChipGroup(mentor.getAreas());
+        // ADICIONADO: Mostrar o selo de verificado
+        binding.iconVerificadoDetalhe.setVisibility(mentor.isVerified() ? View.VISIBLE : View.GONE);
+    }
+
+    /**
+     * ADICIONADO: Método helper para configurar o botão do LinkedIn
+     */
+    private void setupLinkedIn(String url) {
+        if (url != null && !url.trim().isEmpty()) {
+            binding.buttonLinkedin.setVisibility(View.VISIBLE);
+            binding.buttonLinkedin.setOnClickListener(v -> abrirLink(url));
+        } else {
+            binding.buttonLinkedin.setVisibility(View.GONE);
+        }
     }
 
     private void abrirLink(String url) {

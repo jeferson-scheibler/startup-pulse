@@ -284,9 +284,11 @@ public class IdeiaStatusFragment extends Fragment {
             binding.textAvaliacaoStatus.setTextColor(colorSuccess);
         } else if (isAprovada) {
             binding.textAvaliacaoStatus.setText("Ideia aprovada!");
+            binding.labelPublicada.setText("Ideação finalizada!");
             binding.textAvaliacaoStatus.setTextColor(colorSuccess);
         } else if (isReprovada) {
-            binding.textAvaliacaoStatus.setText("Ideia reprovada");
+            binding.textAvaliacaoStatus.setText("Ideia reprovada.");
+            binding.labelPublicada.setText("Ideia arquivada!");
             binding.textAvaliacaoStatus.setTextColor(colorFailure);
         } else {
             binding.textAvaliacaoStatus.setText("Aguardando avaliação do mentor");
@@ -317,17 +319,6 @@ public class IdeiaStatusFragment extends Fragment {
         binding.btnVerFeedback.setEnabled(isAvaliada && ideia.getAvaliacoes() != null && !ideia.getAvaliacoes().isEmpty());
         binding.btnDownloadPdf.setEnabled(isOwner || isMentor);
         binding.btnPrepararInvestidores.setEnabled(isOwner && isAprovada && !ideia.isProntaParaInvestidores());
-
-        if (isAprovada) {
-            binding.lottieStatusAnimation.setAnimation(R.raw.anim_sucess);
-        } else if (isReprovada) {
-            binding.lottieStatusAnimation.setAnimation(R.raw.anim_ambiente_distracao);
-        } else if (hasMentor) {
-            binding.lottieStatusAnimation.setAnimation(R.raw.anim_analise_mentor);
-        } else {
-            binding.lottieStatusAnimation.setAnimation(R.raw.anim_mapa_procurando);
-        }
-        binding.lottieStatusAnimation.playAnimation();
     }
 
     private String getEmojiForScore(double score) {

@@ -96,17 +96,32 @@
 
             <TextView
                 android:id="@+id/mentor_name"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="24dp"
                 android:layout_marginTop="16dp"
                 android:gravity="center"
                 android:textAppearance="@style/TextAppearance.Material3.HeadlineMedium"
                 android:textColor="@color/colorOnSurface"
-                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintEnd_toStartOf="@+id/iconVerificadoDetalhe"
+                app:layout_constraintHorizontal_bias="0.5"
+                app:layout_constraintHorizontal_chainStyle="packed"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/mentor_avatar"
                 tools:text="Nome Completo do Mentor" />
+
+            <ImageView
+                android:id="@+id/iconVerificadoDetalhe"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginStart="8dp"
+                android:src="@drawable/ic_verified"
+                android:visibility="gone"
+                app:layout_constraintBottom_toBottomOf="@id/mentor_name"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@id/mentor_name"
+                app:layout_constraintTop_toTopOf="@id/mentor_name"
+                tools:visibility="visible" />
 
             <TextView
                 android:id="@+id/mentor_headline"

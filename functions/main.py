@@ -8,6 +8,7 @@ from googleapiclient.discovery import build
 from google.api_core.exceptions import InvalidArgument
 import google.generativeai as genai
 from google.generativeai.types import GenerationConfig, HarmCategory, HarmBlockThreshold
+from firebase_admin import messaging
 
 import base64
 import json
@@ -389,3 +390,87 @@ def calcular_media_votos_comunidade(event: firestore_fn.Event[firestore_fn.Chang
     except Exception as e:
         print(f"Erro ao calcular média de votos para a ideia {ideia_id}: {e}")
         # É importante não relançar o erro aqui para evitar retentativas infinitas do gatilho
+
+        # Gatilho: Acionado quando um documento 'ideia' é ATUALIZADO
+
+@firestore_fn.on_document_updated(document="ideias/{ideiaId}")
+def notificar_avaliacao_mentor(event: firestore_fn.Event[firestore_fn.Change]) -> None:
+    """
+    Envia uma notificação ao dono da ideia quando uma avaliação de mentor é adicionada/atualizada.
+    """
+    ideia_id = event.params["ideiaId"]
+
+    # Dados antes e depois da atualização
+    before_data = event.data.before.to_dict() if event.data.before else {}
+    after_data = event.data.after.to_dict() if event.data.after else {}
+
+    # Verifica se 'avaliacoes' mudou e se agora existe
+    avaliacoes_before = before_data.get("avaliacoes", [])
+    avaliacoes_after = after_data.get("avaliacoes", [])
+
+    # Condição de gatilho: 'avaliacoes' existe agora E (ou não existia antes OU mudou)
+    # Uma lógica mais robusta poderia verificar se o número de avaliações aumentou
+    # ou se o timestamp da última avaliação mudou.
+    if avaliacoes_after and avaliacoes_after != avaliacoes_before:
+        print(f"Detetada mudança nas avaliações da ideia: {ideia_id}")
+
+        owner_id = after_data.get("ownerId")
+        ideia_nome = after_data.get("nome", "sua ideia") # Nome da ideia para a notificação
+
+        # TODO: Idealmente, buscar o nome do mentor que avaliou para personalizar a msg
+        # mentor_id = after_data.get("mentorId")
+        # (Precisaria buscar o nome do mentor em /mentores/{mentorId})
+        mentor_nome = "Seu mentor"
+
+        if not owner_id:
+            print(f"Erro: Dono (ownerId) não encontrado na ideia {ideia_id}.")
+            return
+
+        db = firestore.client()
+        # Busca o perfil do dono para obter o token FCM
+        user_ref = db.collection("usuarios").document(owner_id) # Ajuste a coleção se for 'users'
+        user_doc = user_ref.get()
+
+        if not user_doc.exists:
+            print(f"Erro: Perfil do usuário {owner_id} não encontrado.")
+            return
+
+        user_data = user_doc.to_dict()
+        fcm_token = user_data.get("fcmToken") # Nome do campo onde o token está salvo
+
+        if not fcm_token:
+            print(f"Usuário {owner_id} não possui token FCM registrado.")
+            return
+
+        # Monta a notificação
+        notification_title = "Feedback Recebido! 🚀"
+        notification_body = f"{mentor_nome} avaliou a ideia '{ideia_nome}'."
+
+        print(f"Enviando notificação para {owner_id} (token: ...{fcm_token[-6:]})")
+
+        try:
+            # Cria a mensagem
+            message = messaging.Message(
+                notification=messaging.Notification(
+                    title=notification_title,
+                    body=notification_body,
+                ),
+                # Adiciona dados extras para o clique no app
+                data={
+                    "ideiaId": ideia_id,
+                    # "click_action": "FLUTTER_NOTIFICATION_CLICK" # Exemplo, se precisar para outras plataformas
+                },
+                token=fcm_token,
+                # Configuração APNS/Android (opcional)
+                # android=messaging.AndroidConfig(...)
+            )
+
+            # Envia a mensagem
+            response = messaging.send(message)
+            print(f"Notificação enviada com sucesso para {owner_id}: {response}")
+
+        except Exception as e:
+            print(f"Erro ao enviar notificação FCM para {owner_id}: {e}")
+
+    # else:
+    # print(f"Atualização na ideia {ideia_id} não envolveu avaliações."

@@ -1,7 +1,16 @@
 package com.example.startuppulse;
 
+import android.Manifest;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.fragment.NavHostFragment;
@@ -42,5 +51,74 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+
+        askNotificationPermission();
+        handleIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        handleIntent(intent); // Processa intents recebidos enquanto a activity está aberta
+    }
+
+    private void handleIntent(Intent intent) {
+        // ... (código já fornecido para verificar "NAVIGATE_TO" e "ideiaId") ...
+        if (intent != null && intent.getExtras() != null) {
+            String navigateTo = intent.getStringExtra("NAVIGATE_TO");
+            String ideiaId = intent.getStringExtra("ideiaId");
+
+            Log.d("MainActivity", "handleIntent: navigateTo=" + navigateTo + ", ideiaId=" + ideiaId);
+
+            if ("IDEIA_DETAIL".equals(navigateTo) && ideiaId != null) {
+                NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager()
+                        .findFragmentById(R.id.nav_host_fragment); // Use o ID do seu NavHostFragment
+                if (navHostFragment != null) {
+                    NavController navController = navHostFragment.getNavController();
+                    Bundle args = new Bundle();
+                    args.putString("ideiaId", ideiaId);
+                    try {
+                        // Tenta navegar para o CanvasIdeiaFragment
+                        navController.navigate(R.id.action_global_to_canvasIdeiaFragment, args);
+                        // Limpa os extras para não navegar de novo
+                        intent.removeExtra("NAVIGATE_TO");
+                        intent.removeExtra("ideiaId");
+                    } catch (Exception e) { // Captura Exception genérica por segurança
+                        Log.e("MainActivity", "Erro ao navegar via notificação.", e);
+                        // Opcional: Tenta navegar para a tela inicial como fallback
+                        // navController.navigate(R.id.navigation_ideias); // Exemplo
+                    }
+                }
+            }
+        }
+    }
+
+    private final ActivityResultLauncher<String> requestPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+                if (isGranted) {
+                    Log.d("Permission", "Notification permission granted.");
+                    // Permissão concedida
+                } else {
+                    Log.w("Permission", "Notification permission denied.");
+                    // Permissão negada, informe o usuário que ele não receberá notificações
+                }
+            });
+
+    private void askNotificationPermission() {
+        // Apenas para Tiramisu (API 33) e superior
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+                    PackageManager.PERMISSION_GRANTED) {
+                // Permissão já concedida
+            } else if (shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
+                // Mostrar UI explicando por que a permissão é necessária (opcional)
+                // e então pedir a permissão: requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+                // Por simplicidade, pedimos diretamente:
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+            } else {
+                // Pedir a permissão diretamente
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+            }
+        }
     }
 }

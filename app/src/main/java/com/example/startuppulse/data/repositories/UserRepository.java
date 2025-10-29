@@ -6,7 +6,11 @@ import androidx.annotation.Nullable;
 import com.example.startuppulse.common.Result;
 import com.example.startuppulse.data.ResultCallback;
 import com.example.startuppulse.data.models.User;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,6 +85,71 @@ public class UserRepository implements IUserRepository {
         firestore.collection(USERS_COLLECTION).document(userId)
                 .update("profilePublic", isPublic) // Use o nome exato do campo no Firestore
                 .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(null)))
+                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+    }
+    /**
+     * Atualiza (ou remove) o token FCM no documento do usuário.
+     * @param userId ID do usuário.
+     * @param token O novo token, ou null/vazio para remover o token existente.
+     * @param callback Callback para o resultado da operação.
+     */
+    @Override
+    public void updateFcmToken(@NonNull String userId, @Nullable String token, @NonNull ResultCallback<Void> callback) {
+        if (userId.isEmpty()) {
+            callback.onResult(new Result.Error<>(new IllegalArgumentException("User ID cannot be empty.")));
+            return;
+        }
+
+        // Decide se atualiza com o novo token ou remove o campo
+        Object tokenValue = (token != null && !token.isEmpty()) ? token : FieldValue.delete();
+
+        firestore.collection(USERS_COLLECTION)
+                .document(userId)
+                .update("fcmToken", tokenValue) // Usa update para modificar apenas este campo
+                .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(null)))
+                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+    }
+
+//    @Override
+//    public void getUserData(@NonNull String userId, @NonNull ResultCallback<User> callback) {
+//        firestore.collection(USERS_COLLECTION).document(userId).get()
+//                .addOnSuccessListener(documentSnapshot -> {
+//                    if (documentSnapshot != null && documentSnapshot.exists()) {
+//                        User user = documentSnapshot.toObject(User.class);
+//                        callback.onResult(new Result.Success<>(user));
+//                    } else {
+//                        callback.onResult(new Result.Error<>(new Exception("Usuário não encontrado no Firestore.")));
+//                    }
+//                })
+//                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+//    }
+
+    @Override
+    public void updateUser(@NonNull String userId, @NonNull User user, @NonNull ResultCallback<Void> callback) {
+        // Usamos .set(user) para salvar o objeto inteiro
+        // O Firestore usará os @PropertyName para mapear os campos
+        firestore.collection(USERS_COLLECTION).document(userId)
+                .set(user) // Salva o objeto User completo
+                .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(null)))
+                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+    }
+
+    @Override
+    public void getMentores(@NonNull ResultCallback<List<User>> callback) {
+        firestore.collection(USERS_COLLECTION)
+                .whereEqualTo("isMentor", true) // A consulta principal
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    List<User> mentores = new ArrayList<>();
+                    for (DocumentSnapshot document : querySnapshot.getDocuments()) {
+                        User user = document.toObject(User.class);
+                        if (user != null) {
+                            user.setId(document.getId()); // Seta o UID no objeto
+                            mentores.add(user);
+                        }
+                    }
+                    callback.onResult(new Result.Success<>(mentores));
+                })
                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
     }
 }
