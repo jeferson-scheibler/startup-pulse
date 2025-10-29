@@ -103,6 +103,13 @@ dependencies {
     implementation("com.google.guava:guava:33.5.0-android")
     implementation("com.google.firebase:firebase-functions")
 
+    implementation(platform("com.google.firebase:firebase-bom:33.1.1"))
+    implementation("com.google.firebase:firebase-messaging")
+    implementation("com.google.firebase:firebase-analytics")
+
+    implementation("com.squareup.okhttp3:logging-interceptor:4.10.0")
+    implementation("com.squareup.okhttp3:okhttp:4.10.0")
+
     // Desugaring
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.2")
     implementation(libs.androidx.lifecycle.livedata.ktx)

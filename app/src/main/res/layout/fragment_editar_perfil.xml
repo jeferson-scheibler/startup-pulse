@@ -73,6 +73,7 @@
             app:layout_constraintCircleRadius="60dp"
             tools:ignore="MissingConstraints" />
 
+
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/input_layout_nome"
             style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
@@ -83,14 +84,12 @@
             app:layout_constraintTop_toBottomOf="@id/image_view_perfil"
             app:layout_constraintStart_toStartOf="@id/guideline_start"
             app:layout_constraintEnd_toEndOf="@id/guideline_end">
-
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/input_edit_text_nome"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="textPersonName|textCapWords"
                 android:textAppearance="?attr/textAppearanceBodyLarge" />
-
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
@@ -99,13 +98,12 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:hint="@string/biografia_opcional"
+            android:hint="Bio (Geral)"
             app:counterEnabled="true"
             app:counterMaxLength="150"
             app:layout_constraintTop_toBottomOf="@id/input_layout_nome"
             app:layout_constraintStart_toStartOf="@id/guideline_start"
             app:layout_constraintEnd_toEndOf="@id/guideline_end">
-
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/input_edit_text_bio"
                 android:layout_width="match_parent"
@@ -115,7 +113,6 @@
                 android:maxLength="150"
                 android:minLines="4"
                 android:textAppearance="?attr/textAppearanceBodyLarge" />
-
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
@@ -128,14 +125,12 @@
             app:layout_constraintTop_toBottomOf="@id/input_layout_bio"
             app:layout_constraintStart_toStartOf="@id/guideline_start"
             app:layout_constraintEnd_toEndOf="@id/guideline_end">
-
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/input_edit_text_profissao"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="textCapWords"
                 android:textAppearance="?attr/textAppearanceBodyLarge" />
-
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
@@ -150,15 +145,14 @@
             app:layout_constraintTop_toBottomOf="@id/input_layout_profissao"
             app:layout_constraintStart_toStartOf="@id/guideline_start"
             app:layout_constraintEnd_toEndOf="@id/guideline_end">
-
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/input_edit_text_linkedin"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="textUri"
                 android:textAppearance="?attr/textAppearanceBodyLarge" />
-
         </com.google.android.material.textfield.TextInputLayout>
+
 
         <TextView
             android:id="@+id/label_areas_interesse"
@@ -169,7 +163,6 @@
             android:textAppearance="?attr/textAppearanceTitleMedium"
             app:layout_constraintStart_toStartOf="@id/guideline_start"
             app:layout_constraintTop_toBottomOf="@id/input_layout_linkedin" />
-
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_selecionar_areas"
             style="@style/Widget.Material3.Button.TextButton"
@@ -191,6 +184,80 @@
             app:layout_constraintStart_toStartOf="@id/guideline_start"
             app:layout_constraintEnd_toEndOf="@id/guideline_end" />
 
+        <LinearLayout
+            android:id="@+id/group_mentor_fields"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="16dp"
+            android:visibility="gone"
+            tools:visibility="visible"
+            app:layout_constraintTop_toBottomOf="@id/chip_group_areas"
+            app:layout_constraintStart_toStartOf="@id/guideline_start"
+            app:layout_constraintEnd_toEndOf="@id/guideline_end">
+
+            <TextView
+                android:id="@+id/label_mentor_fields"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Perfil de Mentor"
+                android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/input_layout_mentor_bio"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:hint="Bio de Mentor (Específica)"
+                app:counterEnabled="true"
+                app:counterMaxLength="300"
+                app:helperText="Descreva sua experiência como mentor.">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/input_edit_text_mentor_bio"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="top"
+                    android:inputType="textMultiLine"
+                    android:maxLength="300"
+                    android:minLines="4"
+                    android:textAppearance="?attr/textAppearanceBodyLarge" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_estado"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:hint="Estado">
+
+                <AutoCompleteTextView
+                    android:id="@+id/auto_complete_estado"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="none" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_cidade"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:enabled="false"
+                android:hint="Cidade">
+
+                <AutoCompleteTextView
+                    android:id="@+id/auto_complete_cidade"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="none" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+        </LinearLayout>
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_salvar"
             style="@style/App.Button.Primary"
@@ -199,7 +266,7 @@
             android:layout_marginTop="32dp"
             android:paddingVertical="14dp"
             android:text="@string/salvar_alteracoes"
-            app:layout_constraintTop_toBottomOf="@id/chip_group_areas"
+            app:layout_constraintTop_toBottomOf="@id/group_mentor_fields"
             app:layout_constraintStart_toStartOf="@id/guideline_start"
             app:layout_constraintEnd_toEndOf="@id/guideline_end" />
 

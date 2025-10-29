@@ -17,8 +17,9 @@
             android:id="@+id/text_ideia_title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
             android:textAppearance="@style/Text.TitleLarge"
-            android:textColor="?attr/colorOnSurface"
+            android:textColor="@color/colorOnSurface"
             android:textStyle="bold"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -37,28 +38,6 @@
             app:layout_constraintTop_toBottomOf="@id/text_ideia_title"
             tools:text="Uma plataforma que conecta produtores de grãos de alta qualidade diretamente com consumidores." />
 
-        <com.google.android.material.divider.MaterialDivider
-            android:id="@+id/divider"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            android:textColor="@color/colorSurface"
-            app:layout_constraintTop_toBottomOf="@id/text_ideia_description" />
-
-        <com.airbnb.lottie.LottieAnimationView
-            android:id="@+id/lottie_status_animation"
-            android:layout_width="120dp"
-            android:layout_height="120dp"
-            android:layout_marginTop="24dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/divider"
-            app:lottie_autoPlay="true"
-            app:lottie_loop="true"
-            tools:lottie_rawRes="@raw/anim_ambiente_ideal" />
-
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/card_publicada"
             style="@style/Widget.Material3.CardView.Filled"
@@ -68,7 +47,7 @@
             app:cardBackgroundColor="@color/colorPrimary"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/lottie_status_animation">
+            app:layout_constraintTop_toBottomOf="@id/text_ideia_description">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -153,7 +132,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="Solicitar Pré-Análise com IA"
+                    android:text="Solicitar pré-análise com IA"
                     app:icon="@drawable/ic_bolt"
                     android:visibility="gone"
                     tools:visibility="visible"
@@ -167,7 +146,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="Ver Análise da IA"
+                    android:text="Ver análise da IA"
                     android:visibility="gone"
                     tools:visibility="gone"
                     app:icon="@drawable/ic_check_circle"
@@ -214,20 +193,32 @@
                     android:src="@drawable/ic_groups"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
-                    app:tint="?attr/colorPrimary" />
+                    app:tint="@color/colorPrimary" />
 
                 <TextView
                     android:id="@+id/title_comunidade"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
+                    android:layout_marginEnd="24dp"
                     android:fontFamily="@font/font_titulo"
-                    android:text="Pulso da Comunidade"
+                    android:text="Pulso da comunidade"
                     android:textAppearance="?attr/textAppearanceTitleMedium"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toEndOf="@id/icon_comunidade"
                     app:layout_constraintTop_toTopOf="@id/icon_comunidade"
                     app:layout_constraintBottom_toBottomOf="@id/icon_comunidade"/>
+
+                <ImageButton
+                    android:id="@+id/button_info"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:src="@drawable/ic_info"
+                    android:background="@android:color/transparent"
+                    android:tint="@color/colorPrimary"
+                    app:layout_constraintStart_toEndOf="@id/title_comunidade"
+                    app:layout_constraintTop_toTopOf="parent"
+                    android:tooltipText="@string/pulso-info" />
 
                 <TextView
                     android:id="@+id/text_comunidade_media"
@@ -252,7 +243,8 @@
                     tools:text="(15 votos)" />
 
                 <TextView
-                    android:id="@+id/label_seu_voto" android:layout_width="0dp"
+                    android:id="@+id/label_seu_voto"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
                     android:text="Sua Avaliação (toque e arraste):"
@@ -269,12 +261,12 @@
                     app:layout_constraintTop_toBottomOf="@id/label_seu_voto"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintWidth_percent="0.8"
-
-                    app:pulseColorStart="?attr/colorSecondary"
-                    app:pulseColorEnd="?attr/colorPrimary"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintWidth_percent="0.8"
+                    app:pulseColorStart="@color/colorSecondary"
+                    app:pulseColorEnd="@color/colorPrimary"
                     app:centerColor="?attr/colorSurfaceContainerHighest"
-                    app:textColor="?attr/colorOnSurface"
+                    app:textColor="@color/colorOnSurface"
                     app:minRadius="30dp"
                     app:centerRadius="25dp"
                     app:textSize="28sp"

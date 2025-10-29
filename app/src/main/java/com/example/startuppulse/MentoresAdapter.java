@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.example.startuppulse.data.models.Mentor;
+import com.example.startuppulse.data.models.User;
 import com.example.startuppulse.util.AvatarUtils;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
@@ -46,13 +47,12 @@ public class MentoresAdapter extends ListAdapter<Mentor, MentoresAdapter.MentorV
 
     @Override
     public void onBindViewHolder(@NonNull MentorViewHolder holder, int position) {
-        Mentor mentor = getItem(position);
-        if (mentor != null) {
-            holder.bind(mentor);
+        User user = getItem(position); // MUDADO: Agora é um objeto User
+        if (user != null) {
+            holder.bind(user);
         }
     }
 
-    // --- ViewHolder ---
     static class MentorViewHolder extends RecyclerView.ViewHolder {
         TextView nome;
         ImageView image, imageArrow, iconVerificado;
@@ -67,14 +67,15 @@ public class MentoresAdapter extends ListAdapter<Mentor, MentoresAdapter.MentorV
             chipGroupAreas = itemView.findViewById(R.id.chipGroupAreas);
         }
 
-        void bind(final Mentor mentor) {
+        // MUDADO: O parâmetro agora é User
+        void bind(final User user) {
             // Nome (com tratamento para nulo)
-            String safeName = mentor.getName() != null ? mentor.getName() : "";
+            String safeName = user.getNome() != null ? user.getNome() : "";
             nome.setText(safeName);
             itemView.setContentDescription("Mentor " + safeName);
 
             // Avatar (com fallback gerado a partir da primeira letra do nome)
-            String fotoUrl = mentor.getFotoUrl();
+            String fotoUrl = user.getFotoUrl(); // MUDADO: Pega foto do User
             Resources res = itemView.getResources();
             int px = (int) (56 * res.getDisplayMetrics().density); // 56dp
             BitmapDrawable fallback = new BitmapDrawable(
@@ -84,27 +85,30 @@ public class MentoresAdapter extends ListAdapter<Mentor, MentoresAdapter.MentorV
             Glide.with(itemView.getContext())
                     .load(fotoUrl)
                     .placeholder(R.drawable.ic_person)
-                    .error(fallback) // Mostra o fallback em caso de erro no load
-                    .fallback(fallback) // Mostra o fallback se a URL for nula
+                    .error(fallback)
+                    .fallback(fallback)
                     .transition(DrawableTransitionOptions.withCrossFade())
                     .circleCrop()
                     .into(image);
 
             // Selo de verificado
-            iconVerificado.setVisibility(mentor.isVerified() ? View.VISIBLE : View.GONE);
+            // MUDADO: O 'isVerified' está no 'Mentor', não no 'User'.
+            // Para evitar N+1 queries na lista, removemos o selo daqui.
+            // Ele aparecerá corretamente na tela de detalhes.
+            iconVerificado.setVisibility(View.GONE);
 
             // Chips com áreas de atuação
-            setupAreaChips(mentor.getAreas());
+            setupAreaChips(user.getAreasDeInteresse()); // MUDADO: Pega áreas do User
 
             // Listener de clique para navegar para os detalhes
             itemView.setOnClickListener(v -> {
                 Bundle bundle = new Bundle();
-                bundle.putString("mentorId", mentor.getId()); // Correção: Usar o método correto
+                // MUDADO: Passa o ID do User (que é o mentorId)
+                bundle.putString("mentorId", user.getId());
 
                 try {
                     Navigation.findNavController(v).navigate(R.id.action_mentoresFragment_to_mentorDetailFragment, bundle);
                 } catch (Exception e) {
-                    // Logar o erro pode ser útil para depuração em cenários complexos
                     e.printStackTrace();
                 }
             });
@@ -141,20 +145,18 @@ public class MentoresAdapter extends ListAdapter<Mentor, MentoresAdapter.MentorV
     }
 
     // --- DiffUtil Callback ---
-    private static final DiffUtil.ItemCallback<Mentor> DIFF_CALLBACK = new DiffUtil.ItemCallback<Mentor>() {
+    private static final DiffUtil.ItemCallback<User> DIFF_CALLBACK = new DiffUtil.ItemCallback<User>() {
         @Override
-        public boolean areItemsTheSame(@NonNull Mentor oldItem, @NonNull Mentor newItem) {
-            // Itens são os mesmos se os IDs forem iguais
+        public boolean areItemsTheSame(@NonNull User oldItem, @NonNull User newItem) {
             return Objects.equals(oldItem.getId(), newItem.getId());
         }
 
         @Override
-        public boolean areContentsTheSame(@NonNull Mentor oldItem, @NonNull Mentor newItem) {
-            // Conteúdo é o mesmo se esses campos não mudaram
-            return Objects.equals(oldItem.getName(), newItem.getName())
-                    && oldItem.isVerified() == newItem.isVerified()
+        public boolean areContentsTheSame(@NonNull User oldItem, @NonNull User newItem) {
+            // Compara os campos relevantes do User
+            return Objects.equals(oldItem.getNome(), newItem.getNome())
                     && Objects.equals(oldItem.getFotoUrl(), newItem.getFotoUrl())
-                    && Objects.equals(oldItem.getAreas(), newItem.getAreas());
+                    && Objects.equals(oldItem.getAreasDeInteresse(), newItem.getAreasDeInteresse());
         }
     };
 }

@@ -8,12 +8,15 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+/**
+ * Modelo de dados para um Usuário. (AJUSTADO)
+ * Contém todas as informações compartilhadas e de usuário.
+ * A flag "isMentor" indica se existe um documento correspondente na coleção /mentores.
+ */
 public class User {
-
     private String nome;
     private String email;
     private String bio;
-    private String mentorBio;
     @PropertyName("fotoUrl")
     private String fotoUrl;
     private boolean isPremium;
@@ -22,7 +25,6 @@ public class User {
     private int seguindoCount;
     private long diasDeConta;
     private String plano;
-
     @PropertyName("data_fim")
     private Date dataExpiracaoPlano;
     private String purchaseToken;
@@ -30,22 +32,27 @@ public class User {
     private Date dataCriacao;
     private Timestamp ultimoAcesso;
     private Long diasAcessoTotal;
-
-    private String profissao;
+    private String profissao; // Equivalente ao "headline" do mentor
     private String linkedinUrl;
     @PropertyName("areas")
     private List<String> areasAtuacao;
     private String status = "ativo";
-
     private boolean profilePublic = true;
+    private String fcmToken;
+
+    // CAMPO ADICIONADO: Flag de conexão com o perfil de Mentor
+    @PropertyName("isMentor")
+    private boolean isMentor;
 
     public User() {
-        this.areasAtuacao = new ArrayList<>();
+        // Corrigido: removida inicialização duplicada de areasAtuacao
         this.areasAtuacao = new ArrayList<>();
         this.diasAcessoTotal = 0L;
+        this.isMentor = false; // Valor padrão
     }
 
-    // Getters
+    // --- Getters e Setters (Existentes) ---
+
     public String getNome() { return nome; }
     public String getBio() {
         return bio;
@@ -154,10 +161,28 @@ public class User {
         return (diasAcessoTotal != null) ? diasAcessoTotal : 0L;
     }
 
-    public String getMentorBio() { return mentorBio; }
-    public void setMentorBio(String mentorBio) { this.mentorBio = mentorBio; }
-
     public void setDiasAcessoTotal(Long diasAcessoTotal) {
         this.diasAcessoTotal = diasAcessoTotal;
+    }
+    @PropertyName("fcmToken")
+    public String getFcmToken() {
+        return fcmToken;
+    }
+
+    @PropertyName("fcmToken")
+    public void setFcmToken(String fcmToken) {
+        this.fcmToken = fcmToken;
+    }
+
+    // --- Getter e Setter para o novo campo ISMENTOR ---
+
+    @PropertyName("isMentor")
+    public boolean isMentor() {
+        return isMentor;
+    }
+
+    @PropertyName("isMentor")
+    public void setMentor(boolean mentor) {
+        isMentor = mentor;
     }
 }

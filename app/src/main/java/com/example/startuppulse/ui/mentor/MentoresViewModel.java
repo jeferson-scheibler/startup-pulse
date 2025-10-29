@@ -4,9 +4,9 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.example.startuppulse.data.models.Mentor;
+import com.example.startuppulse.data.models.User; // MUDADO: de Mentor para User
 import com.example.startuppulse.common.Result;
-import com.example.startuppulse.data.repositories.MentorRepository;
+import com.example.startuppulse.data.repositories.IUserRepository; // MUDADO: de MentorRepository para IUserRepository
 import com.example.startuppulse.data.ResultCallback;
 
 import java.util.List;
@@ -16,23 +16,20 @@ import dagger.hilt.android.lifecycle.HiltViewModel;
 
 @HiltViewModel
 public class MentoresViewModel extends ViewModel {
-
-    private final MentorRepository mentorRepository;
-
-    private final MutableLiveData<Result<List<Mentor>>> _mentores = new MutableLiveData<>();
-    public LiveData<Result<List<Mentor>>> mentores = _mentores;
+    private final IUserRepository userRepository;
+    private final MutableLiveData<Result<List<User>>> _mentores = new MutableLiveData<>();
+    public LiveData<Result<List<User>>> mentores = _mentores;
 
     @Inject
-    public MentoresViewModel(MentorRepository mentorRepository) {
-        this.mentorRepository = mentorRepository;
+    public MentoresViewModel(IUserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
     public void carregarMentores() {
         _mentores.setValue(new Result.Loading<>());
-        // Usando o método findAllMentores do repositório. O excludeUserId pode ser adicionado se necessário.
-        mentorRepository.findAllMentores(null, new ResultCallback<List<Mentor>>() {
+        userRepository.getMentores(new ResultCallback<List<User>>() {
             @Override
-            public void onResult(Result<List<Mentor>> result) {
+            public void onResult(Result<List<User>> result) {
                 _mentores.postValue(result);
             }
         });

@@ -173,4 +173,9 @@
     <string name="enviar_email_suporte">Enviar e-mail para suporte</string>
     <string name="nenhum_app_email">Nenhum aplicativo de e-mail encontrado.</string>
     <string name="assunto_email_suporte">Suporte Startup Pulse - Dúvida/Problema</string>
+
+    <string name="notification_channel_description">Notificações Gerais</string>
+    <string name="notification_channel_name">Receba atualizações sobre suas ideias e interações.</string>
+
+    <string name="pulso_info">Assim como um pulso eletromagnético redefine o ambiente que atravessa, uma ideia é capaz de reconfigurar todo o nosso entorno.</string>
 </resources>
