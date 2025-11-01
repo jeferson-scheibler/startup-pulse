@@ -215,10 +215,10 @@
                     android:layout_height="wrap_content"
                     android:src="@drawable/ic_info"
                     android:background="@android:color/transparent"
-                    android:tint="@color/colorPrimary"
+                    app:tint="@color/colorPrimary"
                     app:layout_constraintStart_toEndOf="@id/title_comunidade"
                     app:layout_constraintTop_toTopOf="parent"
-                    android:tooltipText="@string/pulso-info" />
+                    android:tooltipText="@string/pulso_info" />
 
                 <TextView
                     android:id="@+id/text_comunidade_media"

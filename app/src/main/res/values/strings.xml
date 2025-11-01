@@ -178,4 +178,9 @@
     <string name="notification_channel_name">Receba atualizações sobre suas ideias e interações.</string>
 
     <string name="pulso_info">Assim como um pulso eletromagnético redefine o ambiente que atravessa, uma ideia é capaz de reconfigurar todo o nosso entorno.</string>
+    <string name="iniciando_busca_mentores">Iniciando busca por um mentor...</string>
+    <string name="buscando_mentor">Buscando mentor</string>
+    <string name="cancelar_busca">Cancelar busca</string>
+    <string name="refazendo_busca_mentores">Refazendo busca por mentores.</string>
+    <string name="refazendo_busca">Buscando...</string>
 </resources>

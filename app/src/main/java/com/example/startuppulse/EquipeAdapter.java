@@ -9,7 +9,7 @@ import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
-import com.example.startuppulse.data.MembroEquipe;
+import com.example.startuppulse.data.models.MembroEquipe;
 import com.google.android.material.imageview.ShapeableImageView;
 
 import java.util.Objects;

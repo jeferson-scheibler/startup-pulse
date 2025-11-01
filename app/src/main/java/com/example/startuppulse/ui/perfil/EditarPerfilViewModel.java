@@ -1,20 +1,22 @@
 package com.example.startuppulse.ui.perfil;
 
 import android.net.Uri;
+import android.util.Log;
+
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.example.startuppulse.common.Result;
-import com.example.startuppulse.data.Cidade;
-import com.example.startuppulse.data.Estado;
-import com.example.startuppulse.data.ResultCallback;
+import com.example.startuppulse.data.models.Cidade;
+import com.example.startuppulse.data.models.Estado;
 import com.example.startuppulse.data.models.Mentor;
 import com.example.startuppulse.data.models.User;
 import com.example.startuppulse.data.repositories.IAuthRepository;
 import com.example.startuppulse.data.repositories.IMentorRepository;
 import com.example.startuppulse.data.repositories.IStorageRepository;
 import com.example.startuppulse.data.repositories.IUserRepository;
+import com.example.startuppulse.util.GeocodeUtils;
 import com.example.startuppulse.util.IBGEService;
 
 import java.util.List;
@@ -177,65 +179,82 @@ public class EditarPerfilViewModel extends ViewModel {
                                         String mentorBio, String estado, String cidade) {
 
         // --- ATUALIZAÇÃO DO DOCUMENTO USER ---
-        // Atualiza o objeto User local
         currentUserData.setNome(name);
         currentUserData.setBio(userBio);
         currentUserData.setProfissao(profession);
         currentUserData.setLinkedinUrl(linkedinUrl);
         currentUserData.setAreasDeInteresse(areas);
+
         if (newPhotoUrl != null) {
             currentUserData.setFotoUrl(newPhotoUrl);
         }
 
-        // Salva o objeto User inteiro
-        // userResult é Result<Void>
-        userRepository.updateUser(currentUserId, currentUserData, userResult -> {
-            if (userResult instanceof Result.Success) {
+        // 🔹 Executa tudo numa única thread controlada
+        new Thread(() -> {
+            try {
+                // 1️⃣ Obter coordenadas de forma síncrona antes de atualizar qualquer documento
+                double latitude = 0.0;
+                double longitude = 0.0;
 
-                // Se não for mentor, o trabalho acaba aqui
-                if (!currentUserData.isMentor()) {
-                    _updateResult.postValue(new Result.Success<>(null));
-                    return;
-                }
-
-                // --- ATUALIZAÇÃO DO DOCUMENTO MENTOR ---
-                // Se for mentor, continua para atualizar o mentor
-                Result<Mentor> mentorResult = _mentorProfile.getValue();
-                Mentor mentorData;
-
-                if (mentorResult instanceof Result.Success) {
-                    mentorData = ((Result.Success<Mentor>) mentorResult).data;
+                double[] coords = GeocodeUtils.obterCoordenadasPorCidade(cidade, estado);
+                if (coords != null) {
+                    latitude = coords[0];
+                    longitude = coords[1];
+                    Log.d("MentorProfile", "Coordenadas obtidas: " + latitude + ", " + longitude);
                 } else {
-                    mentorData = new Mentor();
+                    Log.w("MentorProfile", "Não foi possível obter coordenadas para " + cidade + ", " + estado);
                 }
 
-                mentorData.setBio(mentorBio);
-                mentorData.setState(estado);
-                mentorData.setCity(cidade);
+                double finalLatitude = latitude;
+                double finalLongitude = longitude;
 
-                // mentorSaveResult é Result<String>
-                mentorRepository.saveMentorProfile(mentorData, mentorSaveResult -> {
+                // 2️⃣ Atualiza o documento do usuário
+                userRepository.updateUser(currentUserId, currentUserData, userResult -> {
+                    if (userResult instanceof Result.Success) {
 
-                    // --- INÍCIO DA CORREÇÃO ---
-                    if (mentorSaveResult instanceof Result.Success) {
-                        // Se o mentor salvar com sucesso (Result<String>),
-                        // postamos um sucesso genérico (Result<Void>) para a UI.
-                        _updateResult.postValue(new Result.Success<>(null));
+                        // Se não for mentor, finaliza aqui
+                        if (!currentUserData.isMentor()) {
+                            _updateResult.postValue(new Result.Success<>(null));
+                            return;
+                        }
 
-                    } else if (mentorSaveResult instanceof Result.Error) {
-                        // Se o mentor falhar (Result.Error<String>),
-                        // extraímos o erro e o repassamos como (Result.Error<Void>).
-                        Exception error = ((Result.Error<String>) mentorSaveResult).error;
-                        _updateResult.postValue(new Result.Error<>(error));
+                        // --- ATUALIZAÇÃO DO DOCUMENTO MENTOR ---
+                        Result<Mentor> mentorResult = _mentorProfile.getValue();
+                        Mentor mentorData;
+
+                        if (mentorResult instanceof Result.Success) {
+                            mentorData = ((Result.Success<Mentor>) mentorResult).data;
+                        } else {
+                            mentorData = new Mentor();
+                        }
+
+                        mentorData.setBio(mentorBio);
+                        mentorData.setState(estado);
+                        mentorData.setCity(cidade);
+                        mentorData.setLatitude(finalLatitude);
+                        mentorData.setLongitude(finalLongitude);
+                        mentorData.setActivePublic(true); // Mantém o mentor visível no matchmaking
+
+                        // 3️⃣ Salva o mentor
+                        mentorRepository.saveMentorProfile(mentorData, mentorSaveResult -> {
+                            if (mentorSaveResult instanceof Result.Success) {
+                                _updateResult.postValue(new Result.Success<>(null));
+                            } else if (mentorSaveResult instanceof Result.Error) {
+                                Exception error = ((Result.Error<String>) mentorSaveResult).error;
+                                _updateResult.postValue(new Result.Error<>(error));
+                            }
+                        });
+
+                    } else if (userResult instanceof Result.Error) {
+                        _updateResult.postValue(userResult);
                     }
-                    // --- FIM DA CORREÇÃO ---
-
                 });
 
-            } else if (userResult instanceof Result.Error) {
-                // Se o Passo 1 (Salvar User) falhar, relate o erro e pare.
-                _updateResult.postValue(userResult);
+            } catch (Exception e) {
+                Log.e("MentorProfile", "Erro inesperado ao atualizar dados: " + e.getMessage(), e);
+                _updateResult.postValue(new Result.Error<>(e));
             }
-        });
+        }).start();
     }
+
 }

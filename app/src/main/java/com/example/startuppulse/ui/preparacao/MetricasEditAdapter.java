@@ -13,7 +13,7 @@ import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.startuppulse.R;
-import com.example.startuppulse.data.Metrica;
+import com.example.startuppulse.data.models.Metrica;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.util.Objects;

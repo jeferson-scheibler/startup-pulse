@@ -4,11 +4,10 @@ import android.net.Uri;
 import androidx.annotation.NonNull;
 
 import com.example.startuppulse.common.Result;
-import com.example.startuppulse.data.ResultCallback;
-import com.example.startuppulse.data.repositories.IStorageRepository;
+import com.example.startuppulse.common.ResultCallback;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
-import java.util.UUID;
+
 import javax.inject.Inject;
 
 public class StorageRepository implements IStorageRepository {

@@ -7,9 +7,9 @@ import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
-import com.example.startuppulse.data.MembroEquipe;
+import com.example.startuppulse.data.models.MembroEquipe;
 import com.example.startuppulse.databinding.ItemMembroEquipeEditBinding;
-import java.util.Objects;
+
 import java.util.function.Consumer;
 
 public class EquipeEditAdapter extends ListAdapter<MembroEquipe, EquipeEditAdapter.MembroViewHolder> {

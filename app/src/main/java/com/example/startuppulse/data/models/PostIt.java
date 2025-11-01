@@ -1,10 +1,7 @@
-package com.example.startuppulse.data;
-
-import androidx.annotation.Nullable;
+package com.example.startuppulse.data.models;
 
 import java.io.Serializable;
 import java.util.Date;
-import java.util.Objects;
 
 public class PostIt implements Serializable {
     private String id;

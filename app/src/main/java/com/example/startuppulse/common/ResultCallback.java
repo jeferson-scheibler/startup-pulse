@@ -1,6 +1,4 @@
-package com.example.startuppulse.data;
-
-import com.example.startuppulse.common.Result;
+package com.example.startuppulse.common;
 
 /**
  * Interface de callback genérica para operações assíncronas.

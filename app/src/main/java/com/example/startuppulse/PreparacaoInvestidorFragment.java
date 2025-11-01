@@ -16,11 +16,8 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.fragment.NavHostFragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.startuppulse.data.MembroEquipe;
 import com.example.startuppulse.databinding.FragmentPreparacaoInvestidorBinding;
-import com.example.startuppulse.EquipeEditAdapter;
 import com.example.startuppulse.ui.preparacao.MetricasEditAdapter;
 import com.example.startuppulse.ui.preparacao.PreparacaoInvestidorViewModel;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;

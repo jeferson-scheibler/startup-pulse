@@ -1,6 +1,7 @@
 package com.example.startuppulse.data.models;
 
 import com.google.firebase.Timestamp;
+import com.google.firebase.firestore.Exclude;
 import com.google.firebase.firestore.PropertyName;
 import com.google.firebase.firestore.ServerTimestamp;
 
@@ -14,10 +15,12 @@ import java.util.List;
  * A flag "isMentor" indica se existe um documento correspondente na coleção /mentores.
  */
 public class User {
+    @Exclude
+    private String id;
     private String nome;
     private String email;
     private String bio;
-    @PropertyName("fotoUrl")
+    @PropertyName("foto_perfil")
     private String fotoUrl;
     private boolean isPremium;
     private String validadePlano;
@@ -38,11 +41,15 @@ public class User {
     private List<String> areasAtuacao;
     private String status = "ativo";
     private boolean profilePublic = true;
+    @PropertyName("fcmToken")
     private String fcmToken;
 
     // CAMPO ADICIONADO: Flag de conexão com o perfil de Mentor
     @PropertyName("isMentor")
     private boolean isMentor;
+
+    @Exclude
+    private Mentor mentorData;
 
     public User() {
         // Corrigido: removida inicialização duplicada de areasAtuacao
@@ -53,6 +60,14 @@ public class User {
 
     // --- Getters e Setters (Existentes) ---
 
+    @Exclude
+    public String getId() {
+        return id;
+    }
+    @Exclude
+    public void setId(String id) {
+        this.id = id;
+    }
     public String getNome() { return nome; }
     public String getBio() {
         return bio;
@@ -82,6 +97,16 @@ public class User {
     public void setPublicadasCount(int publicadasCount) { this.publicadasCount = publicadasCount; }
     public void setSeguindoCount(int seguindoCount) { this.seguindoCount = seguindoCount; }
     public void setDiasDeConta(long diasDeConta) { this.diasDeConta = diasDeConta; }
+
+    @Exclude
+    public Mentor getMentorData() {
+        return mentorData;
+    }
+
+    @Exclude
+    public void setMentorData(Mentor mentorData) {
+        this.mentorData = mentorData;
+    }
 
     public String getPlano() {
         return plano;

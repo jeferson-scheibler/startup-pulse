@@ -6,7 +6,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.example.startuppulse.common.Result;
-import com.example.startuppulse.data.ResultCallback;
+import com.example.startuppulse.common.ResultCallback;
 import com.example.startuppulse.data.models.User;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.firebase.Timestamp;

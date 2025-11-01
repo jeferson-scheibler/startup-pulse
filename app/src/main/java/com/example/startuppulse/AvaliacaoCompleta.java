@@ -1,6 +1,6 @@
 package com.example.startuppulse;
 
-import com.example.startuppulse.data.Avaliacao;
+import com.example.startuppulse.data.models.Avaliacao;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.PropertyName;
 import java.io.Serializable;

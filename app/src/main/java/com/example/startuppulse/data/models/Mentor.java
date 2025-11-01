@@ -11,6 +11,7 @@ import java.util.List;
  * Informações compartilhadas (nome, foto, linkedin, etc.) são lidas do modelo User.java.
  */
 public class Mentor implements Serializable {
+    @Exclude
     private String id;
     private String bio;
     private String city;
@@ -66,4 +67,5 @@ public class Mentor implements Serializable {
     public boolean isActivePublic() { return activePublic; }
     @PropertyName("ativoPublico")
     public void setActivePublic(boolean activePublic) { this.activePublic = activePublic; }
+
 }

@@ -4,7 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 
-import com.example.startuppulse.data.CanvasEtapa;
+import com.example.startuppulse.data.models.CanvasEtapa;
 import com.example.startuppulse.data.models.Ideia;
 
 import java.util.ArrayList;

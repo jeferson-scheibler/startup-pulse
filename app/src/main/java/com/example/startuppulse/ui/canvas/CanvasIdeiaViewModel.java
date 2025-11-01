@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.location.Location;
 import android.util.Log;
+import android.util.Pair;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -13,21 +14,19 @@ import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
 
 import com.example.startuppulse.R;
-import com.example.startuppulse.data.CanvasEtapa;
-import com.example.startuppulse.data.MembroEquipe;
-import com.example.startuppulse.data.ResultCallback;
+import com.example.startuppulse.data.models.CanvasEtapa;
+import com.example.startuppulse.data.models.MembroEquipe;
+import com.example.startuppulse.common.ResultCallback;
 import com.example.startuppulse.data.models.Mentor;
 import com.example.startuppulse.MentorMatchService;
 import com.example.startuppulse.common.Result;
-import com.example.startuppulse.data.repositories.AuthRepository;
 import com.example.startuppulse.data.models.Ideia;
 import com.example.startuppulse.data.repositories.IAuthRepository;
 import com.example.startuppulse.data.repositories.IIdeiaRepository;
 import com.example.startuppulse.data.repositories.IMentorRepository;
-import com.example.startuppulse.data.repositories.IdeiaRepository;
-import com.example.startuppulse.data.repositories.MentorRepository;
-import com.example.startuppulse.data.PostIt;
+import com.example.startuppulse.data.models.PostIt;
 import com.example.startuppulse.data.models.User;
+import com.example.startuppulse.data.repositories.IUserRepository;
 import com.example.startuppulse.util.Event;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -35,8 +34,12 @@ import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
+import java.util.regex.MatchResult;
 
 import javax.inject.Inject;
 import dagger.hilt.android.lifecycle.HiltViewModel;
@@ -50,6 +53,7 @@ public class CanvasIdeiaViewModel extends ViewModel {
     private final IIdeiaRepository ideiaRepository;
     private final IMentorRepository mentorRepository;
     private final IAuthRepository authRepository;
+    private final IUserRepository userRepository;
     private final FirebaseFirestore firestore;
 
     private ListenerRegistration ideiaListener;
@@ -92,6 +96,31 @@ public class CanvasIdeiaViewModel extends ViewModel {
     private final MutableLiveData<Float> _userVote = new MutableLiveData<>(0f);
     public final LiveData<Float> userVote = _userVote;
 
+    private final MutableLiveData<Boolean> _matchLoading = new MutableLiveData<>(false);
+    public final LiveData<Boolean> matchLoading = _matchLoading;
+    private final MutableLiveData<Boolean> _isRematching = new MutableLiveData<>(false);
+    public LiveData<Boolean> isRematching = _isRematching;
+
+    private final MutableLiveData<String> _rematchMessage = new MutableLiveData<>();
+    public LiveData<String> rematchMessage = _rematchMessage;
+
+    private final MutableLiveData<String> _matchProgressMessage = new MutableLiveData<>();
+    public final LiveData<String> matchProgressMessage = _matchProgressMessage;
+
+    // Evento: solicita ao UI que pergunte ao usuário qual localização usar
+    private final MutableLiveData<Event<MatchLocationChoiceRequest>> _matchLocationRequest = new MutableLiveData<>();
+    public final LiveData<Event<MatchLocationChoiceRequest>> matchLocationRequest = _matchLocationRequest;
+
+    // Evento: lista de candidatos (para UI exibir uma escolha)
+    private final MutableLiveData<Event<List<User>>> _matchCandidatesEvent = new MutableLiveData<>();
+    public final LiveData<Event<List<User>>> matchCandidatesEvent = _matchCandidatesEvent;
+
+    // Evento: resultado do match (sucesso/falha) - UI decide mostrar toast/dialog
+    private final MutableLiveData<Event<MatchResult>> _matchResultEvent = new MutableLiveData<>();
+    public final LiveData<Event<MatchResult>> matchResultEvent = _matchResultEvent;
+
+    private final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+
     private final List<String> etapasObrigatorias = Arrays.asList(
             CanvasEtapa.CHAVE_PROPOSTA_VALOR, CanvasEtapa.CHAVE_SEGMENTO_CLIENTES,
             CanvasEtapa.CHAVE_CANAIS, CanvasEtapa.CHAVE_RELACIONAMENTO_CLIENTES,
@@ -100,12 +129,45 @@ public class CanvasIdeiaViewModel extends ViewModel {
             CanvasEtapa.CHAVE_ESTRUTURA_CUSTOS
     );
 
+    public static class MatchLocationChoiceRequest {
+        private final boolean hasIdeaLocation;
+        private final boolean hasUserLocation;
+        private final Location ideaLocation;
+        private final Location userLocation;
+
+        public MatchLocationChoiceRequest(@Nullable Location ideaLocation, @Nullable Location userLocation) {
+            this.ideaLocation = ideaLocation;
+            this.userLocation = userLocation;
+            this.hasIdeaLocation = (ideaLocation != null);
+            this.hasUserLocation = (userLocation != null);
+        }
+
+        public boolean hasIdeaLocation() {
+            return hasIdeaLocation;
+        }
+
+        public boolean hasUserLocation() {
+            return hasUserLocation;
+        }
+
+        @Nullable
+        public Location getIdeaLocation() {
+            return ideaLocation;
+        }
+
+        @Nullable
+        public Location getUserLocation() {
+            return userLocation;
+        }
+    }
+
     @Inject
-    public CanvasIdeiaViewModel(IIdeiaRepository ideiaRepository, IMentorRepository mentorRepository, IAuthRepository authRepository, FirebaseFirestore firestore) {
+    public CanvasIdeiaViewModel(IIdeiaRepository ideiaRepository, IMentorRepository mentorRepository, IAuthRepository authRepository, IUserRepository userRepository, FirebaseFirestore firestore) {
         this.ideiaRepository = ideiaRepository;
         this.mentorRepository = mentorRepository;
         this.authRepository = authRepository;
         this.firestore = firestore;
+        this.userRepository = userRepository;
         isPublishEnabled = Transformations.map(_ideia, this::isIdeiaValidaParaPublicar);
         _etapas.setValue(new ArrayList<>());
         _isIaLoading.setValue(false);
@@ -188,6 +250,14 @@ public class CanvasIdeiaViewModel extends ViewModel {
             });
         }
     }
+
+    public static class MatchResult {
+        public final boolean success;
+        public final String message;
+        public MatchResult(boolean success, String message) { this.success = success; this.message = message; }
+    }
+
+
 
     private void loadUserVote() {
         String currentUserId = authRepository.getCurrentUserId();
@@ -540,14 +610,26 @@ public class CanvasIdeiaViewModel extends ViewModel {
     }
 
     private void fetchMentorName(String mentorId) {
-        mentorRepository.getMentorById(mentorId, result -> {
+        if (mentorId == null || mentorId.isEmpty()) {
+            _mentorNome.postValue("Mentor não encontrado");
+            return;
+        }
+
+        // Agora buscamos o User (onde está o nome e a foto). UserRepository popula mentorData quando aplicável.
+        userRepository.getUserProfile(mentorId, result -> {
             if (result instanceof Result.Success) {
-                _mentorNome.postValue(((Result.Success<Mentor>) result).data.getName());
+                User user = ((Result.Success<User>) result).data;
+                if (user != null && user.getNome() != null && !user.getNome().isEmpty()) {
+                    _mentorNome.postValue(user.getNome());
+                } else {
+                    _mentorNome.postValue("Mentor sem nome");
+                }
             } else {
                 _mentorNome.postValue("Mentor não encontrado");
             }
         });
     }
+
 
     public boolean isCurrentUserOwner() {
         Ideia ideiaAtual = _ideia.getValue();
@@ -559,77 +641,497 @@ public class CanvasIdeiaViewModel extends ViewModel {
     @SuppressLint("MissingPermission")
     public void procurarNovoMentor(@NonNull Context context, @Nullable Location userLocation) {
         Ideia ideiaAtual = _ideia.getValue();
+
         if (ideiaAtual == null) {
-            _toastEvent.setValue(new Event<>("Ideia não está carregada."));
+            _toastEvent.setValue(new Event<>("Erro: Nenhuma ideia carregada."));
             return;
         }
 
-        _isLoading.setValue(true); // Mostra loading para o usuário
-        buscarMentoresCompativeis(ideiaAtual, userLocation);
+        Log.d(TAG, "procurarNovoMentor: Iniciando processo de matching...");
+        _matchProgressMessage.postValue("Preparando busca por mentores...");
+
+        // 🔹 Se não há localização nem da ideia nem do usuário, busca sem proximidade
+        Location ideiaLocation = ideiaAtual.getLocalizacao();
+        if (ideiaLocation == null && userLocation == null) {
+            Log.d(TAG, "Sem localização disponível — buscando por afinidade de áreas.");
+            _matchLoading.postValue(true);
+            buscarMentoresCompativeis(ideiaAtual, null);
+            return;
+        }
+
+        // 🔹 Caso haja uma ou mais localizações disponíveis, perguntar ao usuário qual usar
+        _matchProgressMessage.postValue("Selecionando fonte de localização...");
+        _matchLocationRequest.postValue(new Event<>(new MatchLocationChoiceRequest(ideiaLocation, userLocation)));
     }
 
+    public void handleMatchLocationChoice(@NonNull String choice, @Nullable Location chosenLocation, boolean iniciarBusca) {
+        Ideia ideiaAtual = _ideia.getValue();
+        if (ideiaAtual == null) {
+            _toastEvent.postValue(new Event<>("Erro: Nenhuma ideia ativa para match."));
+            return;
+        }
+
+        Log.d(TAG, "handleMatchLocationChoice: escolha=" + choice + ", iniciarBusca=" + iniciarBusca);
+        if (!iniciarBusca) return;
+        _matchLoading.postValue(true);
+        _matchProgressMessage.postValue("Buscando mentores próximos...");
+        buscarMentoresCompativeis(ideiaAtual, chosenLocation);
+    }
+
+    // closeOnSuccess indica se, ao achar/vincular mentor, a tela deve ser fechada (true para fluxo de publicação normal, false para re-match)
+    private void buscarMentoresPorLocalidadePrimeiro(@NonNull Ideia ideia, @Nullable Location baseLocation, boolean closeOnSuccess) {
+        Log.d(TAG, "buscarMentoresPorLocalidadePrimeiro: iniciando. ideia=" + ideia.getId() + " baseLocation=" + (baseLocation==null?"null":(baseLocation.getLatitude()+","+baseLocation.getLongitude())));
+        _matchProgressMessage.setValue("Buscando mentores próximos...");
+
+        // 1) buscar mentores via userRepository (onde isMentor==true)
+        userRepository.getMentores(result -> {
+            if (!(result instanceof Result.Success)) {
+                Log.e(TAG, "buscarMentoresPorLocalidadePrimeiro: erro ao obter mentores do userRepository.", (result instanceof Result.Error) ? ((Result.Error) result).error : null);
+                _matchLoading.setValue(false);
+                _matchResultEvent.postValue(new Event<>(new MatchResult(false, "Erro ao buscar mentores.")));
+                return;
+            }
+
+            List<User> users = ((Result.Success<List<User>>) result).data;
+            if (users == null || users.isEmpty()) {
+                Log.d(TAG, "buscarMentoresPorLocalidadePrimeiro: nenhum usuário mentor retornado.");
+                _matchLoading.setValue(false);
+                publicarIdeiaSemMentor(ideia); // fallback
+                return;
+            }
+
+            // Filtrar: isMentor==true e excluir autor
+            List<User> mentorsFiltered = new ArrayList<>();
+            for (User u : users) {
+                if (u == null) continue;
+                if (!u.isMentor()) continue;
+                if (ideia.getOwnerId() != null && ideia.getOwnerId().equals(u.getId())) continue; // excluir dono
+                // também opcional: checar status do perfil do mentor (ativoPublic)
+                mentorsFiltered.add(u);
+            }
+
+            Log.d(TAG, "buscarMentoresPorLocalidadePrimeiro: candidatos após filtro inicial = " + mentorsFiltered.size());
+
+            if (mentorsFiltered.isEmpty()) {
+                Log.d(TAG, "buscarMentoresPorLocalidadePrimeiro: 0 candidatos após filtro -> publicar sem mentor");
+                _matchLoading.setValue(false);
+                publicarIdeiaSemMentor(ideia);
+                return;
+            }
+
+            // Se baseLocation não é null, priorizar por proximidade: criar lista com distância calculada
+            final List<Pair<User, Double>> candidatesWithDistance = new ArrayList<>();
+            for (User u : mentorsFiltered) {
+                double distMeters = Double.MAX_VALUE;
+                try {
+                    // assume que o mentorData (Mentor) tem latitude/longitude armazenados no User -> user.getMentorData().getLatitude()
+                    if (u.getMentorData() != null && u.getMentorData().getLatitude() != 0 && u.getMentorData().getLongitude() != 0 && baseLocation != null) {
+                        float[] results = new float[1];
+                        Location.distanceBetween(baseLocation.getLatitude(), baseLocation.getLongitude(),
+                                u.getMentorData().getLatitude(), u.getMentorData().getLongitude(), results);
+                        distMeters = results[0];
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "buscarMentoresPorLocalidadePrimeiro: erro ao calcular distancia para userId=" + u.getId() + " -> " + e.getMessage());
+                }
+                candidatesWithDistance.add(new Pair<>(u, distMeters));
+            }
+
+            // Ordena por distância crescente
+            Collections.sort(candidatesWithDistance, Comparator.comparingDouble(p -> p.second));
+
+            // Defina um raio inicial (ex.: 50km = 50_000m). Se nenhum dentro do raio, aumenta para 200km etc.
+            final double INITIAL_RADIUS = 50_000; // metros
+            final double WIDE_RADIUS = 200_000; // metros
+
+            List<User> withinRadius = new ArrayList<>();
+            for (Pair<User, Double> p : candidatesWithDistance) {
+                if (p.second <= INITIAL_RADIUS) withinRadius.add(p.first);
+            }
+            if (withinRadius.isEmpty()) {
+                for (Pair<User, Double> p : candidatesWithDistance) {
+                    if (p.second <= WIDE_RADIUS) withinRadius.add(p.first);
+                }
+            }
+            // Se ainda vazio, considerar todos (busca global)
+            if (withinRadius.isEmpty()) {
+                Log.d(TAG, "buscarMentoresPorLocalidadePrimeiro: nenhum mentor dentro do raio. Considerando todos os candidatos para ordenação por afinidade.");
+                for (Pair<User, Double> p : candidatesWithDistance) withinRadius.add(p.first);
+            } else {
+                Log.d(TAG, "buscarMentoresPorLocalidadePrimeiro: candidatos dentro do raio = " + withinRadius.size());
+            }
+
+            // Agora, se há mais de 1 candidato -> ordenar por afinidade de áreas (intersecção)
+            if (withinRadius.size() > 1) {
+                _matchProgressMessage.postValue("Ordenando por afinidade de áreas...");
+                // calcular afinidade: quantas áreas em comum entre mentor.getAreasDeInteresse() e ideia.getAreasNecessarias()
+                withinRadius.sort((u1, u2) -> {
+                    int score1 = calcularAfinidade(u1.getAreasDeInteresse(), ideia.getAreasNecessarias());
+                    int score2 = calcularAfinidade(u2.getAreasDeInteresse(), ideia.getAreasNecessarias());
+                    // maior afinidade primeiro; se empate, manter ordem anterior (que é por proximidade)
+                    int cmp = Integer.compare(score2, score1);
+                    return (cmp != 0) ? cmp : 0;
+                });
+
+                Log.d(TAG, "buscarMentoresPorLocalidadePrimeiro: ordenado por afinidade.");
+                // Se houver mais de um candidato, enviar evento para UI permitir escolher
+                if (withinRadius.size() > 1) {
+                    Log.d(TAG, "buscarMentoresPorLocalidadePrimeiro: disparando evento de escolha com " + withinRadius.size() + " candidatos.");
+                    _matchCandidatesEvent.postValue(new Event<>(withinRadius));
+                    _matchLoading.setValue(false); // UI exibirá escolha e continuará o fluxo
+                    return;
+                }
+            }
+
+            // Se chegou aqui e há exatamente 1 candidato (ou consideramos todos -> 1),
+            // vincular automaticamente.
+            if (!withinRadius.isEmpty()) {
+                User escolhido = withinRadius.get(0);
+                Log.d(TAG, "buscarMentoresPorLocalidadePrimeiro: mentor escolhido automaticamente -> " + escolhido.getId());
+                // chama vincular — passa closeOnSuccess para decidir se fecha a tela
+                vincularMelhorMentor(ideia, escolhido, "Auto-match (localidade primeiro)");
+                return;
+            }
+
+            // Safety fallback
+            Log.d(TAG, "buscarMentoresPorLocalidadePrimeiro: fluxo inesperado, publicando sem mentor.");
+            _matchLoading.setValue(false);
+            publicarIdeiaSemMentor(ideia);
+        });
+    }
+
+    // --- Helper: calcular afinidade entre duas listas de areas ---
+    private int calcularAfinidade(@Nullable List<String> mentorAreas, @Nullable List<String> ideiaAreas) {
+        if (mentorAreas == null || ideiaAreas == null || mentorAreas.isEmpty() || ideiaAreas.isEmpty()) return 0;
+        java.util.Set<String> s1 = new java.util.HashSet<>();
+        for (String s : mentorAreas) if (s != null) s1.add(s.trim().toLowerCase());
+        int common = 0;
+        for (String s : ideiaAreas) {
+            if (s != null && s1.contains(s.trim().toLowerCase())) common++;
+        }
+        return common;
+    }
 
     private void buscarMentoresCompativeis(@NonNull Ideia ideia, @Nullable Location location) {
-        final List<String> areasDaIdeia = ideia.getAreasNecessarias() != null ? ideia.getAreasNecessarias() : new ArrayList<>();
+        Log.d(TAG, "Iniciando busca de mentores compatíveis...");
 
-        mentorRepository.findMentoresByAreas(areasDaIdeia, ideia.getOwnerId(), result -> {
-            if (result instanceof Result.Success && !((Result.Success<List<Mentor>>) result).data.isEmpty()) {
-                // SUCESSO: Encontrou mentores por área
-                List<Mentor> mentores = ((Result.Success<List<Mentor>>) result).data;
-                List<Mentor> ordenados = MentorMatchService.ordenarPorAfinidadeEProximidade(mentores, areasDaIdeia, location);
-                vincularMelhorMentor(ideia, ordenados.get(0), "Mentor encontrado por área.");
-            } else {
-                // FALHA: Não encontrou por área, parte para o Plano B (buscar todos).
-                buscarTodosOsMentores(ideia, location, areasDaIdeia);
+        _matchLoading.postValue(true);
+        _matchProgressMessage.postValue("Buscando mentores próximos à localização...");
+
+        List<String> areasDaIdeia = ideia.getAreasNecessarias() != null ?
+                ideia.getAreasNecessarias() : new ArrayList<>();
+
+        // 🔹 1. Busca todos os mentores registrados no Firestore
+        mentorRepository.getAllMentores(new ResultCallback<List<User>>() {
+            @Override
+            public void onResult(Result<List<User>> result) {
+                if (result instanceof Result.Success) {
+                    List<User> mentores = ((Result.Success<List<User>>) result).data;
+                    Log.d(TAG, "Total de mentores retornados: " + mentores.size());
+
+                    if (mentores == null || mentores.isEmpty()) {
+                        Log.w(TAG, "Nenhum mentor encontrado no Firestore.");
+                        publicarIdeiaSemMentor(ideia);
+                        return;
+                    }
+
+                    // 🔹 Filtra mentores válidos (ativos, públicos e não o dono da ideia)
+                    List<User> mentoresValidos = new ArrayList<>();
+                    for (User user : mentores) {
+                        if (user == null) continue;
+                        if (!user.isMentor()) continue;
+                        if (ideia.getOwnerId() != null && ideia.getOwnerId().equals(user.getId())) continue;
+
+                        Mentor mentorData = user.getMentorData();
+                        if (mentorData == null) continue;
+                        if (!mentorData.isActivePublic()) continue; // apenas mentores ativos
+
+                        mentoresValidos.add(user);
+                    }
+
+                    if (mentoresValidos.isEmpty()) {
+                        Log.w(TAG, "Nenhum mentor ativo e público disponível.");
+                        publicarIdeiaSemMentor(ideia);
+                        return;
+                    }
+
+                    // 🔹 Ordena por afinidade + proximidade
+                    List<User> ordenados = MentorMatchService.ordenarPorAfinidadeEProximidade(
+                            mentoresValidos,
+                            areasDaIdeia,
+                            location != null ? location : getIdeiaLocation(ideia)
+                    );
+
+                    if (ordenados.isEmpty()) {
+                        Log.w(TAG, "Nenhum mentor qualificado após ordenação.");
+                        publicarIdeiaSemMentor(ideia);
+                        return;
+                    }
+
+                    // 🔹 Escolhe o melhor candidato
+                    User melhor = ordenados.get(0);
+
+                    double distancia = MentorMatchService.calcularDistancia(
+                            melhor,
+                            location != null ? location : getIdeiaLocation(ideia)
+                    );
+
+                    String nomeMentor = (melhor.getNome() != null) ? melhor.getNome() : melhor.getId();
+                    if (distancia == -1) {
+                        Log.d(TAG, "Distância não calculada (mentor ou localização nula).");
+                    } else {
+                        Log.d(TAG, "Melhor mentor: " + nomeMentor + " (distância: " + String.format("%.2f", distancia) + "m)");
+                    }
+
+                    if (distancia < 100000) { // dentro de 100km
+                        vincularMelhorMentor(ideia, melhor, "Mentor encontrado por proximidade.");
+                    } else {
+                        Log.d(TAG, "Nenhum mentor suficientemente próximo. Tentando busca por áreas...");
+                        buscarMentoresPorArea(ideia, areasDaIdeia, location);
+                    }
+
+                } else if (result instanceof Result.Error) {
+                    Exception e = ((Result.Error<?>) result).error;
+                    Log.e(TAG, "Erro ao buscar mentores: " + (e != null ? e.getMessage() : "erro desconhecido"));
+                    publicarIdeiaSemMentor(ideia);
+                }
             }
         });
     }
 
-    private void buscarTodosOsMentores(@NonNull Ideia ideia, @Nullable Location location, @NonNull List<String> areasDaIdeia) {
-        // Se não tivermos a localização do usuário, não há como ordenar por proximidade.
-        if (location == null) {
-            // --- CORREÇÃO AQUI ---
-            // Antigo: finalizarBuscaComErro(...)
-            // Novo: Publica sem mentor, pois não podemos tentar o Plano B (proximidade).
-            Log.d(TAG, "buscarTodosOsMentores: Localização nula. Publicando sem mentor.");
-            publicarIdeiaSemMentor(ideia);
-            return;
-            // --- FIM DA CORREÇÃO ---
-        }
 
-        mentorRepository.getAllMentores(ideia.getOwnerId(), result -> {
+
+    /**
+     * Busca mentores por área (fallback quando não há proximidade).
+     */
+    private void buscarMentoresPorArea(@NonNull Ideia ideia, @NonNull List<String> areas, @Nullable Location location) {
+        _matchProgressMessage.postValue("Buscando mentores por áreas de interesse...");
+
+        mentorRepository.findMentoresByAreas(areas, ideia.getOwnerId(), result -> {
             if (result instanceof Result.Success && !((Result.Success<List<Mentor>>) result).data.isEmpty()) {
-                // SUCESSO: Encontrou todos os mentores
                 List<Mentor> mentores = ((Result.Success<List<Mentor>>) result).data;
-                // O serviço de match irá ordenar por afinidade (que será 0 para a maioria) e DEPOIS por proximidade.
-                List<Mentor> ordenados = MentorMatchService.ordenarPorAfinidadeEProximidade(mentores, areasDaIdeia, location);
-                vincularMelhorMentor(ideia, ordenados.get(0), "Mentor encontrado por proximidade.");
+
+                // 🔹 Converte cada Mentor para User (mantendo compatibilidade com o serviço de matching)
+                List<User> users = new ArrayList<>();
+                for (Mentor m : mentores) {
+                    if (m == null) continue;
+
+                    User u = new User();
+                    u.setId(m.getId()); // mesmo ID do mentor
+                    u.setMentorData(m); // anexa dados de localização, disponibilidade etc.
+                    users.add(u);
+                }
+
+                if (users.isEmpty()) {
+                    Log.w(TAG, "Nenhum mentor convertido para usuário. Abortando vinculação.");
+                    publicarIdeiaSemMentor(ideia);
+                    return;
+                }
+
+                // 🔹 Ordena por afinidade + proximidade
+                List<User> ordenados = MentorMatchService.ordenarPorAfinidadeEProximidade(
+                        users, areas, location
+                );
+
+                if (ordenados.isEmpty()) {
+                    Log.w(TAG, "Nenhum mentor qualificado após ordenação. Publicando sem mentor.");
+                    publicarIdeiaSemMentor(ideia);
+                    return;
+                }
+
+                // 🔹 Escolhe o melhor candidato (primeiro da lista)
+                User melhor = ordenados.get(0);
+                String nomeMentor = (melhor.getNome() != null) ? melhor.getNome() : melhor.getId();
+
+                Log.d(TAG, "Mentor selecionado por área: " + nomeMentor);
+
+                // 🔹 Vincula e prossegue com fluxo normal
+                vincularMelhorMentor(ideia, melhor, "Mentor encontrado por área.");
+
             } else {
-                // --- CORREÇÃO AQUI ---
-                // FALHA GERAL: Não encontrou nenhum mentor no banco de dados.
-                // Antigo: finalizarBuscaComErro("Nenhum mentor disponível foi encontrado...")
-                // Novo: Publica sem mentor.
-                Log.d(TAG, "buscarTodosOsMentores: Nenhum mentor encontrado. Publicando sem mentor.");
+                Log.w(TAG, "Nenhum mentor encontrado por área. Publicando sem mentor.");
                 publicarIdeiaSemMentor(ideia);
-                // --- FIM DA CORREÇÃO ---
             }
         });
     }
 
-    private void vincularMelhorMentor(Ideia ideia, Mentor mentor, String log) {
+
+    /**
+     * Recupera a localização armazenada na própria ideia.
+     */
+    @Nullable
+    private Location getIdeiaLocation(@NonNull Ideia ideia) {
+        if (ideia.getLatitude() == null || ideia.getLongitude() == null) return null;
+        Location l = new Location("ideia");
+        l.setLatitude(ideia.getLatitude());
+        l.setLongitude(ideia.getLongitude());
+        return l;
+    }
+
+
+    /**
+     * Encapsula a busca de mentores compatíveis (versão para re-match ou match inicial)
+     */
+    private void buscarMentoresCompativeis(@Nullable Location location, boolean isRematch) {
+        Ideia ideiaAtual = _ideia.getValue();
+        if (ideiaAtual == null) return;
+
+        _matchProgressMessage.postValue("Buscando mentores...");
+
+        List<String> areasDaIdeia = Objects.requireNonNull(ideia.getValue()).getAreasNecessarias() != null ?
+                ideia.getValue().getAreasNecessarias() : new ArrayList<>();
+
+
+        mentorRepository.getAllMentores(new ResultCallback<List<User>>() {
+            @Override
+            public void onResult(Result<List<User>> result) {
+                if (result instanceof Result.Success) {
+                    List<User> mentores = ((Result.Success<List<User>>) result).data;
+
+                    if (mentores == null || mentores.isEmpty()) {
+                        Log.w(TAG, "Nenhum mentor encontrado no Firestore.");
+                        publicarIdeiaSemMentor(Objects.requireNonNull(ideia.getValue()));
+                        return;
+                    }
+
+                    List<User> ordenados = MentorMatchService.ordenarPorAfinidadeEProximidade(
+                            mentores, areasDaIdeia, location != null ? location : getIdeiaLocation(Objects.requireNonNull(ideia.getValue()))
+                    );
+
+                    if (ordenados.isEmpty()) {
+                        publicarIdeiaSemMentor(Objects.requireNonNull(ideia.getValue()));
+                        return;
+                    }
+
+                    User melhor = ordenados.get(0);
+                    double distancia = MentorMatchService.calcularDistancia(melhor, location);
+
+                    if (distancia < 100000) {
+                        vincularMelhorMentor(ideia.getValue(), melhor, "Mentor encontrado por proximidade.");
+                    } else {
+                        buscarMentoresPorArea(ideia.getValue(), areasDaIdeia, location);
+                    }
+
+                } else if (result instanceof Result.Error) {
+                    Exception e = ((Result.Error<?>) result).error;
+                    Log.e(TAG, "Erro ao buscar mentores: " + (e != null ? e.getMessage() : "erro desconhecido"));
+                    publicarIdeiaSemMentor(Objects.requireNonNull(ideia.getValue()));
+                }
+            }
+        });
+    }
+
+    /**
+     * Salva a ideia com a localização atual (se houver) e inicia o processo de match.
+     */
+    public void publicarIdeiaComLocalizacaoAtualizada(@NonNull Context context, @NonNull Ideia ideia, @Nullable Location location) {
+        _isLoading.postValue(true);
+        _matchProgressMessage.postValue("Publicando ideia...");
+
+        Log.d(TAG, "Salvando ideia com localização antes do match...");
+
+        ideiaRepository.saveIdeia(ideia, result -> {
+            if (result instanceof Result.Success) {
+                Log.d(TAG, "Ideia salva com sucesso. Iniciando busca de mentores...");
+                _matchProgressMessage.postValue("Buscando mentores próximos...");
+
+                _matchProgressMessage.postValue("Selecionando localização...");
+                _matchLocationRequest.postValue(new Event<>(new MatchLocationChoiceRequest(
+                        ideia.getLocalizacao(), // localização da ideia, se houver
+                        location                // localização atual do usuário, se houver
+                )));
+
+            } else {
+                Exception e = ((Result.Error<?>) result).error;
+                Log.e(TAG, "Erro ao salvar ideia: " + (e != null ? e.getMessage() : "erro desconhecido"));
+                _toastEvent.postValue(new Event<>("Falha ao salvar a ideia antes da publicação."));
+                _isLoading.postValue(false);
+            }
+        });
+    }
+
+
+
+    /**
+     * Vincula um mentor à ideia e controla a UI conforme o tipo de match.
+     */
+    private void vincularMentor(Ideia ideia, User mentor, boolean isRematch) {
         ideia.setMentorId(mentor.getId());
         ideia.setStatus(Ideia.Status.EM_AVALIACAO);
-        // Não precisa notificar a UI aqui (_ideia.setValue), pois o listener do Firestore já fará isso
-        // quando a publicação for confirmada no banco, garantindo consistência.
 
         ideiaRepository.publicarIdeia(ideia.getId(), mentor.getId(), result -> {
             _isLoading.postValue(false);
+            _isRematching.postValue(false);
+
             if (result instanceof Result.Success) {
-                // O nome do mentor será atualizado pelo listener da ideia, que chama 'fetchMentorName'
-                _toastEvent.postValue(new Event<>("Mentor encontrado: " + mentor.getName()));
-                _closeScreenEvent.postValue(new Event<>(true));
+                _toastEvent.postValue(new Event<>("Mentor vinculado com sucesso: " + mentor.getNome()));
+
+                if (!isRematch) {
+                    // Match inicial: fecha a tela
+                    _closeScreenEvent.postValue(new Event<>(true));
+                }
             } else {
-                _toastEvent.postValue(new Event<>("Erro ao vincular o mentor. Tente novamente."));
+                _toastEvent.postValue(new Event<>("Erro ao vincular o mentor."));
+            }
+        });
+    }
+
+
+    private void buscarTodosOsMentores(@NonNull Ideia ideia, @Nullable Location location, @NonNull List<String> areasDaIdeia) {
+        _matchProgressMessage.postValue("Buscando mentores disponíveis...");
+        Log.d(TAG, "buscarTodosOsMentores: buscando sem filtro de área...");
+
+        userRepository.getMentores(result -> {
+            if (result instanceof Result.Success) {
+                List<User> mentores = ((Result.Success<List<User>>) result).data;
+                List<User> candidatos = new ArrayList<>();
+
+                for (User u : mentores) {
+                    if (u == null || !u.isMentor()) continue;
+                    if (ideia.getOwnerId() != null && ideia.getOwnerId().equals(u.getId())) continue;
+                    candidatos.add(u);
+                }
+
+                if (!candidatos.isEmpty()) {
+                    List<User> ordenados = MentorMatchService.ordenarPorAfinidadeEProximidade(candidatos, areasDaIdeia, location);
+                    _matchCandidatesEvent.postValue(new Event<>(ordenados));
+                    _matchProgressMessage.postValue("Mentores sugeridos por proximidade.");
+                    _matchLoading.postValue(false);
+                    return;
+                }
+            }
+
+            Log.w(TAG, "Nenhum mentor encontrado. Publicando sem mentor.");
+            publicarIdeiaSemMentor(ideia);
+        });
+    }
+
+    private void vincularMelhorMentor(Ideia ideia, @NonNull User userMentor, @NonNull String origemLog) {
+        Log.d(TAG, "vincularMelhorMentor: tentativa de vincular userMentorId=" + userMentor.getId() + " origem=" + origemLog);
+        if (userMentor.getId() == null || userMentor.getId().equals(ideia.getOwnerId())) {
+            Log.w(TAG, "vincularMelhorMentor: abortando - mentor inválido ou é o próprio autor.");
+            publicarIdeiaSemMentor(ideia);
+            return;
+        }
+
+        ideia.setMentorId(userMentor.getId());
+        ideia.setStatus(Ideia.Status.EM_AVALIACAO);
+
+        // show progress
+        _matchLoading.setValue(true);
+        _matchProgressMessage.setValue("Vinculando mentor...");
+
+        ideiaRepository.publicarIdeia(ideia.getId(), userMentor.getId(), result -> {
+            _matchLoading.postValue(false);
+            if (result instanceof Result.Success) {
+                Log.i(TAG, "vincularMelhorMentor: sucesso ao vincular mentor " + userMentor.getId());
+                _matchResultEvent.postValue(new Event<>(new MatchResult(true, "Mentor vinculado: " + (userMentor.getNome() != null ? userMentor.getNome() : userMentor.getId()))));
+                // se closeOnSuccess == true, UI pode observar matchResultEvent e fechar a tela.
+                _matchResultEvent.postValue(new Event<>(new MatchResult(true, "Mentor vinculado!")));
+            } else {
+                Exception e = ((Result.Error<Void>) result).error;
+                Log.e(TAG, "vincularMelhorMentor: erro ao vincular mentor -> " + (e != null ? e.getMessage() : "null"));
+                _matchResultEvent.postValue(new Event<>(new MatchResult(false, "Erro ao vincular mentor.")));
             }
         });
     }
@@ -640,18 +1142,17 @@ public class CanvasIdeiaViewModel extends ViewModel {
      */
     private void publicarIdeiaSemMentor(Ideia ideia) {
         ideia.setStatus(Ideia.Status.EM_AVALIACAO);
-        // O mentorId já é nulo, então não precisamos definir.
+        ideia.setMentorId(null);
 
-        // Chama o repositório com mentorId nulo
+        _matchProgressMessage.postValue("Publicando ideia sem mentor...");
+        Log.d(TAG, "publicarIdeiaSemMentor: Publicando...");
+
         ideiaRepository.publicarIdeia(ideia.getId(), null, result -> {
-            _isLoading.postValue(false);
+            _matchLoading.postValue(false);
             if (result instanceof Result.Success) {
-                // Sucesso: Ideia publicada, evento para fechar a tela.
-                _toastEvent.postValue(new Event<>("Ideia publicada! Você pode buscar um mentor mais tarde."));
-                _closeScreenEvent.postValue(new Event<>(true));
+                _toastEvent.postValue(new Event<>("Ideia publicada! Nenhum mentor encontrado."));
             } else {
-                // Erro ao tentar publicar
-                _toastEvent.postValue(new Event<>("Erro ao publicar a ideia. Tente novamente."));
+                _toastEvent.postValue(new Event<>("Erro ao publicar ideia."));
             }
         });
     }
@@ -662,11 +1163,7 @@ public class CanvasIdeiaViewModel extends ViewModel {
      */
     public boolean isCurrentUserTheMentor() {
         Ideia ideiaAtual = _ideia.getValue();
-        // Retorna falso se a ideia não estiver carregada ou se não tiver mentor
-        if (ideiaAtual == null || ideiaAtual.getMentorId() == null) {
-            return false;
-        }
-        // Delega a verificação para o AuthRepository
+        if (ideiaAtual == null || ideiaAtual.getMentorId() == null) return false;
         return authRepository.isCurrentUser(ideiaAtual.getMentorId());
     }
 
@@ -838,6 +1335,66 @@ public class CanvasIdeiaViewModel extends ViewModel {
             }
         });
     }
+
+    public void confirmarEscolhaDeMentor(@NonNull User userMentor, boolean fecharTela) {
+        Ideia ideiaAtual = _ideia.getValue();
+        if (ideiaAtual == null) {
+            _toastEvent.postValue(new Event<>("Erro: Nenhuma ideia carregada."));
+            return;
+        }
+
+        Log.d(TAG, "confirmarEscolhaDeMentor: Vinculando mentor " + userMentor.getId());
+        _matchLoading.postValue(true);
+        _matchProgressMessage.postValue("Vinculando mentor à ideia...");
+
+        if (userMentor.getId().equals(ideiaAtual.getOwnerId())) {
+            Log.w(TAG, "Mentor é o próprio dono da ideia. Abortando vínculo.");
+            publicarIdeiaSemMentor(ideiaAtual);
+            return;
+        }
+
+        ideiaAtual.setMentorId(userMentor.getId());
+        ideiaAtual.setStatus(Ideia.Status.EM_AVALIACAO);
+
+        ideiaRepository.publicarIdeia(ideiaAtual.getId(), userMentor.getId(), result -> {
+            _matchLoading.postValue(false);
+            if (result instanceof Result.Success) {
+                Log.i(TAG, "Mentor vinculado com sucesso: " + userMentor.getNome());
+                _toastEvent.postValue(new Event<>("Mentor encontrado: " + userMentor.getNome()));
+                if (fecharTela) _closeScreenEvent.postValue(new Event<>(true));
+            } else {
+                Log.e(TAG, "Erro ao vincular mentor.", ((Result.Error<Void>) result).error);
+                _toastEvent.postValue(new Event<>("Erro ao vincular o mentor. Tente novamente."));
+            }
+        });
+    }
+
+    /**
+     * Inicia o processo de re-match de mentor sem fechar a tela.
+     */
+    public void iniciarReMatch(@NonNull Context context, @Nullable Location location) {
+        Log.d(TAG, "Iniciando re-match...");
+        _isRematching.postValue(true);
+        _rematchMessage.postValue("Buscando novos mentores compatíveis...");
+
+        // Simula progressão visual
+        handler.postDelayed(() -> _rematchMessage.postValue("Analisando áreas de atuação..."), 2000);
+        handler.postDelayed(() -> _rematchMessage.postValue("Avaliando proximidade geográfica..."), 4000);
+        handler.postDelayed(() -> _rematchMessage.postValue("Finalizando correspondência..."), 6000);
+
+        // Chama o mesmo método de busca, mas sem fechar a tela no final
+        buscarMentoresCompativeis(location, true);
+    }
+
+    /**
+     * Cancela o re-match se estiver em andamento.
+     */
+    public void cancelarReMatch() {
+        Log.d(TAG, "Re-match cancelado pelo usuário.");
+        _isRematching.postValue(false);
+        _rematchMessage.postValue("Busca cancelada.");
+    }
+
 
     @Override
     protected void onCleared() {

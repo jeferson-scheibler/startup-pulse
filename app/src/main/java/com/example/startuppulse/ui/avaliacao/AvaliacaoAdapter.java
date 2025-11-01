@@ -11,7 +11,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.startuppulse.R;
-import com.example.startuppulse.data.Avaliacao;
+import com.example.startuppulse.data.models.Avaliacao;
 import com.google.android.material.slider.Slider;
 
 import java.util.ArrayList;

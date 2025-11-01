@@ -10,8 +10,6 @@ import com.example.startuppulse.data.repositories.IMentorRepository; // MUDADO: 
 import com.example.startuppulse.data.repositories.IUserRepository; // ADICIONADO
 import com.example.startuppulse.data.models.Mentor;
 import com.example.startuppulse.data.models.User; // ADICIONADO
-import com.example.startuppulse.data.ResultCallback;
-import com.google.firebase.auth.FirebaseUser;
 
 import javax.inject.Inject;
 import dagger.hilt.android.lifecycle.HiltViewModel;

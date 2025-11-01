@@ -259,4 +259,11 @@
         <item name="android:layout_marginEnd">4dp</item>
     </style>
 
+    <style name="TransparentDialog" parent="Theme.AppCompat.DayNight">
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+
 </resources>

@@ -1,9 +1,6 @@
 package com.example.startuppulse.data.models;
 
-import com.example.startuppulse.data.Avaliacao;
-import com.example.startuppulse.data.MembroEquipe;
-import com.example.startuppulse.data.Metrica;
-import com.example.startuppulse.data.PostIt;
+import com.google.firebase.firestore.Exclude;
 import com.google.firebase.firestore.ServerTimestamp;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -37,6 +34,9 @@ public class Ideia implements Serializable {
     private List<String> areasNecessarias;
     private String matchmakingLog;
     private Status status;
+    private Double latitude;
+    private Double longitude;
+    private String localizacaoTexto;
 
     @ServerTimestamp
     private Date timestamp;
@@ -80,6 +80,15 @@ public class Ideia implements Serializable {
     public void setOwnerId(String ownerId) { this.ownerId = ownerId; }
     public String getAutorNome() { return autorNome; }
     public void setAutorNome(String autorNome) { this.autorNome = autorNome; }
+
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
+
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
+
+    public String getLocalizacaoTexto() { return localizacaoTexto; }
+    public void setLocalizacaoTexto(String localizacaoTexto) { this.localizacaoTexto = localizacaoTexto; }
     public boolean isAutorIsPremium() { return autorIsPremium; }
     public void setAutorIsPremium(boolean autorIsPremium) { this.autorIsPremium = autorIsPremium; }
     public String getMentorId() { return mentorId; }
@@ -144,4 +153,15 @@ public class Ideia implements Serializable {
     public void setTotalVotosComunidade(int totalVotosComunidade) {
         this.totalVotosComunidade = totalVotosComunidade;
     }
+
+    // --- Helper para converter latitude/longitude em objeto Location ---
+    @Exclude // se quiser evitar salvar isso no Firestore
+    public android.location.Location getLocalizacao() {
+        if (latitude == null || longitude == null) return null;
+        android.location.Location loc = new android.location.Location("ideia");
+        loc.setLatitude(latitude);
+        loc.setLongitude(longitude);
+        return loc;
+    }
+
 }

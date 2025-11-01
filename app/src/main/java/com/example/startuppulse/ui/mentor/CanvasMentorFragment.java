@@ -5,7 +5,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
-import android.widget.AutoCompleteTextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -16,13 +15,10 @@ import androidx.navigation.fragment.NavHostFragment;
 
 import com.example.startuppulse.R;
 import com.example.startuppulse.common.Result;
-import com.example.startuppulse.data.Cidade;
-import com.example.startuppulse.data.Estado;
-import com.example.startuppulse.data.models.Mentor;
-import com.example.startuppulse.data.models.User;
+import com.example.startuppulse.data.models.Cidade;
+import com.example.startuppulse.data.models.Estado;
 import com.example.startuppulse.databinding.FragmentCanvasMentorBinding;
 import com.google.android.material.chip.Chip;
-import com.google.android.material.textfield.TextInputLayout;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -187,6 +183,7 @@ public class CanvasMentorFragment extends Fragment {
         // Validação (Bio é opcional)
         // String bio = binding.editTextBio.getText().toString().trim(); // Descomente se adicionar o campo
         String bio = ""; // Passe uma bio vazia por enquanto
+
 
         if (profissao.isEmpty()) {
             binding.editTextProfissao.setError("Campo obrigatório");

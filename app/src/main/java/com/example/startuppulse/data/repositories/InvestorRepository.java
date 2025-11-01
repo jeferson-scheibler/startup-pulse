@@ -2,8 +2,8 @@ package com.example.startuppulse.data.repositories;
 
 import com.example.startuppulse.common.Result;
 import com.example.startuppulse.data.models.Investor;
-import com.example.startuppulse.data.ResultCallback;
-import com.google.firebase.firestore.FirebaseFirestore;
+import com.example.startuppulse.common.ResultCallback;
+
 import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
