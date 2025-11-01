@@ -35,7 +35,7 @@
                 android:layout_height="wrap_content"
                 app:cardElevation="4dp"
                 app:cardUseCompatPadding="true"
-                app:cardBackgroundColor="?attr/colorPrimaryContainer">
+                app:cardBackgroundColor="@color/black_translucent">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -61,23 +61,25 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:textAppearance="@style/Text.TitleMedium"
-                            android:textColor="?attr/colorPrimary"
+                            android:textColor="@color/colorPrimary"
                             android:textStyle="bold"
                             app:layout_constraintEnd_toEndOf="parent"
                             app:layout_constraintTop_toTopOf="parent"
                             tools:text="75%" />
 
-                        <ProgressBar
+                        <com.google.android.material.progressindicator.LinearProgressIndicator
                             android:id="@+id/progress_readiness"
-                            style="?android:attr/progressBarStyleHorizontal"
                             android:layout_width="0dp"
-                            android:layout_height="8dp"
-                            android:layout_marginTop="8dp"
-                            android:progressDrawable="@drawable/progress_bar_circular"
-                            app:layout_constraintEnd_toEndOf="parent"
+                            android:layout_height="12dp"
+                            android:layout_marginTop="12dp"
+                            app:trackCornerRadius="8dp"
+                            app:indicatorColor="@color/green_success"
+                            app:trackColor="@color/colorOnSurfaceVariant"
+                            app:indicatorDirectionCircular="clockwise"
                             app:layout_constraintStart_toStartOf="parent"
-                            app:layout_constraintTop_toBottomOf="@+id/textView"
-                            tools:progress="75" />
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintTop_toBottomOf="@id/textView"/>
+
 
                     </androidx.constraintlayout.widget.ConstraintLayout>
 

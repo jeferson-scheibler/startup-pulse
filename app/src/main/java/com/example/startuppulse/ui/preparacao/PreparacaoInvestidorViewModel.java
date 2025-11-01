@@ -1,12 +1,18 @@
 package com.example.startuppulse.ui.preparacao;
 
 import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
+
+import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.SavedStateHandle;
 import androidx.lifecycle.ViewModel;
 
-import com.example.startuppulse.ReadinessCalculator;
+import com.example.startuppulse.data.models.User;
+import com.example.startuppulse.data.repositories.AuthRepository;
+import com.example.startuppulse.domain.usercase.ReadinessCalculator;
 import com.example.startuppulse.ReadinessData;
 import com.example.startuppulse.data.models.Ideia;
 import com.example.startuppulse.data.repositories.IdeiaRepository;
@@ -23,6 +29,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel;
 public class PreparacaoInvestidorViewModel extends ViewModel {
 
     private final IdeiaRepository ideiaRepository;
+    private final AuthRepository authRepository;
     private final String ideiaId;
 
     // LiveData para o estado da UI
@@ -42,37 +49,94 @@ public class PreparacaoInvestidorViewModel extends ViewModel {
     private final MutableLiveData<ReadinessData> _readinessData = new MutableLiveData<>();
     public final LiveData<ReadinessData> readinessData = _readinessData;
 
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private Runnable saveRunnable;
+
+    private User cachedUserProfile = null;
+    private Ideia cachedIdeia = null;
+
 
     @Inject
-    public PreparacaoInvestidorViewModel(IdeiaRepository ideiaRepository, SavedStateHandle savedStateHandle) {
+    public PreparacaoInvestidorViewModel(IdeiaRepository ideiaRepository, AuthRepository authRepository, SavedStateHandle savedStateHandle) {
         this.ideiaRepository = ideiaRepository;
+        this.authRepository = authRepository;
         this.ideiaId = savedStateHandle.get("ideiaId");
         loadIdeia();
     }
 
     private void loadIdeia() {
-        if (ideiaId == null) {
-            _toastEvent.setValue(new Event<>("Erro: ID da Ideia não encontrado."));
-            return;
-        }
         _isLoading.setValue(true);
         ideiaRepository.getIdeiaById(ideiaId, result -> {
             _isLoading.setValue(false);
             if (result instanceof Result.Success) {
-                Ideia loadedIdeia = ((Result.Success<Ideia>) result).data;
-                _ideia.setValue(loadedIdeia);
-                // Calcula o score assim que a ideia é carregada
-                calculateReadiness(loadedIdeia);
+                cachedIdeia = ((Result.Success<Ideia>) result).data;
+                tryMergeOwnerAndIdeia();
             } else {
                 _toastEvent.setValue(new Event<>("Falha ao carregar dados da ideia."));
             }
         });
+
+        authRepository.fetchCurrentUserProfile(result -> {
+            if (result instanceof Result.Success) {
+                cachedUserProfile = ((Result.Success<User>) result).data;
+                tryMergeOwnerAndIdeia();
+            }
+        });
     }
 
-    // NOVO: Método para centralizar a atualização da ideia e o recálculo do score
+    private void tryMergeOwnerAndIdeia() {
+        if (cachedIdeia != null && cachedUserProfile != null) {
+            ensureOwnerInEquipe(cachedIdeia, cachedUserProfile);
+            _ideia.setValue(cachedIdeia);
+            calculateReadiness(cachedIdeia);
+        }
+    }
+
+    private void ensureOwnerInEquipe(Ideia ideia, @Nullable User currentUser) {
+        if (ideia == null) return;
+
+        String currentUserId = authRepository.getCurrentUserId();
+        if (currentUserId == null) return;
+
+        List<MembroEquipe> equipe = ideia.getEquipe() != null ? ideia.getEquipe() : new ArrayList<>();
+
+        boolean exists = false;
+        for (MembroEquipe membro : equipe) {
+            if (currentUserId.equals(membro.getUserId())) {
+                exists = true;
+                break;
+            }
+        }
+
+        if (!exists) {
+            String nome = currentUser != null && currentUser.getNome() != null ? currentUser.getNome() : "Fundador";
+            String linkedin = currentUser != null && currentUser.getLinkedinUrl() != null ? currentUser.getLinkedinUrl() : "";
+
+            MembroEquipe dono = new MembroEquipe(nome, "Fundador(a) / Criador(a)", linkedin, currentUserId);
+
+            equipe.add(0, dono);
+            ideia.setEquipe(equipe);
+
+            // Salva uma única vez
+            ideiaRepository.updateIdeia(ideia, r -> {
+                if (r instanceof Result.Error) {
+                    _toastEvent.postValue(new Event<>("Erro ao incluir o fundador na equipe."));
+                }
+            });
+        }
+    }
+
+
+
     private void updateIdeiaAndRecalculate(Ideia ideia) {
         _ideia.setValue(ideia);
         calculateReadiness(ideia);
+    }
+
+    public void onMetricaEditada() {
+        if (saveRunnable != null) handler.removeCallbacks(saveRunnable);
+        saveRunnable = () -> salvarDados(false); // salvar silencioso
+        handler.postDelayed(saveRunnable, 1500);
     }
 
     // NOVO: Método que chama a classe de cálculo e atualiza o LiveData
@@ -126,22 +190,25 @@ public class PreparacaoInvestidorViewModel extends ViewModel {
 
     public void uploadPitchDeck(Uri fileUri) {
         _isLoading.setValue(true);
-        ideiaRepository.uploadPitchDeck(ideiaId, fileUri, result -> {
+        String userId = ideiaRepository.getCurrentUserId();
+        ideiaRepository.uploadPitchDeck(ideiaId, userId, fileUri, result -> {
             if (result instanceof Result.Success) {
                 String downloadUrl = ((Result.Success<String>) result).data;
                 Ideia currentIdeia = _ideia.getValue();
                 if (currentIdeia != null) {
                     currentIdeia.setPitchDeckUrl(downloadUrl);
-                    updateIdeiaAndRecalculate(currentIdeia); // ATUALIZADO
+                    updateIdeiaAndRecalculate(currentIdeia);
                 }
                 _toastEvent.setValue(new Event<>("Upload do Pitch Deck concluído!"));
-                salvarDados(false); // Salva a URL no documento da ideia
+                salvarDados(false);
             } else {
                 _isLoading.setValue(false);
-                _toastEvent.setValue(new Event<>("Falha no upload: " + ((Result.Error)result).error.getMessage()));
+                _toastEvent.setValue(new Event<>("Falha no upload: " +
+                        ((Result.Error<?>) result).error.getMessage()));
             }
         });
     }
+
 
     private void salvarDados(boolean finalizando) {
         Ideia currentIdeia = _ideia.getValue();

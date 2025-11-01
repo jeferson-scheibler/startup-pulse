@@ -4,7 +4,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.example.startuppulse.ReadinessCalculator;
+import com.example.startuppulse.domain.usercase.ReadinessCalculator;
 import com.example.startuppulse.ReadinessData;
 import com.example.startuppulse.common.Result;
 import com.example.startuppulse.data.repositories.AuthRepository;

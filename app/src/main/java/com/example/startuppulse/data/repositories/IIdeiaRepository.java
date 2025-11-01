@@ -124,7 +124,7 @@ public interface IIdeiaRepository {
      * Envia o arquivo de pitch deck para o armazenamento.
      * Retorna a URL pública após o upload.
      */
-    void uploadPitchDeck(@NonNull String ideiaId, @NonNull Uri fileUri, @NonNull ResultCallback<String> callback);
+    void uploadPitchDeck(@NonNull String ideiaId, @NonNull String userId, @NonNull Uri fileUri, @NonNull ResultCallback<String> callback);
 
     // ------------------------------
     // Manipulação de Post-Its

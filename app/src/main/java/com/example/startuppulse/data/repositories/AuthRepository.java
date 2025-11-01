@@ -35,6 +35,7 @@ public class AuthRepository implements IAuthRepository{
     private static final String TAG = "AuthRepository";
     private final FirebaseFirestore firestore;
     private final FirebaseAuth firebaseAuth;
+    private User cachedUser;
 
     @Inject
     public AuthRepository(FirebaseFirestore firestore, FirebaseAuth firebaseAuth) {
@@ -63,6 +64,16 @@ public class AuthRepository implements IAuthRepository{
     public String getCurrentUserId() {
         FirebaseUser user = getCurrentUser();
         return (user != null) ? user.getUid() : null;
+    }
+
+    @Nullable
+    public String getCurrentUserName() {
+        return cachedUser != null ? cachedUser.getNome() : null;
+    }
+
+    @Nullable
+    public String getCurrentUserLinkedin() {
+        return cachedUser != null ? cachedUser.getLinkedinUrl() : null;
     }
 
     @Override
@@ -187,6 +198,30 @@ public class AuthRepository implements IAuthRepository{
             Log.e(TAG, "getUserProfile: Falha ao buscar dados básicos do usuário.", eUser);
             callback.onResult(new Result.Error<>(eUser));
         });
+    }
+
+    public void fetchCurrentUserProfile(ResultCallback<User> callback) {
+        String userId = getCurrentUserId();
+        if (userId == null) {
+            callback.onResult(new Result.Error<>(new Exception("Usuário não autenticado")));
+            return;
+        }
+
+        firestore.collection("usuarios")
+                .document(userId)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    if (doc.exists()) {
+                        cachedUser = doc.toObject(User.class);
+                        callback.onResult(new Result.Success<>(cachedUser));
+                    } else {
+                        callback.onResult(new Result.Error<>(new Exception("Perfil não encontrado")));
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Erro ao buscar perfil no Firestore", e);
+                    callback.onResult(new Result.Error<>(e));
+                });
     }
 
     /**

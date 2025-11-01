@@ -21,6 +21,9 @@ import com.google.firebase.firestore.SetOptions;
 import com.google.firebase.firestore.WriteBatch;
 import com.google.firebase.functions.FirebaseFunctions;
 import com.google.firebase.functions.HttpsCallableResult;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -298,10 +301,36 @@ public class IdeiaRepository implements IIdeiaRepository {
     // ============================================================
 
     @Override
-    public void uploadPitchDeck(@NonNull String ideiaId, @NonNull Uri fileUri, @NonNull ResultCallback<String> callback) {
-        String fileName = "pitch_" + UUID.randomUUID().toString();
-        storageRepository.uploadFile(PITCH_DECKS_FOLDER + "/" + ideiaId, fileName, fileUri, callback);
+    public void uploadPitchDeck(@NonNull String ideiaId,
+                                @NonNull String userId,
+                                @NonNull Uri fileUri,
+                                @NonNull ResultCallback<String> callback) {
+
+        String path = "pitch_decks/" + userId + "/" + ideiaId + "_pitch_deck.pdf";
+        StorageReference storageRef = FirebaseStorage.getInstance().getReference().child(path);
+
+        UploadTask uploadTask = storageRef.putFile(fileUri);
+
+        uploadTask
+                .addOnProgressListener(taskSnapshot -> {
+                    // Opcional: monitoramento de progresso se precisar exibir na UI
+                })
+                .addOnSuccessListener(taskSnapshot -> {
+                    // Após o upload, obtemos a URL de download
+                    storageRef.getDownloadUrl()
+                            .addOnSuccessListener(uri ->
+                                    callback.onResult(new Result.Success<>(uri.toString()))
+                            )
+                            .addOnFailureListener(error ->
+                                    callback.onResult(new Result.Error<>(error))
+                            );
+                })
+                .addOnFailureListener(error -> {
+                    callback.onResult(new Result.Error<>(error));
+                });
     }
+
+    
 
     // ============================================================
     // PÚBLICAÇÃO, AVALIAÇÃO E POST-ITS
