@@ -1,6 +1,8 @@
 package com.example.startuppulse.ui.preparacao;
 
 import android.annotation.SuppressLint;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -21,17 +23,20 @@ import java.util.function.Consumer;
 
 public class MetricasEditAdapter extends ListAdapter<Metrica, MetricasEditAdapter.MetricaViewHolder> {
 
+    private final Consumer<Void> onMetricaEditadaCallback;
     private final Consumer<Metrica> onRemoveCallback;
 
-    public MetricasEditAdapter(Consumer<Metrica> onRemoveCallback) {
+    public MetricasEditAdapter(Consumer<Metrica> onRemoveCallback, Consumer<Void> onMetricaEditadaCallback) {
         super(DIFF_CALLBACK);
         this.onRemoveCallback = onRemoveCallback;
+        this.onMetricaEditadaCallback = onMetricaEditadaCallback;
     }
 
     @NonNull
     @Override
     public MetricaViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_metrica_edit, parent, false);
+        View view = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.item_metrica_edit, parent, false);
         return new MetricaViewHolder(view);
     }
 
@@ -43,7 +48,6 @@ public class MetricasEditAdapter extends ListAdapter<Metrica, MetricasEditAdapte
     class MetricaViewHolder extends RecyclerView.ViewHolder {
         TextInputEditText nomeMetrica, valorMetrica;
         ImageButton btnRemover;
-        // NOVO: TextWatchers para evitar que sejam recriados a cada bind
         private TextWatcher nomeWatcher;
         private TextWatcher valorWatcher;
 
@@ -55,44 +59,23 @@ public class MetricasEditAdapter extends ListAdapter<Metrica, MetricasEditAdapte
         }
 
         public void bind(Metrica metrica) {
-            // Remove os listeners antigos para evitar chamadas recursivas ou com dados errados
-            if (nomeWatcher != null) {
-                nomeMetrica.removeTextChangedListener(nomeWatcher);
-            }
-            if (valorWatcher != null) {
-                valorMetrica.removeTextChangedListener(valorWatcher);
-            }
+            if (nomeWatcher != null) nomeMetrica.removeTextChangedListener(nomeWatcher);
+            if (valorWatcher != null) valorMetrica.removeTextChangedListener(valorWatcher);
 
             nomeMetrica.setText(metrica.getNome());
-            // --- CORREÇÃO: Converte o valor para String de forma segura ---
             valorMetrica.setText(String.valueOf(metrica.getValor()));
 
-            // --- NOVO: Lógica para salvar os dados enquanto o usuário digita ---
-            nomeWatcher = new TextWatcher() {
-                @Override
-                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-                @Override
-                public void onTextChanged(CharSequence s, int start, int before, int count) {
-                    // Atualiza o objeto Metrica na lista
-                    getItem(getAdapterPosition()).setNome(s.toString());
-                }
-                @Override
-                public void afterTextChanged(Editable s) {}
-            };
+            nomeWatcher = new SimpleTextWatcher(s -> {
+                metrica.setNome(s.toString());
+                onMetricaEditadaCallback.accept(null);
+            });
 
-            valorWatcher = new TextWatcher() {
-                @Override
-                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-                @Override
-                public void onTextChanged(CharSequence s, int start, int before, int count) {
-                    // Atualiza o objeto Metrica na lista
-                    getItem(getAdapterPosition()).setValor(Double.parseDouble(s.toString()));
-                }
-                @Override
-                public void afterTextChanged(Editable s) {}
-            };
+            valorWatcher = new SimpleTextWatcher(s -> {
+                try { metrica.setValor(Double.parseDouble(s.toString())); }
+                catch (Exception ignored) {}
+                onMetricaEditadaCallback.accept(null);
+            });
 
-            // Adiciona os novos listeners
             nomeMetrica.addTextChangedListener(nomeWatcher);
             valorMetrica.addTextChangedListener(valorWatcher);
 
@@ -102,6 +85,25 @@ public class MetricasEditAdapter extends ListAdapter<Metrica, MetricasEditAdapte
                 }
             });
         }
+    }
+
+    static class SimpleTextWatcher implements TextWatcher {
+        private final Consumer<CharSequence> consumer;
+
+        public SimpleTextWatcher(Consumer<CharSequence> consumer) {
+            this.consumer = consumer;
+        }
+
+        @Override
+        public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+        @Override
+        public void onTextChanged(CharSequence s, int start, int before, int count) {
+            consumer.accept(s);
+        }
+
+        @Override
+        public void afterTextChanged(Editable s) {}
     }
 
     private static final DiffUtil.ItemCallback<Metrica> DIFF_CALLBACK = new DiffUtil.ItemCallback<Metrica>() {

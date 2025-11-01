@@ -11,38 +11,36 @@ import java.util.UUID;
  */
 public class MembroEquipe implements Serializable {
 
-    // MODIFICAÇÃO 1: Adicionar um ID único e estável.
-    // Isso é crucial para o DiffUtil saber se um item é o mesmo, mesmo que seus dados mudem.
     private String id;
-
     private String nome;
-    private String funcao; // Ex: "CEO & Co-founder", "CTO", "Lead Designer"
+    private String funcao;
     private String linkedinUrl;
-    private String fotoUrl; // Opcional
+    private String fotoUrl;
+    private String userId; // ADICIONADO: relaciona o membro ao usuário do Firebase Auth
 
     public MembroEquipe() {
-        // Construtor vazio para o Firestore. Gera um ID se não houver um.
         if (this.id == null) {
             this.id = UUID.randomUUID().toString();
         }
     }
 
-    /**
-     * MODIFICAÇÃO 2: Construtor corrigido e completo.
-     * @param nome Nome do membro.
-     * @param funcao Função do membro.
-     * @param linkedinUrl URL do perfil no LinkedIn.
-     */
     public MembroEquipe(String nome, String funcao, String linkedinUrl) {
-        this.id = UUID.randomUUID().toString(); // Garante que cada novo membro tenha um ID único.
+        this(); // Garante que o ID esteja definido
         this.nome = nome;
         this.funcao = funcao;
         this.linkedinUrl = linkedinUrl;
     }
 
+    /**
+     * Construtor com userId (recomendado quando o membro é um usuário real)
+     */
+    public MembroEquipe(String nome, String funcao, String linkedinUrl, String userId) {
+        this(nome, funcao, linkedinUrl);
+        this.userId = userId;
+    }
+
     // --- Getters e Setters ---
     public String getId() { return id; }
-    // O ID é interno e não deve ser alterado publicamente, então não há setId().
 
     public String getNome() { return nome; }
     public void setNome(String nome) { this.nome = nome; }
@@ -56,12 +54,9 @@ public class MembroEquipe implements Serializable {
     public String getFotoUrl() { return fotoUrl; }
     public void setFotoUrl(String fotoUrl) { this.fotoUrl = fotoUrl; }
 
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
 
-    /**
-     * MODIFICAÇÃO 3: Implementação de equals() e hashCode().
-     * Essencial para o DiffUtil.areContentsTheSame() e para o comportamento
-     * correto em coleções como HashSets e HashMaps.
-     */
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -71,11 +66,12 @@ public class MembroEquipe implements Serializable {
                 Objects.equals(nome, that.nome) &&
                 Objects.equals(funcao, that.funcao) &&
                 Objects.equals(linkedinUrl, that.linkedinUrl) &&
-                Objects.equals(fotoUrl, that.fotoUrl);
+                Objects.equals(fotoUrl, that.fotoUrl) &&
+                Objects.equals(userId, that.userId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, nome, funcao, linkedinUrl, fotoUrl);
+        return Objects.hash(id, nome, funcao, linkedinUrl, fotoUrl, userId);
     }
 }

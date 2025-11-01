@@ -1,5 +1,6 @@
 package com.example.startuppulse;
 
+import android.content.res.ColorStateList;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
@@ -7,6 +8,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.Toast;
+
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
@@ -22,7 +24,9 @@ import com.example.startuppulse.ui.preparacao.MetricasEditAdapter;
 import com.example.startuppulse.ui.preparacao.PreparacaoInvestidorViewModel;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
+
 import java.util.ArrayList;
+
 import dagger.hilt.android.AndroidEntryPoint;
 
 @AndroidEntryPoint
@@ -33,6 +37,7 @@ public class PreparacaoInvestidorFragment extends Fragment {
     private EquipeEditAdapter equipeAdapter;
     private MetricasEditAdapter metricasAdapter;
 
+    // Launcher para selecionar o arquivo Pitch Deck
     private final ActivityResultLauncher<String> filePickerLauncher = registerForActivityResult(
             new ActivityResultContracts.GetContent(),
             uri -> {
@@ -63,12 +68,14 @@ public class PreparacaoInvestidorFragment extends Fragment {
     }
 
     private void setupRecyclerViews() {
-        // --- MELHORIA: Removido o `new ArrayList<>()` desnecessário para ListAdapter ---
         equipeAdapter = new EquipeEditAdapter(membro -> viewModel.removerMembro(membro));
         binding.recyclerEquipe.setLayoutManager(new LinearLayoutManager(getContext()));
         binding.recyclerEquipe.setAdapter(equipeAdapter);
 
-        metricasAdapter = new MetricasEditAdapter(metrica -> viewModel.removerMetrica(metrica));
+        metricasAdapter = new MetricasEditAdapter(
+                metrica -> viewModel.removerMetrica(metrica),
+                unused -> viewModel.onMetricaEditada()
+        );
         binding.recyclerMetricas.setLayoutManager(new LinearLayoutManager(getContext()));
         binding.recyclerMetricas.setAdapter(metricasAdapter);
     }
@@ -84,25 +91,19 @@ public class PreparacaoInvestidorFragment extends Fragment {
         viewModel.ideia.observe(getViewLifecycleOwner(), ideia -> {
             if (ideia == null) return;
 
-            // Usar submitList é a maneira correta para ListAdapter
             equipeAdapter.submitList(ideia.getEquipe() != null ? new ArrayList<>(ideia.getEquipe()) : new ArrayList<>());
             metricasAdapter.submitList(ideia.getMetricas() != null ? new ArrayList<>(ideia.getMetricas()) : new ArrayList<>());
 
-            if (!TextUtils.isEmpty(ideia.getPitchDeckUrl())) {
-                binding.textPitchDeckStatus.setText("Arquivo anexado com sucesso!");
-                binding.textPitchDeckStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.green_success));
-            } else {
-                binding.textPitchDeckStatus.setText("Nenhum arquivo anexado.");
-                binding.textPitchDeckStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.delete_red));
-            }
+            boolean hasPitchDeck = !TextUtils.isEmpty(ideia.getPitchDeckUrl());
+            binding.textPitchDeckStatus.setText(hasPitchDeck ? "Arquivo anexado com sucesso!" : "Nenhum arquivo anexado.");
+            binding.textPitchDeckStatus.setTextColor(ContextCompat.getColor(requireContext(),
+                    hasPitchDeck ? R.color.green_success : R.color.delete_red));
         });
 
         viewModel.readinessData.observe(getViewLifecycleOwner(), readiness -> {
             if (readiness == null) return;
 
-            String scoreText = readiness.getScore() + "%";
-            binding.textReadinessScore.setText(scoreText);
-            binding.progressReadiness.setProgress(readiness.getScore());
+            animateReadinessScore(readiness.getScore());
 
             updateChecklistItem(binding.checkCanvas, readiness.isCanvasCompleto());
             updateChecklistItem(binding.checkEquipe, readiness.isEquipeDefinida());
@@ -129,17 +130,26 @@ public class PreparacaoInvestidorFragment extends Fragment {
         });
     }
 
+    private void animateReadinessScore(int score) {
+        String scoreText = score + "%";
+        binding.textReadinessScore.setText(scoreText);
+        binding.textReadinessScore.setAlpha(0f);
+        binding.textReadinessScore.animate().alpha(1f).setDuration(300).start();
+
+        binding.progressReadiness.setProgress(score);
+    }
+
     private void updateChecklistItem(ImageView imageView, boolean isCompleted) {
-        // Adicionando uma verificação para o contexto para evitar crashes em transições de tela
         if (getContext() == null) return;
 
-        if (isCompleted) {
-            imageView.setImageResource(R.drawable.ic_check_circle);
-            imageView.setImageTintList(ContextCompat.getColorStateList(requireContext(), R.color.green_success));
-        } else {
-            imageView.setImageResource(R.drawable.ic_radio_button_unchecked);
-            imageView.setImageTintList(ContextCompat.getColorStateList(requireContext(), R.color.delete_red));
-        }
+        int iconRes = isCompleted ? R.drawable.ic_check_circle : R.drawable.ic_radio_button_unchecked;
+        int tintColor = ContextCompat.getColor(requireContext(),
+                isCompleted ? R.color.green_success : R.color.delete_red);
+
+        imageView.setImageResource(iconRes);
+        imageView.setImageTintList(ColorStateList.valueOf(tintColor));
+        imageView.setAlpha(0f);
+        imageView.animate().alpha(1f).setDuration(300).start();
     }
 
     private void showAddMembroDialog() {
