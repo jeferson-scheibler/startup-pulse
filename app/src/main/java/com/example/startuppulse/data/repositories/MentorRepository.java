@@ -1,24 +1,24 @@
 package com.example.startuppulse.data.repositories;
 
 import android.net.Uri;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.example.startuppulse.common.Result;
+import com.example.startuppulse.common.ResultCallback;
 import com.example.startuppulse.data.models.Mentor;
-import com.example.startuppulse.data.ResultCallback;
+import com.example.startuppulse.data.models.User;
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.Tasks;
-import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldPath;
-import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.SetOptions;
 import com.google.firebase.firestore.WriteBatch;
-import com.google.firebase.storage.FirebaseStorage; // <-- MUDANÇA: Importado o Storage
+import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 
@@ -26,30 +26,41 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
+/**
+ * Repositório responsável pela coleção /mentores no Firestore.
+ *
+ * Responsável por:
+ *  - CRUD de mentores
+ *  - Upload de imagens (banner/avatar)
+ *  - Consultas específicas (por área, cidade, estado, etc.)
+ *
+ * Agora atualizado para alinhar com o modelo modular User + Mentor.
+ */
 @Singleton
 public class MentorRepository extends BaseRepository implements IMentorRepository {
 
     private static final String MENTORES_COLLECTION = "mentores";
-
-    // MUDANÇA: 'db' (FirebaseFirestore) já vem do seu BaseRepository.
-    // Nós só precisamos injetar o FirebaseStorage.
     private final FirebaseStorage storage;
 
     @Inject
-    public MentorRepository(FirebaseStorage storage) { // <-- MUDANÇA: Injetando FirebaseStorage
-        super(); // Isso inicializa o 'db' do BaseRepository
-        this.storage = storage; // Armazena a instância do Storage
+    public MentorRepository(FirebaseStorage storage) {
+        super();
+        this.storage = storage;
     }
 
-    // --- MÉTODOS DE LEITURA (BUSCA) ---
+    // -----------------------------------------------------
+    // BUSCAS
+    // -----------------------------------------------------
 
     /**
      * Busca um mentor pelo seu ID.
-     * (Correto, já usava o 'db' do BaseRepository)
      */
+    @Override
     public void getMentorById(@NonNull String mentorId, @NonNull ResultCallback<Mentor> callback) {
         db.collection(MENTORES_COLLECTION).document(mentorId).get()
                 .addOnSuccessListener(snap -> {
@@ -59,7 +70,7 @@ public class MentorRepository extends BaseRepository implements IMentorRepositor
                             mentor.setId(snap.getId());
                             callback.onResult(new Result.Success<>(mentor));
                         } else {
-                            callback.onResult(new Result.Error<>(new Exception("Falha ao mapear os dados do mentor.")));
+                            callback.onResult(new Result.Error<>(new Exception("Falha ao mapear dados do mentor.")));
                         }
                     } else {
                         callback.onResult(new Result.Error<>(new Exception("Mentor não encontrado.")));
@@ -68,52 +79,78 @@ public class MentorRepository extends BaseRepository implements IMentorRepositor
                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
     }
 
-    public void updateMentorFieldsByOwnerId(String ownerId, Map<String, Object> updates, ResultCallback<Void> callback) {
-        db.collection(MENTORES_COLLECTION) // <-- MUDANÇA
-                .whereEqualTo("ownerId", ownerId)
-                .limit(1)
+    /**
+     * Retorna todos os mentores públicos (exceto o usuário atual).
+     */
+    @Override
+    public void getAllMentores(@NonNull ResultCallback<List<User>> callback) {
+        db.collection("usuarios")
+                .whereEqualTo("isMentor", true)
                 .get()
                 .addOnSuccessListener(querySnapshot -> {
-                    if (querySnapshot.isEmpty()) {
-                        callback.onResult(new Result.Success<>(null));
-                        return;
+                    List<User> mentores = new ArrayList<>();
+
+                    for (DocumentSnapshot document : querySnapshot.getDocuments()) {
+                        User user = document.toObject(User.class);
+                        if (user != null) {
+                            user.setId(document.getId());
+                            mentores.add(user);
+                        }
                     }
 
-                    WriteBatch batch = db.batch(); // <-- MUDANÇA
-                    for (DocumentSnapshot mentorDoc : querySnapshot.getDocuments()) {
-                        batch.update(mentorDoc.getReference(), updates);
-                    }
-
-                    batch.commit()
-                            .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(null)))
-                            .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
-
-                })
-                .addOnFailureListener(e -> {
-                    callback.onResult(new Result.Error<>(e));
-                });
-    }
-
-    public void getAllMentores(String currentUserId, ResultCallback<List<Mentor>> callback) {
-        db.collection("mentores")
-                .whereNotEqualTo("ownerId", currentUserId)
-                .whereEqualTo("ativoPublico", true)
-                .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    List<Mentor> mentores = queryDocumentSnapshots.toObjects(Mentor.class);
-                    callback.onResult(new Result.Success<>(mentores));
+                    // 🔹 Carrega os dados complementares de mentor (latitude, cidade, verificado, etc.)
+                    enrichWithMentorData(mentores, callback);
                 })
                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
     }
 
+    /**
+     * Associa os dados complementares do perfil de mentor (coleção "mentores") aos respectivos usuários.
+     */
+    private void enrichWithMentorData(@NonNull List<User> users, @NonNull ResultCallback<List<User>> callback) {
+        if (users.isEmpty()) {
+            callback.onResult(new Result.Success<>(users));
+            return;
+        }
+
+        AtomicInteger remaining = new AtomicInteger(users.size());
+
+        for (User user : users) {
+            db.collection("mentores").document(user.getId())
+                    .get()
+                    .addOnSuccessListener(snapshot -> {
+                        if (snapshot.exists()) {
+                            Mentor mentorData = snapshot.toObject(Mentor.class);
+                            if (mentorData != null) {
+                                mentorData.setId(snapshot.getId());
+                                user.setMentorData(mentorData);
+                            }
+                        }
+
+                        if (remaining.decrementAndGet() == 0) {
+                            callback.onResult(new Result.Success<>(users));
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        Log.w("MentorRepository", "Falha ao obter mentorData: " + e.getMessage());
+                        if (remaining.decrementAndGet() == 0) {
+                            callback.onResult(new Result.Success<>(users));
+                        }
+                    });
+        }
+    }
+
+
+    @Override
     public void findAllMentores(@Nullable String excludeUserId, @NonNull ResultCallback<List<Mentor>> callback) {
         Query query = db.collection(MENTORES_COLLECTION);
         if (excludeUserId != null && !excludeUserId.isEmpty()) {
             query = query.whereNotEqualTo(FieldPath.documentId(), excludeUserId);
         }
-        query.get().addOnSuccessListener(querySnapshot -> {
+
+        query.get().addOnSuccessListener(qs -> {
             List<Mentor> mentores = new ArrayList<>();
-            for (QueryDocumentSnapshot doc : querySnapshot) {
+            for (QueryDocumentSnapshot doc : qs) {
                 Mentor mentor = doc.toObject(Mentor.class);
                 mentor.setId(doc.getId());
                 mentores.add(mentor);
@@ -122,77 +159,125 @@ public class MentorRepository extends BaseRepository implements IMentorRepositor
         }).addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
     }
 
-    public void findMentoresByAreas(@NonNull List<String> areas, @Nullable String ownerId, @NonNull ResultCallback<List<Mentor>> callback) {
+
+    /**
+     * Busca mentores por cidade.
+     */
+    @Override
+    public void findMentoresByCity(@NonNull String cidade, @Nullable String excludeId, @NonNull ResultCallback<List<Mentor>> callback) {
+        Query query = db.collection(MENTORES_COLLECTION).whereEqualTo("cidade", cidade);
+        if (excludeId != null && !excludeId.isEmpty()) {
+            query = query.whereNotEqualTo(FieldPath.documentId(), excludeId);
+        }
+
+        query.get()
+                .addOnSuccessListener(q -> {
+                    List<Mentor> mentores = new ArrayList<>();
+                    for (QueryDocumentSnapshot doc : q) {
+                        Mentor m = doc.toObject(Mentor.class);
+                        m.setId(doc.getId());
+                        mentores.add(m);
+                    }
+                    callback.onResult(new Result.Success<>(mentores));
+                })
+                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+    }
+
+    /**
+     * Busca mentores por estado.
+     */
+    @Override
+    public void findMentoresByState(@NonNull String estado, @Nullable String excludeId, @NonNull ResultCallback<List<Mentor>> callback) {
+        Query query = db.collection(MENTORES_COLLECTION).whereEqualTo("estado", estado);
+        if (excludeId != null && !excludeId.isEmpty()) {
+            query = query.whereNotEqualTo(FieldPath.documentId(), excludeId);
+        }
+
+        query.get()
+                .addOnSuccessListener(q -> {
+                    List<Mentor> mentores = new ArrayList<>();
+                    for (QueryDocumentSnapshot doc : q) {
+                        Mentor m = doc.toObject(Mentor.class);
+                        m.setId(doc.getId());
+                        mentores.add(m);
+                    }
+                    callback.onResult(new Result.Success<>(mentores));
+                })
+                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+    }
+
+    /**
+     * Busca mentores que tenham áreas de atuação compatíveis.
+     */
+    @Override
+    public void findMentoresByAreas(
+            @NonNull List<String> areas,
+            @Nullable String excludeId,
+            @NonNull ResultCallback<List<Mentor>> callback
+    ) {
         if (areas.isEmpty()) {
             callback.onResult(new Result.Success<>(new ArrayList<>()));
             return;
         }
 
-        Query query = db.collection(MENTORES_COLLECTION).whereArrayContainsAny("areas", areas);
-        if (ownerId != null && !ownerId.isEmpty()) {
-            query = query.whereNotEqualTo(FieldPath.documentId(), ownerId);
-        }
+        db.collection(MENTORES_COLLECTION)
+                .whereArrayContainsAny("areas", areas)
+                .whereEqualTo("ativoPublico", true)
+                .get()
+                .addOnSuccessListener(q -> {
+                    List<Mentor> mentores = new ArrayList<>();
+                    for (QueryDocumentSnapshot doc : q) {
+                        Mentor m = doc.toObject(Mentor.class);
+                        m.setId(doc.getId());
 
-        query.get().addOnSuccessListener(q -> {
-            List<Mentor> mentores = new ArrayList<>();
-            for (QueryDocumentSnapshot document : q) {
-                Mentor mentor = document.toObject(Mentor.class);
-                mentor.setId(document.getId());
-                mentores.add(mentor);
-            }
-            callback.onResult(new Result.Success<>(mentores));
-        }).addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
-    }
+                        // Excluir o próprio usuário da lista, caso venha junto
+                        if (excludeId != null && excludeId.equals(m.getId())) continue;
 
-    public void findMentoresByCity(@NonNull String cidade, @Nullable String ownerId, @NonNull ResultCallback<List<Mentor>> callback) {
-        Query query = db.collection(MENTORES_COLLECTION).whereEqualTo("cidade", cidade);
-        if (ownerId != null && !ownerId.isEmpty()) {
-            query = query.whereNotEqualTo(FieldPath.documentId(), ownerId);
-        }
-        query.get().addOnSuccessListener(q -> {
-            List<Mentor> mentores = new ArrayList<>();
-            for (QueryDocumentSnapshot doc : q) {
-                Mentor mentor = doc.toObject(Mentor.class);
-                mentor.setId(doc.getId());
-                mentores.add(mentor);
-            }
-            callback.onResult(new Result.Success<>(mentores));
-        }).addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
-    }
-
-    public void findMentoresByState(@NonNull String estado, @Nullable String ownerId, @NonNull ResultCallback<List<Mentor>> callback) {
-        Query query = db.collection(MENTORES_COLLECTION).whereEqualTo("estado", estado);
-        if (ownerId != null && !ownerId.isEmpty()) {
-            query = query.whereNotEqualTo(FieldPath.documentId(), ownerId);
-        }
-        query.get().addOnSuccessListener(q -> {
-            List<Mentor> mentores = new ArrayList<>();
-            for (QueryDocumentSnapshot doc : q) {
-                Mentor mentor = doc.toObject(Mentor.class);
-                mentor.setId(doc.getId());
-                mentores.add(mentor);
-            }
-            callback.onResult(new Result.Success<>(mentores));
-        }).addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
-    }
-
-    public void saveMentorProfile(@NonNull Mentor mentor, @NonNull ResultCallback<String> callback) {
-        if (getCurrentUserId() == null) {
-            callback.onResult(new Result.Error<>(new IllegalStateException("Usuário não autenticado.")));
-            return;
-        }
-
-        mentor.setId(getCurrentUserId());
-
-        db.collection(MENTORES_COLLECTION).document(getCurrentUserId())
-                .set(mentor, SetOptions.merge())
-                .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(getCurrentUserId())))
+                        mentores.add(m);
+                    }
+                    callback.onResult(new Result.Success<>(mentores));
+                })
                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
     }
 
+    // -----------------------------------------------------
+    // ATUALIZAÇÕES
+    // -----------------------------------------------------
+
+    /**
+     * Atualiza campos do mentor usando ownerId (caso o documento não use o mesmo ID do usuário).
+     */
+    @Override
+    public void updateMentorFieldsByOwnerId(@NonNull String ownerId, @NonNull Map<String, Object> updates, @NonNull ResultCallback<Void> callback) {
+        db.collection(MENTORES_COLLECTION)
+                .whereEqualTo("ownerId", ownerId)
+                .limit(1)
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    if (snapshot.isEmpty()) {
+                        callback.onResult(new Result.Success<>(null));
+                        return;
+                    }
+
+                    WriteBatch batch = db.batch();
+                    for (DocumentSnapshot doc : snapshot.getDocuments()) {
+                        batch.update(doc.getReference(), updates);
+                    }
+
+                    batch.commit()
+                            .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(null)))
+                            .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+                })
+                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+    }
+
+    /**
+     * Atualiza campos específicos do mentor autenticado (verificado, áreas, etc.).
+     */
+    @Override
     public void updateMentorFields(@NonNull String mentorId, @Nullable Boolean verificado, @Nullable List<String> areas, @NonNull ResultCallback<Void> callback) {
         if (!mentorId.equals(getCurrentUserId())) {
-            callback.onResult(new Result.Error<>(new SecurityException("Não autorizado para atualizar este perfil.")));
+            callback.onResult(new Result.Error<>(new SecurityException("Não autorizado a atualizar este perfil.")));
             return;
         }
 
@@ -201,80 +286,86 @@ public class MentorRepository extends BaseRepository implements IMentorRepositor
         if (areas != null) updates.put("areas", areas);
 
         if (updates.isEmpty()) {
-            callback.onResult(new Result.Success<>(null)); // Nenhuma alteração
+            callback.onResult(new Result.Success<>(null));
             return;
         }
 
-        db.collection(MENTORES_COLLECTION).document(mentorId).update(updates)
+        db.collection(MENTORES_COLLECTION).document(mentorId)
+                .set(updates, SetOptions.merge())
                 .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(null)))
                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
     }
 
+    /**
+     * Salva ou atualiza o perfil completo do mentor.
+     */
+    @Override
+    public void saveMentorProfile(@NonNull Mentor mentor, @NonNull ResultCallback<String> callback) {
+        String userId = getCurrentUserId();
+        if (userId == null) {
+            callback.onResult(new Result.Error<>(new IllegalStateException("Usuário não autenticado.")));
+            return;
+        }
+
+        mentor.setId(userId);
+        db.collection(MENTORES_COLLECTION).document(userId)
+                .set(mentor, SetOptions.merge())
+                .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(userId)))
+                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+    }
+
+    /**
+     * Atualiza perfil do mentor (dados e imagens).
+     */
+    /**
+     * Atualiza apenas o banner do mentor (foto de capa).
+     * A imagem de perfil pertence ao User.
+     */
+    @Override
     public void updateMentorProfile(@NonNull Mentor mentor,
-                                    @Nullable Uri newAvatarUri,
                                     @Nullable Uri newBannerUri,
                                     @NonNull ResultCallback<Mentor> callback) {
 
         String userId = getCurrentUserId();
         if (userId == null || !userId.equals(mentor.getId())) {
-            callback.onResult(new Result.Error<>(new SecurityException("Não autorizado para atualizar este perfil.")));
+            callback.onResult(new Result.Error<>(new SecurityException("Não autorizado a atualizar este perfil.")));
             return;
         }
 
-        Task<Void> taskChain = Tasks.forResult(null);
+        Task<Void> chain = Tasks.forResult(null);
 
-        // 1. Se houver um novo Avatar, faz o upload e atualiza o objeto mentor
-        if (newAvatarUri != null) {
-            String avatarPath = MENTORES_COLLECTION + "/" + userId + "/avatar.jpg";
-            taskChain = taskChain.continueWithTask(task -> uploadImage(newAvatarUri, avatarPath))
-                    .onSuccessTask(uri -> {
-                        // Atualiza o objeto 'mentor' em memória
-                        mentor.setFotoUrl(uri.toString());
-                        return Tasks.forResult(null);
-                    });
-        }
-
-        // 2. Se houver um novo Banner, faz o upload e atualiza o objeto mentor
+        // Apenas banner
         if (newBannerUri != null) {
             String bannerPath = MENTORES_COLLECTION + "/" + userId + "/banner.jpg";
-            taskChain = taskChain.continueWithTask(task -> uploadImage(newBannerUri, bannerPath))
+            chain = chain.continueWithTask(task -> uploadImage(newBannerUri, bannerPath))
                     .onSuccessTask(uri -> {
-                        // Atualiza o objeto 'mentor' em memória
-                        mentor.setBannerUrl(uri.toString()); // Assumindo que o campo é 'bannerUrl'
+                        mentor.setBannerUrl(uri.toString());
                         return Tasks.forResult(null);
                     });
         }
 
-        // 3. Após a fila de uploads (se houver) terminar, salva o objeto MENTOR
-        //    completo (com as novas URLs e novos textos) no Firestore.
-        taskChain.continueWithTask(task ->
-                        db.collection(MENTORES_COLLECTION).document(userId)
-                                .set(mentor, SetOptions.merge())
-                )
-                .addOnSuccessListener(aVoid -> {
-                    // --- 2. MUDANÇA NO RETORNO ---
-                    // O 'mentor' agora contém as novas URLs.
-                    // Retorna o objeto Mentor atualizado no sucesso.
-                    callback.onResult(new Result.Success<>(mentor));
-                })
-                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+        chain.continueWithTask(task ->
+                db.collection(MENTORES_COLLECTION).document(userId)
+                        .set(mentor, SetOptions.merge())
+        ).addOnSuccessListener(aVoid ->
+                callback.onResult(new Result.Success<>(mentor))
+        ).addOnFailureListener(e ->
+                callback.onResult(new Result.Error<>(e))
+        );
     }
 
-
-    // --- MÉTODO HELPER ---
+    // -----------------------------------------------------
+    // HELPERS
+    // -----------------------------------------------------
 
     /**
-     * Faz upload de um arquivo para o Firebase Storage e retorna a URL de download.
+     * Faz upload de uma imagem para o Firebase Storage e retorna a URL pública.
      */
     private Task<Uri> uploadImage(Uri fileUri, String storagePath) {
-        // MUDANÇA: Agora 'storage' é a instância correta do FirebaseStorage injetada
         StorageReference ref = storage.getReference().child(storagePath);
         UploadTask uploadTask = ref.putFile(fileUri);
-
         return uploadTask.continueWithTask(task -> {
-            if (!task.isSuccessful()) {
-                throw task.getException();
-            }
+            if (!task.isSuccessful()) throw task.getException();
             return ref.getDownloadUrl();
         });
     }

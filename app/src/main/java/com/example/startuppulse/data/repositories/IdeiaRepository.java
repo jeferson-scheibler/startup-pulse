@@ -7,8 +7,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.example.startuppulse.common.Result;
-import com.example.startuppulse.data.PostIt;
-import com.example.startuppulse.data.ResultCallback;
+import com.example.startuppulse.data.models.PostIt;
+import com.example.startuppulse.common.ResultCallback;
 import com.example.startuppulse.data.models.Ideia;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -21,7 +21,6 @@ import com.google.firebase.firestore.SetOptions;
 import com.google.firebase.firestore.WriteBatch;
 import com.google.firebase.functions.FirebaseFunctions;
 import com.google.firebase.functions.HttpsCallableResult;
-import com.google.android.gms.tasks.Task;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -310,16 +309,63 @@ public class IdeiaRepository implements IIdeiaRepository {
 
     @Override
     public void publicarIdeia(@NonNull String ideiaId, @Nullable String mentorId, @NonNull ResultCallback<Void> callback) {
+        final String TAG = "IdeiaRepository";
+        String userId = getCurrentUserId();
+
+        if (userId == null) {
+            Log.e(TAG, "publicarIdeia: usuário não autenticado.");
+            callback.onResult(new Result.Error<>(new SecurityException("Usuário não autenticado.")));
+            return;
+        }
+
+        Log.d(TAG, "publicarIdeia: iniciando publicação -> ideiaId=" + ideiaId + ", mentorId=" + mentorId);
+
+        DocumentReference ref = firestore.collection("ideias").document(ideiaId);
+
+        // Atualiza campos permitidos (sem sobrescrever outros)
         Map<String, Object> updates = new HashMap<>();
         updates.put("status", Ideia.Status.EM_AVALIACAO.name());
-        updates.put("timestamp", FieldValue.serverTimestamp());
-        if (mentorId != null) updates.put("mentorId", mentorId);
-        updates.put("ultimaBuscaMentorTimestamp", FieldValue.serverTimestamp());
+        updates.put("updatedAt", System.currentTimeMillis());
 
-        firestore.collection(IDEIAS_COLLECTION).document(ideiaId).update(updates)
-                .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(null)))
-                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+        if (mentorId != null && !mentorId.isEmpty()) {
+            updates.put("mentorId", mentorId);
+            Log.d(TAG, "publicarIdeia: vinculando mentor " + mentorId);
+        } else {
+            updates.put("mentorId", null);
+            Log.d(TAG, "publicarIdeia: publicando sem mentor (mentorId=null).");
+        }
+
+        // Apenas o dono pode publicar ou re-publicar
+        ref.get().addOnSuccessListener(snapshot -> {
+            if (!snapshot.exists()) {
+                Log.e(TAG, "publicarIdeia: documento não existe no Firestore.");
+                callback.onResult(new Result.Error<>(new IllegalStateException("Ideia não encontrada.")));
+                return;
+            }
+
+            String ownerId = snapshot.getString("ownerId");
+            if (ownerId == null || !ownerId.equals(userId)) {
+                Log.w(TAG, "publicarIdeia: tentativa de atualização por usuário não dono (uid=" + userId + ")");
+                callback.onResult(new Result.Error<>(new SecurityException("Permissão negada: não é o dono da ideia.")));
+                return;
+            }
+
+            Log.d(TAG, "publicarIdeia: usuário autorizado. Atualizando campos: " + updates.keySet());
+            ref.set(updates, SetOptions.merge())
+                    .addOnSuccessListener(aVoid -> {
+                        Log.i(TAG, "publicarIdeia: sucesso ao atualizar ideia " + ideiaId);
+                        callback.onResult(new Result.Success<>(null));
+                    })
+                    .addOnFailureListener(e -> {
+                        Log.e(TAG, "publicarIdeia: erro ao salvar -> " + e.getMessage(), e);
+                        callback.onResult(new Result.Error<>(e));
+                    });
+        }).addOnFailureListener(e -> {
+            Log.e(TAG, "publicarIdeia: falha ao ler documento -> " + e.getMessage(), e);
+            callback.onResult(new Result.Error<>(e));
+        });
     }
+
 
     @Override
     public void unpublishIdeia(@NonNull String ideiaId, @NonNull ResultCallback<Void> callback) {

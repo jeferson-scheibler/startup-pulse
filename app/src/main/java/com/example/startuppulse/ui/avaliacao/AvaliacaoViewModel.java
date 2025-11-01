@@ -12,7 +12,7 @@ import com.example.startuppulse.data.repositories.IIdeiaRepository;
 
 import com.example.startuppulse.util.Event;
 import com.example.startuppulse.common.Result;
-import com.example.startuppulse.data.Avaliacao;
+import com.example.startuppulse.data.models.Avaliacao;
 // import com.example.startuppulse.data.repositories.IdeiaRepository; // <-- Removido
 
 import java.util.ArrayList;

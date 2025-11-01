@@ -1,7 +1,7 @@
 package com.example.startuppulse.util;
 
-import com.example.startuppulse.data.Cidade;
-import com.example.startuppulse.data.Estado;
+import com.example.startuppulse.data.models.Cidade;
+import com.example.startuppulse.data.models.Estado;
 
 import java.util.List;
 import retrofit2.Call;

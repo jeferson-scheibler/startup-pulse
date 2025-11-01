@@ -94,7 +94,7 @@
 
     <fragment
         android:id="@+id/assinaturaFragment"
-        android:name="com.example.startuppulse.AssinaturaFragment"
+        android:name="com.example.startuppulse.ui.assinatura.AssinaturaFragment"
         android:label="Assinatura"
         tools:layout="@layout/fragment_assinatura" />
 

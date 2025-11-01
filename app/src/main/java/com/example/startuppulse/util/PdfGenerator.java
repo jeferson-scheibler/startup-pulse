@@ -18,7 +18,7 @@ import android.text.StaticLayout;
 import android.text.TextPaint;
 
 import com.example.startuppulse.data.models.Ideia;
-import com.example.startuppulse.data.PostIt;
+import com.example.startuppulse.data.models.PostIt;
 
 import java.io.IOException;
 import java.io.OutputStream;

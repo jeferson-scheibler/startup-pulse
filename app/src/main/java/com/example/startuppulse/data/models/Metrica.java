@@ -1,4 +1,4 @@
-package com.example.startuppulse.data;
+package com.example.startuppulse.data.models;
 
 import java.io.Serializable;
 import java.util.Date;

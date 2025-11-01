@@ -16,7 +16,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 import androidx.lifecycle.ViewModelProvider;
-import com.example.startuppulse.data.PostIt;
+import com.example.startuppulse.data.models.PostIt;
 import com.example.startuppulse.databinding.DialogAddPostitBinding;
 import com.example.startuppulse.ui.canvas.CanvasIdeiaViewModel;
 import java.util.HashMap;

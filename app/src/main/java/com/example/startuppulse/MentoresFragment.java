@@ -19,6 +19,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.preference.PreferenceManager;
@@ -26,6 +27,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.example.startuppulse.common.Result;
 import com.example.startuppulse.data.models.Mentor;
+import com.example.startuppulse.data.models.User;
 import com.example.startuppulse.databinding.FragmentMentoresBinding;
 import com.example.startuppulse.ui.mentor.MentoresViewModel;
 import com.example.startuppulse.util.GeoCache;
@@ -54,24 +56,23 @@ public class MentoresFragment extends Fragment {
     private FragmentMentoresBinding binding;
     private MentoresViewModel viewModel;
     private MentoresAdapter mentoresAdapter;
-    private final List<Mentor> allMentores = new ArrayList<>();
+    private final List<User> allUsers = new ArrayList<>(); // agora User
     private String selectedArea = "Todas as áreas";
     private GeoCache geoCache;
     private static String lastKnownCity = null;
 
-    // --- Ciclo de Vida do Fragment ---
-
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Configuração do OSMDroid - essencial que seja feito antes de inflar o layout
+        // Configuração do OSMDroid antes de inflar layout
         Context ctx = requireActivity().getApplicationContext();
         Configuration.getInstance().load(ctx, PreferenceManager.getDefaultSharedPreferences(ctx));
     }
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
         binding = FragmentMentoresBinding.inflate(inflater, container, false);
         viewModel = new ViewModelProvider(this).get(MentoresViewModel.class);
         geoCache = new GeoCache(requireContext());
@@ -98,11 +99,8 @@ public class MentoresFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        // Libera a referência do binding para evitar memory leaks
-        binding = null;
+        binding = null; // evita leaks
     }
-
-    // --- Configuração da UI ---
 
     private void setupUI() {
         setupMap();
@@ -124,7 +122,7 @@ public class MentoresFragment extends Fragment {
     }
 
     private void setupRecyclerView() {
-        mentoresAdapter = new MentoresAdapter(); // O listener não é mais necessário aqui
+        mentoresAdapter = new MentoresAdapter(); // espera User
         binding.recyclerViewMentores.setLayoutManager(new LinearLayoutManager(requireContext()));
         binding.recyclerViewMentores.setAdapter(mentoresAdapter);
         binding.recyclerViewMentores.setHasFixedSize(true);
@@ -145,31 +143,30 @@ public class MentoresFragment extends Fragment {
         });
     }
 
-    // --- Observadores e Lógica de Dados ---
-
     private void observeViewModel() {
         viewModel.mentores.observe(getViewLifecycleOwner(), result -> {
             if (binding == null) return;
             binding.swipeRefreshLayout.setRefreshing(result instanceof Result.Loading);
 
             if (result instanceof Result.Success) {
-                List<Mentor> mentores = ((Result.Success<List<Mentor>>) result).data;
-                handleMentoresSuccess(mentores);
+                List<User> users = ((Result.Success<List<User>>) result).data;
+                handleMentoresSuccess(users);
             } else if (result instanceof Result.Error) {
-                String error = ((Result.Error<List<Mentor>>) result).error.getMessage();
+                String error = ((Result.Error<List<User>>) result).error.getMessage();
                 showErrorSnackbar("Erro ao carregar mentores: " + error);
             }
         });
     }
 
-    private void handleMentoresSuccess(@Nullable List<Mentor> mentores) {
-        allMentores.clear();
-        if (mentores != null) {
-            allMentores.addAll(mentores);
+    private void handleMentoresSuccess(@Nullable List<User> users) {
+        allUsers.clear();
+        if (users != null) {
+            allUsers.addAll(users);
         }
 
-        List<String> opcoes = construirOpcoesDeArea(allMentores);
-        ArrayAdapter<String> dropAdapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_list_item_1, opcoes);
+        List<String> opcoes = construirOpcoesDeArea(allUsers);
+        ArrayAdapter<String> dropAdapter = new ArrayAdapter<>(requireContext(),
+                android.R.layout.simple_list_item_1, opcoes);
         binding.autoCompleteAreaFilter.setAdapter(dropAdapter);
 
         if (!opcoes.contains(selectedArea)) {
@@ -183,14 +180,15 @@ public class MentoresFragment extends Fragment {
     private void aplicarFiltroEAtualizarUI() {
         if (binding == null) return;
 
-        List<Mentor> visiveis;
+        List<User> visiveis;
         if ("Todas as áreas".equals(selectedArea)) {
-            visiveis = new ArrayList<>(allMentores);
+            visiveis = new ArrayList<>(allUsers);
         } else {
             visiveis = new ArrayList<>();
-            for (Mentor m : allMentores) {
-                if (m.getAreas() != null && m.getAreas().contains(selectedArea)) {
-                    visiveis.add(m);
+            for (User u : allUsers) {
+                List<String> areas = u.getAreasDeInteresse();
+                if (areas != null && areas.contains(selectedArea)) {
+                    visiveis.add(u);
                 }
             }
         }
@@ -204,11 +202,12 @@ public class MentoresFragment extends Fragment {
         adicionarClustersNoMapa(visiveis);
     }
 
-    private List<String> construirOpcoesDeArea(List<Mentor> mentores) {
+    private List<String> construirOpcoesDeArea(List<User> users) {
         Set<String> set = new HashSet<>();
-        for (Mentor m : mentores) {
-            if (m.getAreas() != null) {
-                for (String area : m.getAreas()) {
+        for (User u : users) {
+            List<String> areas = u.getAreasDeInteresse();
+            if (areas != null) {
+                for (String area : areas) {
                     if (area != null && !area.trim().isEmpty()) {
                         set.add(area.trim());
                     }
@@ -223,22 +222,28 @@ public class MentoresFragment extends Fragment {
         return out;
     }
 
-    // --- Métodos do Mapa e Clusters ---
-
-    private void adicionarClustersNoMapa(List<Mentor> mentores) {
+    // Adiciona marcadores agrupados por cidade/estado
+    private void adicionarClustersNoMapa(List<User> users) {
         if (binding == null || !isAdded()) return;
 
-        Map<String, List<Mentor>> mentoresPorCidade = new HashMap<>();
-        for (Mentor mentor : mentores) {
-            String cidade = mentor.getCity();
-            String estado = mentor.getState();
+        Map<String, List<User>> usersPorCidade = new HashMap<>();
+        for (User user : users) {
+            Mentor m = user.getMentorData();
+            if (m == null) continue;
+            String cidade = m.getCity();
+            String estado = m.getState();
             if (cidade != null && estado != null && !cidade.trim().isEmpty() && !estado.trim().isEmpty()) {
                 String key = (cidade.trim() + "," + estado.trim()).toLowerCase(Locale.ROOT);
-                mentoresPorCidade.computeIfAbsent(key, k -> new ArrayList<>()).add(mentor);
+                usersPorCidade.computeIfAbsent(key, k -> new ArrayList<>()).add(user);
             }
         }
 
-        binding.mapView.getOverlays().clear();
+        // Limpa overlays na UI thread
+        new Handler(Looper.getMainLooper()).post(() -> {
+            if (binding != null && binding.mapView != null) {
+                binding.mapView.getOverlays().clear();
+            }
+        });
 
         final ExecutorService executor = Executors.newSingleThreadExecutor();
         final Handler handler = new Handler(Looper.getMainLooper());
@@ -246,12 +251,14 @@ public class MentoresFragment extends Fragment {
         executor.execute(() -> {
             final Geocoder geocoder = Geocoder.isPresent() ? new Geocoder(requireContext(), Locale.getDefault()) : null;
 
-            for (Map.Entry<String, List<Mentor>> entry : mentoresPorCidade.entrySet()) {
+            for (Map.Entry<String, List<User>> entry : usersPorCidade.entrySet()) {
                 if (!isAdded()) break;
 
-                List<Mentor> grupo = entry.getValue();
-                String cidadeNome = grupo.get(0).getCity();
-                String estadoNome = grupo.get(0).getState();
+                List<User> grupo = entry.getValue();
+                Mentor mentorSample = grupo.get(0).getMentorData();
+                if (mentorSample == null) continue;
+                String cidadeNome = mentorSample.getCity();
+                String estadoNome = mentorSample.getState();
 
                 GeoCache.Entry cached = geoCache.getFresh(cidadeNome, estadoNome);
                 if (cached != null) {
@@ -267,55 +274,72 @@ public class MentoresFragment extends Fragment {
                             GeoPoint point = new GeoPoint(lat, lon);
                             handler.post(() -> addMarker(cidadeNome, grupo.size(), point));
                         }
-                    } catch (IOException ignored) {}
+                    } catch (IOException ignored) {
+                    }
                 }
             }
-            handler.post(() -> { if(binding != null) binding.mapView.invalidate(); });
+
+            // Invalidate na UI thread
+            handler.post(() -> {
+                if (binding != null && binding.mapView != null) {
+                    binding.mapView.invalidate();
+                }
+            });
+
             executor.shutdown();
         });
     }
 
     private void addMarker(String cidadeNome, int totalMentores, GeoPoint point) {
-        if (binding == null) return;
+        if (binding == null || binding.mapView == null) return;
+
         Marker marker = new Marker(binding.mapView);
         marker.setPosition(point);
         marker.setTitle(cidadeNome + " (" + totalMentores + " " + (totalMentores > 1 ? "mentores" : "mentor") + ")");
         marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
-        marker.setIcon(createClusterIcon(totalMentores));
+
+        Drawable icon = createClusterIcon(totalMentores);
+        if (icon != null) marker.setIcon(icon);
+
         binding.mapView.getOverlays().add(marker);
     }
 
     private Drawable createClusterIcon(int count) {
-        if (!isAdded()) return null;
+        if (!isAdded()) {
+            // fallback drawable (optional)
+            return ContextCompat.getDrawable(requireContext(), R.drawable.ic_person);
+        }
         LayoutInflater inflater = LayoutInflater.from(requireContext());
         View markerView = inflater.inflate(R.layout.marker_cluster_view, null);
 
         TextView markerText = markerView.findViewById(R.id.marker_text);
         markerText.setText(String.valueOf(count));
 
-        markerView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        // measure & layout
+        markerView.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
         markerView.layout(0, 0, markerView.getMeasuredWidth(), markerView.getMeasuredHeight());
 
-        Bitmap bitmap = Bitmap.createBitmap(markerView.getMeasuredWidth(), markerView.getMeasuredHeight(), Bitmap.Config.ARGB_8888);
+        Bitmap bitmap = Bitmap.createBitmap(markerView.getMeasuredWidth(), markerView.getMeasuredHeight(),
+                Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         markerView.draw(canvas);
 
-        return new android.graphics.drawable.BitmapDrawable(getResources(), bitmap);
+        return new android.graphics.drawable.BitmapDrawable(requireContext().getResources(), bitmap);
     }
 
-    // --- Métodos de UI Auxiliares ---
-
-    private void updateStats(@NonNull List<Mentor> mentoresVisiveis) {
+    private void updateStats(@NonNull List<User> visiveis) {
         if (binding == null) return;
 
-        binding.statCountMentores.setText(String.valueOf(mentoresVisiveis.size()));
+        binding.statCountMentores.setText(String.valueOf(visiveis.size()));
 
         int totalAreas;
         if ("Todas as áreas".equals(selectedArea)) {
             HashSet<String> areasUnicas = new HashSet<>();
-            for (Mentor m : mentoresVisiveis) {
-                if (m.getAreas() != null) {
-                    for (String area : m.getAreas()) {
+            for (User u : visiveis) {
+                List<String> areas = u.getAreasDeInteresse();
+                if (areas != null) {
+                    for (String area : areas) {
                         if (area != null && !area.trim().isEmpty()) {
                             areasUnicas.add(area.trim());
                         }
@@ -324,7 +348,7 @@ public class MentoresFragment extends Fragment {
             }
             totalAreas = areasUnicas.size();
         } else {
-            totalAreas = mentoresVisiveis.isEmpty() ? 0 : 1;
+            totalAreas = visiveis.isEmpty() ? 0 : 1;
         }
         binding.statCountAreas.setText(String.valueOf(totalAreas));
     }

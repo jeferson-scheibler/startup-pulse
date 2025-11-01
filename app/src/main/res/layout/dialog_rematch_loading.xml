@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/layout_root"
+    android:layout_width="280dp"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="@drawable/bg_glass_dialog"
+    android:padding="24dp"
+    tools:context=".ui.match.ReMatchDialog">
+
+    <!-- Ícone principal -->
+    <ImageView
+        android:id="@+id/icon_pulse"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_marginBottom="16dp"
+        android:contentDescription="@string/refazendo_busca"
+        android:src="@drawable/ic_connect"
+        app:tint="@color/colorPrimary"
+        tools:ignore="ContentDescription" />
+
+    <!-- Barra de progresso -->
+    <ProgressBar
+        android:id="@+id/progress_circular"
+        style="?android:attr/progressBarStyleLarge"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginBottom="12dp"
+        android:indeterminate="true"
+        android:indeterminateTint="@color/colorPrimary" />
+
+    <!-- Mensagem dinâmica -->
+    <TextView
+        android:id="@+id/text_message"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="@string/refazendo_busca_mentores"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="@color/colorOnSurfaceVariant"
+        android:textAlignment="center"
+        android:lineSpacingExtra="2dp"
+        tools:text="Buscando novos mentores disponíveis..." />
+
+    <!-- Botão de cancelar -->
+    <Button
+        android:id="@+id/btn_cancelar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:backgroundTint="@color/colorPrimary"
+        android:text="@string/cancelar_busca"
+        android:textColor="@android:color/white"
+        android:textAllCaps="false" />
+
+</LinearLayout>

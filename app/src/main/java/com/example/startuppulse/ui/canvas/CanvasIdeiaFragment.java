@@ -5,6 +5,8 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Bundle;
@@ -14,6 +16,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
+
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
@@ -24,13 +27,23 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.fragment.NavHostFragment;
+
 import com.example.startuppulse.CanvasPagerAdapter;
 import com.example.startuppulse.LocationService;
 import com.example.startuppulse.R;
 import com.example.startuppulse.data.models.Ideia;
+import com.example.startuppulse.data.models.User;
 import com.example.startuppulse.databinding.FragmentCanvasIdeiaBinding;
+import com.example.startuppulse.ui.match.LocationChoiceDialog;
+import com.example.startuppulse.ui.match.MatchCandidatesDialog;
+import com.example.startuppulse.ui.match.MatchLoadingDialog;
+import com.example.startuppulse.ui.match.ReMatchDialog;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.tabs.TabLayoutMediator;
+
+import java.util.List;
+import java.util.Locale;
+
 import dagger.hilt.android.AndroidEntryPoint;
 
 @AndroidEntryPoint
@@ -45,33 +58,47 @@ public class CanvasIdeiaFragment extends Fragment {
 
     private LocationService locationService;
     private Location userLocation;
+    private MatchLoadingDialog matchLoadingDialog;
 
+    private ReMatchDialog reMatchDialog;
+
+
+    // --- PERMISSÃO DE LOCALIZAÇÃO ---
     private final ActivityResultLauncher<String> requestLocationPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
                 if (isGranted) {
-                    // Permissão concedida, tenta obter a localização novamente
-                    iniciarFluxoDeLocalizacao();
+                    capturarLocalizacaoEPublicar(); // Busca localização atual e segue com publicação
                 } else {
-                    // Permissão negada, publica sem localização
-                    Toast.makeText(getContext(), "Permissão negada. Buscando mentores sem usar sua localização.", Toast.LENGTH_LONG).show();
-                    publicarIdeiaComLocalizacao(null);
+                    Toast.makeText(getContext(),
+                            "Permissão negada. Publicando sem usar sua localização.",
+                            Toast.LENGTH_LONG).show();
+                    publicarIdeia(null); // Publica sem coordenadas
                 }
             });
 
+
+    // ------------------------------------------------------------------
+    // CICLO DE VIDA
+    // ------------------------------------------------------------------
+
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
         binding = FragmentCanvasIdeiaBinding.inflate(inflater, container, false);
         return binding.getRoot();
     }
 
     @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+    public void onViewCreated(@NonNull View view,
+                              @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        locationService = new LocationService(requireActivity());
 
+        locationService = new LocationService(requireActivity());
         viewModel = new ViewModelProvider(this).get(CanvasIdeiaViewModel.class);
         navController = NavHostFragment.findNavController(this);
+
         String ideiaId = getArguments() != null ? getArguments().getString("ideiaId") : null;
 
         setupViewPager();
@@ -85,42 +112,115 @@ public class CanvasIdeiaFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
         binding = null;
+        if (matchLoadingDialog != null && matchLoadingDialog.isShowing()) {
+            matchLoadingDialog.dismiss();
+        }
+        matchLoadingDialog = null;
     }
+
+    // ------------------------------------------------------------------
+    // UI SETUP
+    // ------------------------------------------------------------------
 
     private void setupViewPager() {
         pagerAdapter = new CanvasPagerAdapter(this);
         binding.viewPagerCanvas.setAdapter(pagerAdapter);
         binding.viewPagerCanvas.setUserInputEnabled(false);
-        new TabLayoutMediator(binding.tabLayout, binding.viewPagerCanvas, (tab, position) -> {}).attach();
+        new TabLayoutMediator(binding.tabLayout, binding.viewPagerCanvas, (tab, position) -> {
+        }).attach();
     }
 
     private void setupObservers() {
-        viewModel.ideia.observe(getViewLifecycleOwner(), ideia -> {
-            Log.d(TAG, "Observer 'ideia': Acionado.");
-            if (binding == null) return;
 
-            // Garante que o grupo de conteúdo só fique visível quando tivermos uma ideia para mostrar
+        // ------------------------------
+        // IDEIA PRINCIPAL
+        // ------------------------------
+        viewModel.ideia.observe(getViewLifecycleOwner(), ideia -> {
+            Log.d(TAG, "Observer 'ideia' acionado: " + (ideia != null ? ideia.getNome() : "null"));
+            if (binding == null) return;
             binding.contentGroup.setVisibility(View.VISIBLE);
-            updateUiState(ideia); // Atualiza os botões e outros componentes
+            updateUiState(ideia);
         });
 
+        // ------------------------------
+        // ETAPAS
+        // ------------------------------
         viewModel.etapas.observe(getViewLifecycleOwner(), etapas -> {
             if (etapas != null) {
                 pagerAdapter.setEtapas(etapas);
             }
         });
 
+        // ------------------------------
+        // LOADING PADRÃO
+        // ------------------------------
         viewModel.isLoading.observe(getViewLifecycleOwner(), isLoading -> {
-            Log.d(TAG, "Observer 'isLoading': Acionado. isLoading = " + isLoading);
-            if (binding != null) {
-                binding.loadingIndicator.setVisibility(isLoading ? View.VISIBLE : View.GONE);
-                // CORREÇÃO: Remove o controle sobre 'contentGroup' para evitar a race condition
-                if (isLoading) {
-                    binding.contentGroup.setVisibility(View.GONE);
-                }
+            if (binding == null) return;
+
+            if (Boolean.TRUE.equals(isLoading)) {
+                binding.loadingIndicator.setVisibility(View.VISIBLE);
+                binding.contentGroup.setVisibility(View.GONE);
+            } else {
+                binding.loadingIndicator.setVisibility(View.GONE);
+                binding.contentGroup.setVisibility(View.VISIBLE);
             }
         });
 
+        // ------------------------------
+        // LOADING DE MATCH (DIALOG)
+        // ------------------------------
+        viewModel.matchLoading.observe(getViewLifecycleOwner(), isLoading -> {
+            if (isLoading) {
+                if (matchLoadingDialog == null)
+                    matchLoadingDialog = new MatchLoadingDialog(requireContext());
+                matchLoadingDialog.show();
+            } else if (matchLoadingDialog != null && matchLoadingDialog.isShowing()) {
+                matchLoadingDialog.dismiss();
+            }
+        });
+
+        // ------------------------------
+        // MENSAGEM DE PROGRESSO DO MATCH
+        // ------------------------------
+        viewModel.matchProgressMessage.observe(getViewLifecycleOwner(), message -> {
+            if (matchLoadingDialog != null) {
+                matchLoadingDialog.updateMessage(message);
+            }
+        });
+
+        // ------------------------------
+        // ESCOLHA DE LOCALIZAÇÃO
+        // ------------------------------
+        viewModel.matchLocationRequest.observe(getViewLifecycleOwner(), event -> {
+            CanvasIdeiaViewModel.MatchLocationChoiceRequest req = event.getContentIfNotHandled();
+            if (req != null) {
+                LocationChoiceDialog dialog = new LocationChoiceDialog(
+                        req.hasIdeaLocation(),
+                        req.hasUserLocation(),
+                        choice -> viewModel.handleMatchLocationChoice(choice, null, true)
+                );
+                dialog.show(getParentFragmentManager(), "LocationChoiceDialog");
+            }
+        });
+
+
+        // ------------------------------
+        // LISTA DE MENTORES
+        // ------------------------------
+        viewModel.matchCandidatesEvent.observe(getViewLifecycleOwner(), event -> {
+            List<User> mentores = event.getContentIfNotHandled();
+            if (mentores != null && !mentores.isEmpty()) {
+                new MatchCandidatesDialog(requireContext(), mentores, mentor ->
+                        viewModel.confirmarEscolhaDeMentor(mentor, false)
+                ).show();
+            } else {
+                Log.w(TAG, "Nenhum mentor disponível encontrado.");
+            }
+        });
+
+        // ------------------------------
+        // TOASTS
+        // ------------------------------
         viewModel.toastEvent.observe(getViewLifecycleOwner(), event -> {
             String message = event.getContentIfNotHandled();
             if (message != null && getContext() != null) {
@@ -128,12 +228,42 @@ public class CanvasIdeiaFragment extends Fragment {
             }
         });
 
+        // ------------------------------
+        // FECHAR TELA
+        // ------------------------------
         viewModel.closeScreenEvent.observe(getViewLifecycleOwner(), event -> {
             if (event.getContentIfNotHandled() != null) {
                 navController.navigateUp();
             }
         });
 
+        // ------------------------------
+// REMATCH DIALOG
+// ------------------------------
+        viewModel.isRematching.observe(getViewLifecycleOwner(), isRematching -> {
+            if (isRematching == null) return;
+
+            if (isRematching) {
+                if (reMatchDialog == null) {
+                    reMatchDialog = new ReMatchDialog(requireContext());
+                    reMatchDialog.setOnCancelListener(() -> viewModel.cancelarReMatch());
+                }
+                reMatchDialog.show();
+            } else if (reMatchDialog != null && reMatchDialog.isShowing()) {
+                reMatchDialog.dismiss();
+            }
+        });
+
+        viewModel.rematchMessage.observe(getViewLifecycleOwner(), msg -> {
+            if (reMatchDialog != null && reMatchDialog.isShowing()) {
+                reMatchDialog.updateMessage(msg);
+            }
+        });
+
+
+        // ------------------------------
+        // HABILITAÇÃO DO BOTÃO PUBLICAR
+        // ------------------------------
         viewModel.isPublishEnabled.observe(getViewLifecycleOwner(), isEnabled -> {
             if (binding != null && isEnabled != null) {
                 binding.btnPublicarIdeia.setEnabled(isEnabled);
@@ -142,10 +272,18 @@ public class CanvasIdeiaFragment extends Fragment {
         });
     }
 
+    // ------------------------------------------------------------------
+    // BOTÕES E AÇÕES
+    // ------------------------------------------------------------------
+
     private void setupClickListeners() {
         binding.btnVoltar.setOnClickListener(v -> viewModel.saveAndFinish());
-        binding.btnAnterior.setOnClickListener(v -> binding.viewPagerCanvas.setCurrentItem(binding.viewPagerCanvas.getCurrentItem() - 1, true));
-        binding.btnProximo.setOnClickListener(v -> binding.viewPagerCanvas.setCurrentItem(binding.viewPagerCanvas.getCurrentItem() + 1, true));
+        binding.btnAnterior.setOnClickListener(v ->
+                binding.viewPagerCanvas.setCurrentItem(binding.viewPagerCanvas.getCurrentItem() - 1, true)
+        );
+        binding.btnProximo.setOnClickListener(v ->
+                binding.viewPagerCanvas.setCurrentItem(binding.viewPagerCanvas.getCurrentItem() + 1, true)
+        );
         binding.btnPublicarIdeia.setOnClickListener(v -> verificarPermissaoEPublicar());
 
         binding.btnAvaliarIdeia.setOnClickListener(v -> {
@@ -166,45 +304,15 @@ public class CanvasIdeiaFragment extends Fragment {
         });
     }
 
-    private void updateUiState(@Nullable Ideia ideia) {
-        // Esconde todos os botões e componentes que dependem do estado
-        binding.btnPublicarIdeia.setVisibility(View.GONE);
-        binding.btnAvaliarIdeia.setVisibility(View.GONE);
-        binding.btnDespublicarIdeia.setVisibility(View.GONE);
-        binding.btnAnterior.setVisibility(View.GONE);
-        binding.btnProximo.setVisibility(View.GONE);
-        binding.tabLayout.setVisibility(View.GONE);
-
-        if (ideia == null) return;
-
-        boolean isOwner = viewModel.isCurrentUserOwner();
-        boolean isMentorPodeAvaliar = viewModel.isCurrentUserTheMentor() && ideia.getStatus() == Ideia.Status.EM_AVALIACAO;
-        boolean isReadOnly = ideia.getStatus() != Ideia.Status.RASCUNHO;
-
-        // Mostra os componentes de navegação apenas se a ideia for editável
-        if (!isReadOnly) {
-            binding.btnAnterior.setVisibility(View.VISIBLE);
-            binding.btnProximo.setVisibility(View.VISIBLE);
-            binding.tabLayout.setVisibility(View.VISIBLE);
-        }
-
-        // Mostra o botão de ação correto na toolbar
-        if (isOwner) {
-            if (ideia.getStatus() == Ideia.Status.RASCUNHO) {
-                binding.btnPublicarIdeia.setVisibility(View.VISIBLE);
-            } else if (ideia.getStatus() == Ideia.Status.EM_AVALIACAO) {
-                binding.btnDespublicarIdeia.setVisibility(View.VISIBLE);
-            }
-        } else if (isMentorPodeAvaliar) {
-            binding.btnAvaliarIdeia.setVisibility(View.VISIBLE);
-        }
-    }
+    // ------------------------------------------------------------------
+// PUBLICAÇÃO
+// ------------------------------------------------------------------
 
     private void verificarPermissaoEPublicar() {
         if (Boolean.FALSE.equals(viewModel.isPublishEnabled.getValue())) {
             new AlertDialog.Builder(requireContext())
                     .setTitle("Requisitos para Publicação")
-                    .setMessage("Para publicar, certifique-se de que cumpriu todos os requisitos:\n\n" +
+                    .setMessage("Para publicar, certifique-se de:\n\n" +
                             "• Título e Descrição preenchidos.\n" +
                             "• Pelo menos 2 áreas de atuação selecionadas.\n" +
                             "• Pelo menos um post-it em cada bloco do Canvas.")
@@ -213,81 +321,117 @@ public class CanvasIdeiaFragment extends Fragment {
             return;
         }
 
-        // Verifica se já tem permissão
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            iniciarFluxoDeLocalizacao();
+        // Verifica permissão de localização (necessário antes de publicar)
+        if (ContextCompat.checkSelfPermission(requireContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            capturarLocalizacaoEPublicar();
         } else {
-            // Se não tem, pede a permissão. O resultado acionará o `requestLocationPermissionLauncher`.
             requestLocationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
         }
     }
 
-    private void iniciarFluxoDeLocalizacao() {
+    private void capturarLocalizacaoEPublicar() {
         if (getContext() == null) return;
 
-        // Verifica se o GPS está ligado
-        LocationManager locationManager = (LocationManager) requireActivity().getSystemService(Context.LOCATION_SERVICE);
+        LocationManager locationManager =
+                (LocationManager) requireActivity().getSystemService(Context.LOCATION_SERVICE);
+
         if (locationManager != null && !locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             new AlertDialog.Builder(requireContext())
                     .setTitle("GPS Desativado")
-                    .setMessage("Para encontrar o mentor ideal, precisamos da sua localização. Por favor, ative o GPS.")
-                    .setPositiveButton("Ativar GPS", (dialog, which) -> startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)))
-                    .setNegativeButton("Continuar sem GPS", (dialog, which) -> {
-                        // O usuário escolheu continuar sem GPS
-                        publicarIdeiaComLocalizacao(null);
-                    })
+                    .setMessage("Para encontrar o mentor ideal, precisamos da sua localização. Ative o GPS.")
+                    .setPositiveButton("Ativar GPS", (dialog, which) ->
+                            startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)))
+                    .setNegativeButton("Continuar sem GPS", (dialog, which) ->
+                            publicarIdeia(null))
                     .show();
             return;
         }
 
-        // GPS está ativo, busca a localização
+        // Busca a localização atual
         locationService.getCurrentLocation(new LocationService.LocationCallback() {
             @Override
             public void onLocationResult(Location location) {
-                userLocation = location; // Armazena a localização
-                showLocationConfirmationDialog(location); // Pergunta ao usuário
+                userLocation = location;
+                publicarIdeia(location);
             }
 
             @Override
             public void onLocationError(String error) {
                 Snackbar.make(binding.getRoot(), error, Snackbar.LENGTH_LONG).show();
-                // Mesmo com erro, permite publicar sem localização
-                publicarIdeiaComLocalizacao(null);
+                publicarIdeia(null);
             }
         });
     }
-    private void showLocationConfirmationDialog(Location location) {
-        // A sua observação está correta. A comparação de proximidade é feita por coordenadas
-        // no MentorMatchService. Tentar converter a localização para um nome de cidade aqui
-        // (usando Geocoder) pode causar falhas de rede e é desnecessário para a lógica principal.
-        // Esta versão simplificada apenas confirma o uso das coordenadas, evitando o erro.
 
-        @SuppressLint("DefaultLocale") String message = String.format(
-                "Deseja buscar mentores perto da sua localização atual (Lat: %.4f, Lon: %.4f)?",
-                location.getLatitude(),
-                location.getLongitude()
-        );
+    /**
+     * Publica a ideia e delega a escolha de localização/match ao ViewModel.
+     */
+    private void publicarIdeia(@Nullable Location location) {
+        Ideia ideiaAtual = viewModel.ideia.getValue();
+        if (ideiaAtual == null) {
+            Log.w(TAG, "Nenhuma ideia carregada no ViewModel. Cancelando publicação.");
+            return;
+        }
 
-        new AlertDialog.Builder(requireContext())
-                .setTitle("Confirmar Localização")
-                .setMessage(message)
-                .setPositiveButton("Sim, usar esta", (dialog, which) -> {
-                    // O usuário confirmou. Prossegue para a publicação COM a localização.
-                    publicarIdeiaComLocalizacao(location);
-                })
-                .setNegativeButton("Escolher outra", (dialog, which) -> {
-                    // Futuramente, aqui abriria o seletor de mapa.
-                    Snackbar.make(binding.getRoot(), "Funcionalidade de mapa a ser implementada.", Snackbar.LENGTH_SHORT).show();
+        // Define coordenadas se disponíveis
+        if (location != null) {
+            ideiaAtual.setLatitude(location.getLatitude());
+            ideiaAtual.setLongitude(location.getLongitude());
+        } else {
+            ideiaAtual.setLatitude(null);
+            ideiaAtual.setLongitude(null);
+            ideiaAtual.setLocalizacaoTexto(null);
+        }
 
-                    // Importante: Permite ao usuário continuar sem a localização se ele não quiser usar a atual.
-                    publicarIdeiaComLocalizacao(null);
-                })
-                .setCancelable(false)
-                .show();
+        // Passa os dados ao ViewModel para salvar e continuar fluxo de match
+        viewModel.publicarIdeiaComLocalizacaoAtualizada(requireContext(), ideiaAtual, location);
     }
-    private void publicarIdeiaComLocalizacao(@Nullable Location location) {
-        // A mágica acontece aqui!
-        // Passamos a localização (que pode ser nula) para o ViewModel.
-        viewModel.procurarNovoMentor(requireContext(), location);
+
+
+
+    // ------------------------------------------------------------------
+    // UI STATE
+    // ------------------------------------------------------------------
+
+    private void updateUiState(@Nullable Ideia ideia) {
+        if (binding == null || ideia == null) return;
+
+        binding.btnPublicarIdeia.setVisibility(View.GONE);
+        binding.btnAvaliarIdeia.setVisibility(View.GONE);
+        binding.btnDespublicarIdeia.setVisibility(View.GONE);
+        binding.btnAnterior.setVisibility(View.GONE);
+        binding.btnProximo.setVisibility(View.GONE);
+        binding.tabLayout.setVisibility(View.GONE);
+
+        boolean isOwner = viewModel.isCurrentUserOwner();
+        boolean isMentorPodeAvaliar = viewModel.isCurrentUserTheMentor() &&
+                ideia.getStatus() == Ideia.Status.EM_AVALIACAO;
+        boolean isReadOnly = ideia.getStatus() != Ideia.Status.RASCUNHO;
+        boolean isMentor = viewModel.isCurrentUserTheMentor();
+
+        if (!isReadOnly) {
+            binding.btnAnterior.setVisibility(View.VISIBLE);
+            binding.btnProximo.setVisibility(View.VISIBLE);
+            binding.tabLayout.setVisibility(View.VISIBLE);
+        }
+
+        if (isOwner) {
+            if (ideia.getStatus() == Ideia.Status.RASCUNHO || ideia.getStatus() == null) {
+                binding.btnPublicarIdeia.setVisibility(View.VISIBLE);
+            } else if (ideia.getStatus() == Ideia.Status.EM_AVALIACAO) {
+                binding.btnDespublicarIdeia.setVisibility(View.VISIBLE);
+            }
+        } else if (isMentorPodeAvaliar) {
+            binding.btnAvaliarIdeia.setVisibility(View.VISIBLE);
+        }
+
+        Log.d(TAG, "updateUiState: Status=" + ideia.getStatus() +
+                ", Owner=" + isOwner +
+                ", Mentor=" + isMentor +
+                ", btnPublicar=" + (binding.btnPublicarIdeia.getVisibility() == View.VISIBLE) +
+                ", btnDespublicar=" + (binding.btnDespublicarIdeia.getVisibility() == View.VISIBLE) +
+                ", btnAvaliar=" + (binding.btnAvaliarIdeia.getVisibility() == View.VISIBLE));
+
     }
 }

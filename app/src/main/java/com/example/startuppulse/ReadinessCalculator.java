@@ -2,10 +2,10 @@ package com.example.startuppulse;
 
 import android.text.TextUtils;
 
-import com.example.startuppulse.data.Avaliacao;
-import com.example.startuppulse.data.CanvasEtapa;
+import com.example.startuppulse.data.models.Avaliacao;
+import com.example.startuppulse.data.models.CanvasEtapa;
 import com.example.startuppulse.data.models.Ideia;
-import com.example.startuppulse.data.PostIt;
+import com.example.startuppulse.data.models.PostIt;
 
 import java.util.List;
 import java.util.Map;

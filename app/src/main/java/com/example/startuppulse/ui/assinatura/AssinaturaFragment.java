@@ -1,4 +1,4 @@
-package com.example.startuppulse;
+package com.example.startuppulse.ui.assinatura;
 
 import android.app.AlertDialog;
 import android.os.Bundle;

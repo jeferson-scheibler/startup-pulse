@@ -20,7 +20,7 @@
         android:id="@+id/content_group"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:constraint_referenced_ids="btn_voltar,btn_publicar_ideia,btn_despublicar_ideia, btn_avaliar_ideia,view_pager_canvas,btn_anterior,tab_layout,btn_proximo" />
+        app:constraint_referenced_ids="btn_voltar,action_buttons_container,view_pager_canvas,btn_anterior,tab_layout,btn_proximo" />
 
     <ImageView
         android:id="@+id/btn_voltar"
@@ -37,48 +37,45 @@
         app:layout_constraintTop_toTopOf="parent"
         app:tint="@color/white" />
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btn_publicar_ideia"
-        style="@style/App.Button.LessRounded"
+    <!-- Container para os botões de ação -->
+    <FrameLayout
+        android:id="@+id/action_buttons_container"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="16dp"
-        android:text="Publicar"
-        android:visibility="gone"
-        app:icon="@drawable/ic_publicar"
-        app:layout_constraintBottom_toBottomOf="@id/btn_voltar"
-        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/btn_voltar"
-        tools:visibility="visible" />
+        app:layout_constraintBottom_toBottomOf="@id/btn_voltar"
+        app:layout_constraintEnd_toEndOf="parent">
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btn_despublicar_ideia"
-        style="@style/Widget.Material3.Button.OutlinedButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
-        android:text="Despublicar"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="@id/btn_voltar"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@id/btn_voltar"
-        tools:visibility="visible" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_publicar_ideia"
+            style="@style/App.Button.LessRounded"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Publicar"
+            android:visibility="gone"
+            app:icon="@drawable/ic_publicar" />
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btn_avaliar_ideia"
-        style="@style/App.Button.LessRounded"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
-        android:text="Avaliar"
-        android:textColor="@color/secondary_color"
-        android:visibility="gone"
-        app:icon="@drawable/ic_star"
-        app:iconTint="@color/secondary_color"
-        app:layout_constraintBottom_toBottomOf="@id/btn_voltar"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@id/btn_voltar"
-        tools:visibility="visible" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_despublicar_ideia"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Despublicar"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_avaliar_ideia"
+            style="@style/App.Button.LessRounded"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Avaliar"
+            android:textColor="@color/secondary_color"
+            android:visibility="gone"
+            app:icon="@drawable/ic_star"
+            app:iconTint="@color/secondary_color" />
+    </FrameLayout>
+
 
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/view_pager_canvas"

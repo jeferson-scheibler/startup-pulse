@@ -19,7 +19,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
-import android.widget.TextView;
 import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -31,14 +30,13 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.fragment.NavHostFragment;
-import com.example.startuppulse.data.Avaliacao;
+import com.example.startuppulse.data.models.Avaliacao;
 import com.example.startuppulse.data.models.Ideia;
 import com.example.startuppulse.databinding.DialogMentorFeedbackBinding;
 import com.example.startuppulse.databinding.FragmentIdeiaStatusBinding;
 import com.example.startuppulse.ui.canvas.CanvasIdeiaViewModel;
 import com.example.startuppulse.util.PdfGenerator;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -111,13 +109,17 @@ public class IdeiaStatusFragment extends Fragment {
 
     private void setupClickListeners() {
         binding.btnDownloadPdf.setOnClickListener(v -> verificarPermissaoEGerarPdf());
-        binding.btnProcurarMentor.setOnClickListener(v -> tentarNovoMatchmaking());
         binding.btnVerFeedback.setOnClickListener(v -> showFeedbackDialog());
 
         binding.pulseVoteView.setOnVoteListener(score -> {
             Log.d("IdeiaStatusFragment", "PulseVote confirmou: " + score);
             sharedViewModel.votarNaComunidade(score);
         });
+
+        binding.btnProcurarMentor.setOnClickListener(v -> {
+            tentarNovoMatchmaking();
+        });
+
 
         binding.btnPrepararInvestidores.setOnClickListener(v -> {
             if (currentIdeia != null && currentIdeia.getId() != null) {

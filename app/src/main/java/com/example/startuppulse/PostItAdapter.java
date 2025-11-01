@@ -14,7 +14,7 @@ import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.startuppulse.data.PostIt;
+import com.example.startuppulse.data.models.PostIt;
 import com.example.startuppulse.ui.canvas.CanvasIdeiaViewModel; // Certifique-se que o import está correto
 import com.google.android.material.card.MaterialCardView;
 

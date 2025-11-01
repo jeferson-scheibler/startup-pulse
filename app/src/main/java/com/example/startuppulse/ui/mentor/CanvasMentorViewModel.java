@@ -1,20 +1,24 @@
 package com.example.startuppulse.ui.mentor;
 
+import android.util.Log;
+
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.example.startuppulse.common.Result;
-import com.example.startuppulse.data.Cidade;
-import com.example.startuppulse.data.Estado;
-import com.example.startuppulse.data.ResultCallback;
+import com.example.startuppulse.data.models.Cidade;
+import com.example.startuppulse.data.models.Estado;
 import com.example.startuppulse.data.models.Mentor;
 import com.example.startuppulse.data.models.User;
 import com.example.startuppulse.data.repositories.IAuthRepository;
 import com.example.startuppulse.data.repositories.IMentorRepository;
 import com.example.startuppulse.data.repositories.IUserRepository;
 import com.example.startuppulse.util.Event;
+import com.example.startuppulse.util.GeocodeUtils;
 import com.example.startuppulse.util.IBGEService;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.List;
 
@@ -138,35 +142,69 @@ public class CanvasMentorViewModel extends ViewModel {
             return;
         }
 
-        // 1. Atualizar o User
+        String currentUid = currentUser.getId();
+        if (currentUid == null) {
+            _saveResult.setValue(new Result.Error<>(new Exception("Usuário sem ID válido.")));
+            return;
+        }
+
+        // Atualiza atributos do usuário
         currentUser.setMentor(true);
         currentUser.setProfissao(profissao);
-        currentUser.setAreasDeInteresse(areas); // Salvando áreas no User
+        currentUser.setAreasDeInteresse(areas);
 
-        userRepository.updateUser(currentUid, currentUser, userResult -> {
-            if (userResult instanceof Result.Success) {
-                // 2. Criar o Mentor (após o sucesso da atualização do User)
-                Mentor mentor = new Mentor();
-                mentor.setState(estado);
-                mentor.setCity(cidade);
-                mentor.setBio(bio); // Salvando bio no Mentor
+        // 🔹 Executa todo o processo em background
+        new Thread(() -> {
+            try {
+                // 1️⃣ Busca coordenadas antes de salvar
+                double[] coords = GeocodeUtils.obterCoordenadasPorCidade(cidade, estado);
+                double latitude = 0.0;
+                double longitude = 0.0;
 
-                // mentorResult é Result<String>
-                mentorRepository.saveMentorProfile(mentor, mentorResult -> {
-                    if (mentorResult instanceof Result.Success) {
-                        _saveResult.setValue(new Result.Success<>(null)); // Sucesso de ambas as operações
-                        _navigateToProfile.setValue(new Event<>(true));
-                    } else if (mentorResult instanceof Result.Error) {
-                        // --- CORREÇÃO (Erro 1 e 2) ---
-                        // Extrai a exceção do Result<String> e cria um novo Result.Error<Void>
-                        Exception error = ((Result.Error<String>) mentorResult).error;
-                        _saveResult.setValue(new Result.Error<>(error));
+                if (coords != null) {
+                    latitude = coords[0];
+                    longitude = coords[1];
+                    Log.d("MentorProfile", "Coordenadas obtidas: " + latitude + ", " + longitude);
+                } else {
+                    Log.w("MentorProfile", "Não foi possível obter coordenadas para " + cidade + ", " + estado);
+                }
+
+                double finalLatitude = latitude;
+                double finalLongitude = longitude;
+
+                // 2️⃣ Atualiza o User no Firestore
+                userRepository.updateUser(currentUid, currentUser, userResult -> {
+                    if (userResult instanceof Result.Success) {
+
+                        // 3️⃣ Cria o Mentor após atualizar o usuário
+                        Mentor mentor = new Mentor();
+                        mentor.setState(estado);
+                        mentor.setCity(cidade);
+                        mentor.setBio(bio);
+                        mentor.setLatitude(finalLatitude);
+                        mentor.setLongitude(finalLongitude);
+                        mentor.setActivePublic(true); // opcional, mas importante pro match
+
+                        mentorRepository.saveMentorProfile(mentor, mentorResult -> {
+                            if (mentorResult instanceof Result.Success) {
+                                _saveResult.postValue(new Result.Success<>(null));
+                                _navigateToProfile.postValue(new Event<>(true));
+                            } else if (mentorResult instanceof Result.Error) {
+                                Exception error = ((Result.Error<String>) mentorResult).error;
+                                _saveResult.postValue(new Result.Error<>(error));
+                            }
+                        });
+                    } else if (userResult instanceof Result.Error) {
+                        Exception error = ((Result.Error<Void>) userResult).error;
+                        _saveResult.postValue(new Result.Error<>(error));
                     }
                 });
-            } else if (userResult instanceof Result.Error) {
-                Exception error = ((Result.Error<Void>) userResult).error;
-                _saveResult.setValue(new Result.Error<>(error));
+
+            } catch (Exception e) {
+                Log.e("MentorProfile", "Erro inesperado ao salvar mentor: " + e.getMessage(), e);
+                _saveResult.postValue(new Result.Error<>(e));
             }
-        });
+        }).start();
     }
+
 }

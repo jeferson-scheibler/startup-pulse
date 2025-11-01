@@ -7,7 +7,7 @@ import androidx.lifecycle.ViewModel;
 import com.example.startuppulse.data.models.User; // MUDADO: de Mentor para User
 import com.example.startuppulse.common.Result;
 import com.example.startuppulse.data.repositories.IUserRepository; // MUDADO: de MentorRepository para IUserRepository
-import com.example.startuppulse.data.ResultCallback;
+import com.example.startuppulse.common.ResultCallback;
 
 import java.util.List;
 
