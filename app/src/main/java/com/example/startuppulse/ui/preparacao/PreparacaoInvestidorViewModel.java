@@ -1,5 +1,6 @@
 package com.example.startuppulse.ui.preparacao;
 
+import android.app.Application;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
@@ -54,12 +55,14 @@ public class PreparacaoInvestidorViewModel extends ViewModel {
 
     private User cachedUserProfile = null;
     private Ideia cachedIdeia = null;
+    private final Application application;
 
 
     @Inject
-    public PreparacaoInvestidorViewModel(IdeiaRepository ideiaRepository, AuthRepository authRepository, SavedStateHandle savedStateHandle) {
+    public PreparacaoInvestidorViewModel(IdeiaRepository ideiaRepository, AuthRepository authRepository, SavedStateHandle savedStateHandle, Application application) {
         this.ideiaRepository = ideiaRepository;
         this.authRepository = authRepository;
+        this.application = application;
         this.ideiaId = savedStateHandle.get("ideiaId");
         loadIdeia();
     }
@@ -243,5 +246,12 @@ public class PreparacaoInvestidorViewModel extends ViewModel {
 
     public void salvarEFinalizar() {
         salvarDados(true);
+    }
+
+    @Override
+    protected void onCleared() {
+        super.onCleared();
+        // Remove quaisquer callbacks pendentes para evitar vazamentos
+        handler.removeCallbacks(saveRunnable);
     }
 }

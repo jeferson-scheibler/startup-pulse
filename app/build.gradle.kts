@@ -110,6 +110,8 @@ dependencies {
     implementation("com.squareup.okhttp3:logging-interceptor:4.10.0")
     implementation("com.squareup.okhttp3:okhttp:4.10.0")
 
+    implementation(libs.inputmask)
+
     // Desugaring
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.2")
     implementation(libs.androidx.lifecycle.livedata.ktx)

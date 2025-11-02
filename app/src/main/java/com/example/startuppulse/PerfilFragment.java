@@ -141,6 +141,10 @@ public class PerfilFragment extends Fragment {
         binding.btnAjuda.setOnClickListener(v -> {
             navController.navigate(R.id.action_perfilFragment_to_ajudaSuporteFragment);
         });
+        binding.buttonCadastrarInvestidor.setOnClickListener(v -> {
+            NavHostFragment.findNavController(this)
+                    .navigate(R.id.action_perfilFragment_to_investorTypeChoiceFragment);
+        });
     }
 
     private void populateUi(User user) {

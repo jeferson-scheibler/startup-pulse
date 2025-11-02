@@ -335,18 +335,35 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/button_tornar_mentor"
-            style="@style/App.Button.Outlined.LessRounded"
+        <LinearLayout
+            android:id="@+id/container_roles"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:orientation="vertical"
             android:layout_marginTop="16dp"
-            android:paddingVertical="12dp"
-            android:text="Tornar-se um Mentor"
-            app:icon="@drawable/ic_mentor"
             app:layout_constraintTop_toBottomOf="@id/card_actions"
             app:layout_constraintStart_toStartOf="@id/guideline_start"
-            app:layout_constraintEnd_toEndOf="@id/guideline_end" />
+            app:layout_constraintEnd_toEndOf="@id/guideline_end">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_tornar_mentor"
+                style="@style/App.Button.Outlined.LessRounded"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingVertical="12dp"
+                android:text="Tornar-se um Mentor"
+                app:icon="@drawable/ic_mentor" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_cadastrar_investidor"
+                style="@style/App.Button.Outlined.LessRounded"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:paddingVertical="12dp"
+                android:text="Sou Investidor"
+                app:icon="@drawable/ic_work" /> </LinearLayout>
+
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_sair"
@@ -358,8 +375,7 @@
             android:textColor="@color/colorError"
             app:icon="@drawable/ic_logout"
             app:iconTint="@color/colorError"
-            app:layout_constraintTop_toBottomOf="@id/button_tornar_mentor"
-            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/container_roles" app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>

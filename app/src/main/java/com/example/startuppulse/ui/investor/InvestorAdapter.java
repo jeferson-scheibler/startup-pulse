@@ -64,6 +64,9 @@ public class InvestorAdapter extends ListAdapter<Investor, InvestorAdapter.Inves
             name.setText(investor.getNome());
             bio.setText(investor.getBio());
 
+            @SuppressLint({"StringFormatInvalid", "LocalSuppress"}) String photoDescription = itemView.getContext().getString(R.string.content_desc_foto_investidor, investor.getNome());
+            photo.setContentDescription(photoDescription);
+
             Glide.with(itemView.getContext())
                     .load(investor.getFotoUrl())
                     .placeholder(R.drawable.ic_person)

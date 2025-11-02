@@ -9,6 +9,8 @@ from google.api_core.exceptions import InvalidArgument
 import google.generativeai as genai
 from google.generativeai.types import GenerationConfig, HarmCategory, HarmBlockThreshold
 from firebase_admin import messaging
+import requests
+import logging
 
 import base64
 import json
@@ -474,3 +476,149 @@ def notificar_avaliacao_mentor(event: firestore_fn.Event[firestore_fn.Change]) -
 
     # else:
     # print(f"Atualização na ideia {ideia_id} não envolveu avaliações."
+
+# --- Configuração da Verificação (sem alteração) ---
+VALID_INVESTOR_CNAES = ["6462-0/00", "6463-8/00"]
+RECEITA_API_URL = "https://www.receitaws.com.br/v1"
+
+@firestore_fn.on_document_created(
+    document="investors/{investorId}",
+    region="southamerica-east1",
+    secrets=["RECEITAWS_API_TOKEN"]
+)
+def verify_investor_data(
+        event: firestore_fn.Event[firestore_fn.DocumentSnapshot],
+) -> None:
+    """
+    (Revisada) Verifica os dados de um novo investidor com logs e timeouts.
+    """
+
+    # --- ALTERAÇÃO 1: Log de ERRO ---
+    # Vamos usar logging.error() para que esta linha apareça em VERMELHO
+    # e seja impossível de perder nos logs.
+    investor_id = event.params['investorId']
+    logging.error(f"--- (TESTE) FUNÇÃO ACIONADA PARA INVESTIDOR: {investor_id} ---")
+
+    investor_ref = event.data.reference
+    investor_data = event.data.to_dict()
+
+    if investor_data.get("status") != "PENDING_APPROVAL":
+        logging.info(f"Investidor {investor_id} já processado. Ignorando.")
+        return
+
+    api_token = os.environ.get("RECEITAWS_API_TOKEN")
+    if not api_token:
+        logging.error(f"ERRO GRAVE: Secret 'RECEITAWS_API_TOKEN' não encontrado.")
+        investor_ref.update({
+            "status": "REJECTED",
+            "rejectionReason": "Erro interno do servidor (Token API ausente).",
+            "verifiedAt": firestore.SERVER_TIMESTAMP
+        })
+        return
+
+    investor_type = investor_data.get("investorType")
+    update_payload = {}
+    db = firestore.client()
+
+    try:
+        logging.info(f"Iniciando verificação tipo '{investor_type}' para {investor_id}...")
+        if investor_type == "INDIVIDUAL":
+            cpf = investor_data.get("cpf")
+            update_payload = _verify_cpf(cpf, api_token)
+
+        elif investor_type == "FIRM":
+            cnpj = investor_data.get("cnpj")
+            update_payload = _verify_cnpj(cnpj, api_token)
+
+        else:
+            logging.error(f"InvestorType desconhecido: {investor_type}")
+            update_payload = {
+                "status": "REJECTED",
+                "rejectionReason": "Tipo de investidor inválido."
+            }
+
+    # --- ALTERAÇÃO 2: Logging de Erro Explícito ---
+    # Captura erros de timeout ou conexão
+    except requests.exceptions.Timeout:
+        logging.error(f"API TIMEOUT: A API ({RECEITA_API_URL}) demorou demais para responder.")
+        update_payload = {"status": "REJECTED", "rejectionReason": "API de verificação demorou para responder (Timeout)."}
+    # Captura erros de API (4xx, 5xx)
+    except requests.exceptions.RequestException as e:
+        logging.error(f"ERRO DE API: Falha ao chamar API externa: {e}")
+        update_payload = {"status": "REJECTED", "rejectionReason": f"Erro de comunicação com a API de verificação: {e}"}
+    # Captura todos os outros erros (ex: KeyError, etc.)
+    except Exception as e:
+        logging.error(f"ERRO INESPERADO: {e}", exc_info=True) # exc_info=True mostra o stack trace
+        update_payload = {"status": "REJECTED", "rejectionReason": f"Erro interno no servidor: {e}"}
+
+    # Atualiza o documento no Firestore
+    update_payload["verifiedAt"] = firestore.SERVER_TIMESTAMP
+    logging.info(f"Atualizando investidor {investor_id} com status: {update_payload.get('status')}")
+    investor_ref.update(update_payload)
+
+
+# --- Funções Auxiliares (COM TIMEOUT) ---
+
+def _verify_cnpj(cnpj: str, token: str) -> dict:
+    """Verifica um CNPJ na API ReceitaWS."""
+    cnpj_clean = "".join(filter(str.isdigit, cnpj))
+    headers = {"Authorization": f"Bearer {token}"}
+    url = f"{RECEITA_API_URL}/cnpj/{cnpj_clean}"
+
+    logging.info(f"Chamando API de CNPJ: {url}")
+    # --- ALTERAÇÃO 3: Adiciona um timeout de 10 segundos ---
+    response = requests.get(url, headers=headers, timeout=10)
+
+    response.raise_for_status() # Lança exceção se for (4xx, 5xx)
+    data = response.json()
+
+    if data.get("situacao") != "ATIVA":
+        logging.warning(f"CNPJ {cnpj_clean} REJEITADO. Situação: {data.get('situacao')}")
+        return {
+            "status": "REJECTED",
+            "rejectionReason": f"CNPJ não está com situação 'ATIVA'.",
+            "apiVerificationData": data
+        }
+
+    # cnae_principal_code = data.get("atividade_principal", [{}])[0].get("code")
+    # if cnae_principal_code not in VALID_INVESTOR_CNAES:
+    #     logging.warning(f"CNPJ {cnpj_clean} REJEITADO. CNAE: {cnae_principal_code}")
+    #     return {
+    #         "status": "REJECTED",
+    #         "rejectionReason": f"CNAE principal ({cnae_principal_code}) não é de investimento.",
+    #         "apiVerificationData": data
+    #     }
+
+    logging.info(f"CNPJ {cnpj_clean} APROVADO.")
+    return {
+        "status": "ACTIVE",
+        "razaoSocial": data.get("razao_social"),
+        "nome": data.get("nome_fantasia") or data.get("razao_social"),
+        "apiVerificationData": data
+    }
+
+def _verify_cpf(cpf: str, token: str) -> dict:
+    """Verifica um CPF na API (requer plano pago)."""
+    cpf_clean = "".join(filter(str.isdigit, cpf))
+
+    # --- ALTERAÇÃO 3 (Exemplo): Adicionar timeout aqui também ---
+    # url = f"https://api.receitaws.com.br/v1/cpf/{cpf_clean}"
+    # response = requests.get(url, headers={"Authorization": f"Bearer {token}"}, timeout=10)
+    # ... (lógica real da API) ...
+
+    # **INÍCIO DA SIMULAÇÃO**
+    logging.warning("--- SIMULAÇÃO DE API DE CPF ATIVA ---")
+    if cpf_clean == "11111111111":
+        return {"status": "REJECTED", "rejectionReason": "CPF irregular (simulado)."}
+
+    simulated_data = {
+        "situacao_cadastral": "REGULAR", "nome": "Investidor Anjo Simulado",
+        "qsa": [{"cnpj": "12345678000199", "empresa": "Startup Famosa 1"}]
+    }
+    # **FIM DA SIMULAÇÃO**
+
+    logging.info(f"CPF {cpf_clean} APROVADO (via simulação).")
+    return {
+        "status": "ACTIVE",
+        "apiVerificationData": simulated_data
+    }

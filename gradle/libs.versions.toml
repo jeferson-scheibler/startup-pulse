@@ -29,6 +29,7 @@ hilt = "2.57.2"
 lifecycle = "2.9.4"
 runtime = "1.9.4"
 firebaseCrashlyticsBuildtools = "3.0.6"
+inputmask = "6.1.0"
 
 [libraries]
 compiler = { module = "com.github.bumptech.glide:compiler", version.ref = "glide" }
@@ -66,6 +67,7 @@ hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.r
 androidx-lifecycle-livedata-ktx = { group = "androidx.lifecycle", name = "lifecycle-livedata-ktx", version.ref = "lifecycle" }
 androidx-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtime" }
 firebase-crashlytics-buildtools = { group = "com.google.firebase", name = "firebase-crashlytics-buildtools", version.ref = "firebaseCrashlyticsBuildtools" }
+inputmask = { module = "com.github.RedMadRobot:input-mask-android", version.ref = "inputmask" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
