@@ -183,4 +183,6 @@
     <string name="cancelar_busca">Cancelar busca</string>
     <string name="refazendo_busca_mentores">Refazendo busca por mentores.</string>
     <string name="refazendo_busca">Buscando...</string>
+    <string name="desc_animacao_ideia_nao_pronta">Animação nenhuma ideia pronta para investidores</string>
+    <string name="content_desc_foto_investidor">Foto investidor</string>
 </resources>

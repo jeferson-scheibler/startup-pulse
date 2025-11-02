@@ -48,6 +48,10 @@ public class InvestidoresFragment extends Fragment {
         viewModel = new ViewModelProvider(this).get(InvestidoresViewModel.class);
         navController = NavHostFragment.findNavController(this);
 
+        binding.btnCadastrarInvestidor.setOnClickListener(v -> {
+            navController.navigate(R.id.action_investidoresFragment_to_investorTypeChoiceFragment);
+        });
+
         setupRecyclerViews();
         setupObservers();
     }
@@ -71,9 +75,8 @@ public class InvestidoresFragment extends Fragment {
             binding.progressBarLoadingInvestors.setVisibility(state == InvestidoresViewModel.ViewState.LOADING ? View.VISIBLE : View.GONE);
             binding.readinessContainer.setVisibility(state == InvestidoresViewModel.ViewState.SHOW_READINESS ? View.VISIBLE : View.GONE);
             binding.containerInvestorList.setVisibility(state == InvestidoresViewModel.ViewState.SHOW_INVESTORS ? View.VISIBLE : View.GONE);
+            binding.containerCadastroInvestidor.setVisibility(state == InvestidoresViewModel.ViewState.SHOW_READINESS ? View.VISIBLE : View.GONE);
         });
-
-        // Removido: viewModel.readinessData.observe(...);
 
         viewModel.investors.observe(getViewLifecycleOwner(), investors -> {
             investorAdapter.submitList(investors); // Assumindo que o InvestorAdapter usa ListAdapter
@@ -85,10 +88,6 @@ public class InvestidoresFragment extends Fragment {
             }
         });
     }
-
-    // Removido: private void updateReadinessUI(ReadinessData data) { ... }
-    // O método inteiro foi removido pois seus componentes (progressBarScore,
-    // textViewScore, recyclerViewTasks) não existem mais.
 
     @Override
     public void onDestroyView() {

@@ -45,6 +45,7 @@
             android:layout_height="0dp"
             android:layout_marginTop="32dp"
             app:layout_constraintDimensionRatio="1:1"
+            android:contentDescription="@string/desc_animacao_ideia_nao_pronta"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/text_view_subtitulo"
@@ -54,6 +55,43 @@
             app:lottie_autoPlay="true"
             app:lottie_loop="true"
             tools:layout_height="250dp" />
+        <LinearLayout
+            android:id="@+id/container_cadastro_investidor"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="24dp"
+            android:visibility="visible"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/lottie_empty_readiness">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:text="Você é um investidor?"
+                android:textAppearance="@style/Text.TitleMedium" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="4dp"
+                android:text="Cadastre-se para ter acesso a ideias validadas."
+                android:textAppearance="@style/Text.BodySmall.Muted" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_cadastrar_investidor"
+                style="@style/App.Button.Primary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Cadastrar Perfil de Investidor"
+                app:icon="@drawable/ic_work" />
+
+        </LinearLayout>
 
         <ProgressBar
             android:id="@+id/progress_bar_loading_investors"

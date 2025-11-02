@@ -17,10 +17,6 @@ public abstract class RepositoryModule {
     @Singleton
     public abstract IIdeiaRepository bindIdeiaRepository(IdeiaRepository impl);
 
-//    @Binds
-//    @Singleton
-//    public abstract IInvestorRepository bindInvestorRepository(InvestorRepository impl);
-
     @Binds
     @Singleton
     public abstract IMentorRepository bindMentorRepository(MentorRepository impl);
@@ -31,6 +27,9 @@ public abstract class RepositoryModule {
 
     @Binds
     public abstract IStorageRepository bindStorageRepository(StorageRepository impl);
+
+    @Binds
+    public abstract IInvestorRepository bindInvestorRepository(InvestorRepository investorRepository);
 
     @Binds
     public abstract IUserRepository bindUserRepository(UserRepository impl);

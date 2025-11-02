@@ -52,4 +52,14 @@ public class StorageRepository implements IStorageRepository {
                     callback.onResult(new Result.Error<>(new Exception("Falha no upload da imagem.", e)));
                 });
     }
+
+    @Override
+    public void uploadInvestorProfileImage(String investorId, Uri imageUri, ResultCallback<String> callback) {
+        // 1. Defina o folderPath e o fileName que o helper 'uploadImage' espera
+        String folderPath = "investor_profile_images/" + investorId;
+        String fileName = "profile.jpg";
+
+        // 2. Chame o helper 'uploadImage' com os 4 argumentos corretos
+        uploadImage(imageUri, folderPath, fileName, callback);
+    }
 }
