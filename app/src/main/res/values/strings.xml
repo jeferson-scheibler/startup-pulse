@@ -186,4 +186,13 @@
     <string name="desc_animacao_ideia_nao_pronta">Animação nenhuma ideia pronta para investidores</string>
     <string name="content_desc_foto_investidor">Foto investidor</string>
     <string name="default_notification_channel_id">startup_pulse_channel</string>
+
+    <string name="notification_channel_name_avaliacoes">Avaliações de Mentores</string>
+    <string name="notification_channel_description_avaliacoes">Notificações importantes sobre feedbacks e avaliações recebidas nas suas ideias.</string>
+
+    <string name="notification_channel_name_interacoes">Interações e Atividade</string>
+    <string name="notification_channel_description_interacoes">Avisos sobre novos Pulses, comentários e outras interações nas suas ideias.</string>
+
+    <string name="notification_channel_name_geral">Notícias e Novidades</string>
+    <string name="notification_channel_description_geral">Notificações gerais sobre o Startup Pulse, dicas e novidades da plataforma.</string>
 </resources>
