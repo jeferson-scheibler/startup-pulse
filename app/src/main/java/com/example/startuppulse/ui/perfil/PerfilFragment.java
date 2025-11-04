@@ -1,4 +1,4 @@
-package com.example.startuppulse;
+package com.example.startuppulse.ui.perfil;
 
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -18,12 +18,10 @@ import androidx.navigation.fragment.NavHostFragment;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
+import com.example.startuppulse.R;
 import com.example.startuppulse.common.Result;
 import com.example.startuppulse.data.models.User;
 import com.example.startuppulse.databinding.FragmentPerfilBinding;
-import com.example.startuppulse.ui.perfil.PerfilViewModel;
-
-import java.util.Locale;
 
 import dagger.hilt.android.AndroidEntryPoint;
 
@@ -45,13 +43,14 @@ public class PerfilFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         viewModel = new ViewModelProvider(this).get(PerfilViewModel.class);
+        NavController navController = NavHostFragment.findNavController(this);
 
         Log.d("PerfilFragment", "onViewCreated: Initializing profile data load.");
         viewModel.loadUserProfile();
-        setupObservers();
-        setupClickListeners();
+        setupObservers(navController);
+        setupClickListeners(navController);
     }
-    private void setupObservers() {
+    private void setupObservers(NavController navController) {
         viewModel.userProfileResult.observe(getViewLifecycleOwner(), result -> {
             if (binding == null) return;
 
@@ -100,6 +99,24 @@ public class PerfilFragment extends Fragment {
             }
         });
 
+        viewModel.isInvestorActive.observe(getViewLifecycleOwner(), isActive -> {
+            if (isActive) {
+                // 1. É UM INVESTIDOR ATIVO
+                binding.buttonCadastrarInvestidor.setText("Acessar Perfil de Investidor");
+                binding.buttonCadastrarInvestidor.setOnClickListener(v -> {
+                    // Navega direto para a tela de EDIÇÃO de perfil
+                    navController.navigate(R.id.action_perfilFragment_to_investorProfileSetupFragment);
+                });
+            } else {
+                // 2. NÃO É UM INVESTIDOR
+                binding.buttonCadastrarInvestidor.setText("Sou Investidor");
+                binding.buttonCadastrarInvestidor.setOnClickListener(v -> {
+                    // Navega para o INÍCIO do fluxo de cadastro
+                    navController.navigate(R.id.action_perfilFragment_to_investorTypeChoiceFragment);
+                });
+            }
+        });
+
         viewModel.validadePlanoDisplay.observe(getViewLifecycleOwner(), validade -> {
             if (binding != null) {
                 binding.textViewValidadePlano.setText(validade);
@@ -123,8 +140,7 @@ public class PerfilFragment extends Fragment {
         });
     }
 
-    private void setupClickListeners() {
-        NavController navController = NavHostFragment.findNavController(this);
+    private void setupClickListeners(NavController navController) {
         binding.btnSair.setOnClickListener(v -> viewModel.logout());
         binding.buttonUpgradePro.setOnClickListener(v ->
                 navController.navigate(R.id.action_perfilFragment_to_assinaturaFragment)
@@ -142,6 +158,7 @@ public class PerfilFragment extends Fragment {
             navController.navigate(R.id.action_perfilFragment_to_ajudaSuporteFragment);
         });
         binding.buttonCadastrarInvestidor.setOnClickListener(v -> {
+
             NavHostFragment.findNavController(this)
                     .navigate(R.id.action_perfilFragment_to_investorTypeChoiceFragment);
         });

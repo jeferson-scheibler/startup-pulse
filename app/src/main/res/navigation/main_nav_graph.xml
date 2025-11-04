@@ -79,7 +79,7 @@
 
     <fragment
         android:id="@+id/perfilFragment"
-        android:name="com.example.startuppulse.PerfilFragment"
+        android:name="com.example.startuppulse.ui.perfil.PerfilFragment"
         android:label="Perfil"
         tools:layout="@layout/fragment_perfil" >
         <action
@@ -100,6 +100,13 @@
         <action
             android:id="@+id/action_perfilFragment_to_investorTypeChoiceFragment"
             app:destination="@id/investorTypeChoiceFragment"
+            app:enterAnim="@anim/fade_in"
+            app:exitAnim="@anim/fade_out"
+            app:popEnterAnim="@anim/fade_in"
+            app:popExitAnim="@anim/fade_out" />
+        <action
+            android:id="@+id/action_perfilFragment_to_investorProfileSetupFragment"
+            app:destination="@id/investorProfileSetupFragment"
             app:enterAnim="@anim/fade_in"
             app:exitAnim="@anim/fade_out"
             app:popEnterAnim="@anim/fade_in"

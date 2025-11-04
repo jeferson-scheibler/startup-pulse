@@ -11,6 +11,8 @@ from google.generativeai.types import GenerationConfig, HarmCategory, HarmBlockT
 from firebase_admin import messaging
 import requests
 import logging
+import re
+import unicodedata
 
 import base64
 import json
@@ -517,6 +519,7 @@ def verify_investor_data(
         return
 
     investor_type = investor_data.get("investorType")
+    user_name = investor_data.get("nome")
     update_payload = {}
     db = firestore.client()
 
@@ -528,7 +531,7 @@ def verify_investor_data(
 
         elif investor_type == "FIRM":
             cnpj = investor_data.get("cnpj")
-            update_payload = _verify_cnpj(cnpj, api_token)
+            update_payload = _verify_cnpj(cnpj, api_token, user_name)
 
         else:
             logging.error(f"InvestorType desconhecido: {investor_type}")
@@ -559,16 +562,14 @@ def verify_investor_data(
 
 # --- Funções Auxiliares (COM TIMEOUT) ---
 
-def _verify_cnpj(cnpj: str, token: str) -> dict:
+def _verify_cnpj(cnpj: str, token: str, user_name: str) -> dict:
     """Verifica um CNPJ na API ReceitaWS."""
     cnpj_clean = "".join(filter(str.isdigit, cnpj))
     headers = {"Authorization": f"Bearer {token}"}
     url = f"{RECEITA_API_URL}/cnpj/{cnpj_clean}"
 
     logging.info(f"Chamando API de CNPJ: {url}")
-    # --- ALTERAÇÃO 3: Adiciona um timeout de 10 segundos ---
     response = requests.get(url, headers=headers, timeout=10)
-
     response.raise_for_status() # Lança exceção se for (4xx, 5xx)
     data = response.json()
 
@@ -579,6 +580,39 @@ def _verify_cnpj(cnpj: str, token: str) -> dict:
             "rejectionReason": f"CNPJ não está com situação 'ATIVA'.",
             "apiVerificationData": data
         }
+
+    qsa_list = data.get("qsa", [])
+    if not qsa_list:
+        logging.warning(f"CNPJ {cnpj_clean} REJEITADO. Não possui QSA (Quadro de Sócios).")
+        return {
+            "status": "REJECTED",
+            "rejectionReason": "Este CNPJ não possui um Quadro de Sócios (QSA) disponível para verificação.",
+            "apiVerificationData": data
+        }
+
+    cleaned_user_name = _clean_name(user_name)
+    if not cleaned_user_name:
+        logging.error(f"CNPJ {cnpj_clean} REJEITADO. Nome do usuário no App está em branco.")
+        return { "status": "REJECTED", "rejectionReason": "Erro interno: Nome do usuário não encontrado." }
+
+
+    is_socio_verified = False
+    for socio in qsa_list:
+        cleaned_socio_name = _clean_name(socio.get("nome"))
+        if cleaned_user_name == cleaned_socio_name:
+            is_socio_verified = True
+            logging.info(f"Sócio verificado: {user_name} == {socio.get('nome')}")
+            break # Encontrou o sócio, pode parar de procurar
+
+    if not is_socio_verified:
+        logging.warning(f"CNPJ {cnpj_clean} REJEITADO. Nome '{user_name}' não encontrado no QSA.")
+        return {
+            "status": "REJECTED",
+            "rejectionReason": f"O seu nome ({user_name}) não foi encontrado no Quadro de Sócios desta empresa.",
+            "apiVerificationData": data
+        }
+
+    logging.info(f"CNPJ {cnpj_clean} APROVADO. Sócio: {user_name}.")
 
     # cnae_principal_code = data.get("atividade_principal", [{}])[0].get("code")
     # if cnae_principal_code not in VALID_INVESTOR_CNAES:
@@ -592,8 +626,8 @@ def _verify_cnpj(cnpj: str, token: str) -> dict:
     logging.info(f"CNPJ {cnpj_clean} APROVADO.")
     return {
         "status": "ACTIVE",
-        "razaoSocial": data.get("razao_social"),
-        "nome": data.get("nome_fantasia") or data.get("razao_social"),
+        "companyName": data.get("nome") or "Empresa sem Nome Fantasia",
+        "porte": data.get("porte"),
         "apiVerificationData": data
     }
 
@@ -622,3 +656,26 @@ def _verify_cpf(cpf: str, token: str) -> dict:
         "status": "ACTIVE",
         "apiVerificationData": simulated_data
     }
+
+def _clean_name(name: str) -> str:
+    """
+    Normaliza um nome para comparação: remove acentos,
+    converte para minúsculas e remove pontuação.
+    """
+    if not name:
+        return ""
+    try:
+        # Normalização NFKD separa acentos das letras
+        nfkd_form = unicodedata.normalize('NFKD', name)
+        # Mantém apenas caracteres não-combinantes (remove acentos)
+        only_ascii = u"".join([c for c in nfkd_form if not unicodedata.combining(c)])
+    except Exception:
+        # Fallback para nomes que já são ascii
+        only_ascii = name
+
+    # Converte para minúsculas
+    name = only_ascii.lower()
+    # Remove pontuações (mantém letras, números e espaços)
+    name = re.sub(r'[^\w\s]', '', name)
+    # Remove espaços extras no início/fim
+    return name.strip()

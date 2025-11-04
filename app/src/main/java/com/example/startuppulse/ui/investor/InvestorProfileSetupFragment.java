@@ -2,6 +2,7 @@ package com.example.startuppulse.ui.investor;
 
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -75,7 +76,34 @@ public class InvestorProfileSetupFragment extends Fragment {
                     .placeholder(R.drawable.ic_person)
                     .error(R.drawable.ic_person)
                     .into(binding.imageViewProfilePic);
-            // TODO: Pré-selecionar chips de áreas e estágios se existirem
+
+            List<String> estagiosSalvos = investor.getEstagios();
+            if (estagiosSalvos != null) {
+                // Itera sobre os chips DENTRO do chipGroup
+                for (int i = 0; i < binding.chipGroupEstagios.getChildCount(); i++) {
+                    View childView = binding.chipGroupEstagios.getChildAt(i);
+                    if (childView instanceof Chip) {
+                        Chip chip = (Chip) childView;
+                        // Verifica se o texto do chip está na lista salva
+                        if (estagiosSalvos.contains(chip.getText().toString())) {
+                            chip.setChecked(true);
+                        }
+                    }
+                }
+            }
+            List<String> areasSalvas = investor.getAreas();
+            if (areasSalvas != null) {
+                // Itera sobre os chips DENTRO do chipGroup
+                for (int i = 0; i < binding.chipGroupAreas.getChildCount(); i++) {
+                    View childView = binding.chipGroupAreas.getChildAt(i);
+                    if (childView instanceof Chip) {
+                        Chip chip = (Chip) childView;
+                        if (areasSalvas.contains(chip.getText().toString())) {
+                            chip.setChecked(true);
+                        }
+                    }
+                }
+            }
         });
 
         viewModel.isLoading.observe(getViewLifecycleOwner(), isLoading -> {

@@ -29,14 +29,16 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
-            android:textAppearance="@style/Text.TitleMedium"
+            android:textAppearance="@style/Text.TitleMedium.Bold"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/image_view_investor_photo"
             app:layout_constraintTop_toTopOf="@id/image_view_investor_photo"
+            app:layout_constraintBottom_toTopOf="@id/text_view_investor_secondary"
+            app:layout_constraintVertical_chainStyle="packed"
             tools:text="Jeferson Scheibler" />
 
         <TextView
-            android:id="@+id/text_view_investor_bio"
+            android:id="@+id/text_view_investor_secondary"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
@@ -46,7 +48,8 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="@id/text_view_investor_name"
             app:layout_constraintTop_toBottomOf="@id/text_view_investor_name"
-            tools:text="Investidor anjo com foco em startups SaaS B2B no estágio pré-seed. Apaixonado por produtos inovadores." />
+            app:layout_constraintBottom_toBottomOf="@id/image_view_investor_photo"
+            tools:text="Investidor Anjo | Foco em SaaS B2B" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </com.google.android.material.card.MaterialCardView>

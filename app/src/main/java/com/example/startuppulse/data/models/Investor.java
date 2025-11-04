@@ -30,7 +30,7 @@ public class Investor implements Serializable { // Serializable para passar entr
     // Idealmente, isso ficaria em uma sub-coleção "private"
     private String cpf;             // NOVO: (Se for "INDIVIDUAL")
     private String cnpj;            // NOVO: (Se for "FIRM")
-    private String razaoSocial;     // NOVO: (Se for "FIRM")
+    private String companyName;
     private Map<String, Object> apiVerificationData; // NOVO: JSON bruto da API (para auditoria)
     private Date createdAt;         // NOVO: Data de cadastro
     private String rejectionReason;
@@ -53,6 +53,8 @@ public class Investor implements Serializable { // Serializable para passar entr
     public void setTicketMedio(String ticketMedio) { this.ticketMedio = ticketMedio; }
     public String getInvestorType() { return investorType; }
     public void setInvestorType(String investorType) { this.investorType = investorType; }
+    public String getCompanyName() { return companyName; }
+    public void setCompanyName(String companyName) { this.companyName = companyName; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public String getEmailContato() { return emailContato; }
@@ -61,8 +63,6 @@ public class Investor implements Serializable { // Serializable para passar entr
     public void setCpf(String cpf) { this.cpf = cpf; }
     public String getCnpj() { return cnpj; }
     public void setCnpj(String cnpj) { this.cnpj = cnpj; }
-    public String getRazaoSocial() { return razaoSocial; }
-    public void setRazaoSocial(String razaoSocial) { this.razaoSocial = razaoSocial; }
     public Map<String, Object> getApiVerificationData() { return apiVerificationData; }
     public void setApiVerificationData(Map<String, Object> apiVerificationData) { this.apiVerificationData = apiVerificationData; }
     public Date getCreatedAt() { return createdAt; }
@@ -90,12 +90,12 @@ public class Investor implements Serializable { // Serializable para passar entr
                 Objects.equals(bio, investor.bio) &&
                 Objects.equals(tese, investor.tese) &&
                 Objects.equals(ticketMedio, investor.ticketMedio) &&
-                Objects.equals(razaoSocial, investor.razaoSocial);
+                Objects.equals(companyName, investor.companyName);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(id, investorType, nome, fotoUrl, status, emailContato,
-                linkedinUrl, siteUrl, bio, tese, ticketMedio, razaoSocial);
+                linkedinUrl, siteUrl, bio, tese, ticketMedio, companyName);
     }
 }
