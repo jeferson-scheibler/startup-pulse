@@ -32,7 +32,7 @@ public interface IInvestorRepository {
      * @param lastVisible O DocumentSnapshot do último item da página anterior (null para a primeira página).
      * @param callback    O callback que será chamado com o InvestorPagingResult.
      */
-    void getInvestidoresPaginados(int pageSize, @Nullable DocumentSnapshot lastVisible, ResultCallback<InvestorPagingResult> callback);
+    void getInvestidoresPaginados(int pageSize, @Nullable DocumentSnapshot lastVisible, @Nullable List<String> filterAreas, ResultCallback<InvestorPagingResult> callback);
 
     /**
      * Cria o documento inicial do investidor no Firestore (para verificação).

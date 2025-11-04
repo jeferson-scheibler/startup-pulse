@@ -12,8 +12,11 @@ import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModel;
 
 import com.example.startuppulse.common.Result;
+import com.example.startuppulse.data.models.Investor;
 import com.example.startuppulse.data.repositories.AuthRepository;
 import com.example.startuppulse.data.repositories.IIdeiaRepository;
+import com.example.startuppulse.data.repositories.IInvestorRepository;
+import com.example.startuppulse.data.repositories.IUserRepository;
 import com.example.startuppulse.data.repositories.MentorRepository;
 import com.example.startuppulse.data.models.User;
 import com.google.firebase.Timestamp;
@@ -35,6 +38,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel;
 public class PerfilViewModel extends ViewModel {
 
     private final IIdeiaRepository ideiaRepository;
+    private final IInvestorRepository investorRepository;
+    private final IUserRepository userRepository;
 
     private final AuthRepository authRepository;
     private final MentorRepository mentorRepository;
@@ -64,6 +69,8 @@ public class PerfilViewModel extends ViewModel {
     private final Observer<Boolean> isMentorObserver;
     private final MutableLiveData<String> _validadePlanoDisplay = new MutableLiveData<>("");
     public final LiveData<String> validadePlanoDisplay = _validadePlanoDisplay;
+    private final MutableLiveData<Boolean> _isInvestorActive = new MutableLiveData<>(false);
+    public LiveData<Boolean> isInvestorActive = _isInvestorActive;
 
     // Formatador de data (pode ser membro da classe para reutilização)
     private final SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
@@ -71,10 +78,13 @@ public class PerfilViewModel extends ViewModel {
     // Observer interno para perfil (exemplo de implementação completa)
     private static final String TAG = "PerfilViewModel";
     @Inject
-    public PerfilViewModel(IIdeiaRepository ideiaRepository, AuthRepository authRepository, MentorRepository mentorRepository, FirebaseFirestore firestore) {
+    public PerfilViewModel(IIdeiaRepository ideiaRepository, AuthRepository authRepository, MentorRepository mentorRepository,IUserRepository userRepository,
+                           IInvestorRepository investorRepository, FirebaseFirestore firestore) {
         this.ideiaRepository = ideiaRepository;
         this.authRepository = authRepository;
         this.mentorRepository = mentorRepository;
+        this.userRepository = userRepository;
+        this.investorRepository = investorRepository;
         this.firestore = firestore;
         userProfileObserver = result -> {
             boolean profileChanged = false;
@@ -158,6 +168,20 @@ public class PerfilViewModel extends ViewModel {
 
     public void loadUserProfile() {
         String currentUserId = authRepository.getCurrentUserId();
+        investorRepository.getInvestorDetails(currentUserId, result -> {
+            if (result instanceof Result.Success) {
+                Investor investor = ((Result.Success<Investor>) result).data;
+                // Se o perfil de investidor existe E está "ACTIVE"
+                if (investor != null && "ACTIVE".equals(investor.getStatus())) {
+                    _isInvestorActive.postValue(true);
+                } else {
+                    _isInvestorActive.postValue(false);
+                }
+            } else {
+                // Se não encontrou o documento, ele não é um investidor
+                _isInvestorActive.postValue(false);
+            }
+        });
         if (currentUserId != null) {
             _userProfileResult.setValue(new Result.Loading<>());
             authRepository.getUserProfile(currentUserId, result -> {
@@ -357,7 +381,24 @@ public class PerfilViewModel extends ViewModel {
     }
 
     public void logout() {
-        authRepository.logout();
+        String uid = authRepository.getCurrentUserId();
+
+        // Limpa o token antes de deslogar
+        if (uid != null && !uid.isEmpty()) {
+            // Chama o método com userId, null (para apagar) e um callback
+            userRepository.updateFcmToken(uid, null, result -> {
+                if (result instanceof Result.Success) {
+                    Log.d("PerfilViewModel", "Token FCM removido para o usuário: " + uid);
+                } else {
+                    Log.w("PerfilViewModel", "Falha ao remover token FCM durante o logout.");
+                }
+                // Desloga DEPOIS que a operação do token (sucesso ou falha) terminar
+                authRepository.logout();
+            });
+        } else {
+            // Se não tinha ID, apenas desloga
+            authRepository.logout();
+        }
         _navigateToLogin.setValue(true);
     }
 }

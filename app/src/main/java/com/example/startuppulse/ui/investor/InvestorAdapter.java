@@ -1,6 +1,7 @@
 package com.example.startuppulse.ui.investor;
 
 import android.annotation.SuppressLint;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -51,19 +52,16 @@ public class InvestorAdapter extends ListAdapter<Investor, InvestorAdapter.Inves
     static class InvestorViewHolder extends RecyclerView.ViewHolder {
         private final ShapeableImageView photo;
         private final TextView name;
-        private final TextView bio;
+        private final TextView secondaryText;
 
         public InvestorViewHolder(@NonNull View itemView) {
             super(itemView);
             photo = itemView.findViewById(R.id.image_view_investor_photo);
             name = itemView.findViewById(R.id.text_view_investor_name);
-            bio = itemView.findViewById(R.id.text_view_investor_bio);
+            secondaryText = itemView.findViewById(R.id.text_view_investor_secondary);
         }
 
         public void bind(final Investor investor, final OnInvestorClickListener listener) {
-            name.setText(investor.getNome());
-            bio.setText(investor.getBio());
-
             @SuppressLint({"StringFormatInvalid", "LocalSuppress"}) String photoDescription = itemView.getContext().getString(R.string.content_desc_foto_investidor, investor.getNome());
             photo.setContentDescription(photoDescription);
 
@@ -73,7 +71,36 @@ public class InvestorAdapter extends ListAdapter<Investor, InvestorAdapter.Inves
                     .error(R.drawable.ic_person)
                     .into(photo);
 
-            // A única responsabilidade do clique é chamar o listener
+            String investorType = investor.getInvestorType();
+
+            if ("FIRM".equals(investorType)) {
+                // TIPO = EMPRESA/FUNDO
+                // Nome principal = Nome do Responsável (Ex: "Jeferson Scheibler")
+                name.setText(investor.getNome());
+
+                // Texto secundário = Nome da Empresa (Ex: "Startup Pulse Ltda")
+                if (!TextUtils.isEmpty(investor.getCompanyName())) {
+                    secondaryText.setText(investor.getCompanyName());
+                    secondaryText.setVisibility(View.VISIBLE);
+                } else {
+                    secondaryText.setVisibility(View.GONE);
+                }
+
+            } else {
+                // TIPO = INDIVIDUAL (ANJO)
+                // Nome principal = Nome da Pessoa
+                name.setText(investor.getNome());
+
+                // Texto secundário = Bio curta (o campo 'bio' que já tínhamos)
+                if (!TextUtils.isEmpty(investor.getBio())) {
+                    secondaryText.setText(investor.getBio());
+                    secondaryText.setVisibility(View.VISIBLE);
+                } else {
+                    secondaryText.setVisibility(View.GONE);
+                }
+            }
+
+            // Clique (sem alteração)
             itemView.setOnClickListener(v -> listener.onInvestorClick(investor));
         }
     }
@@ -82,15 +109,12 @@ public class InvestorAdapter extends ListAdapter<Investor, InvestorAdapter.Inves
     private static final DiffUtil.ItemCallback<Investor> DIFF_CALLBACK = new DiffUtil.ItemCallback<Investor>() {
         @Override
         public boolean areItemsTheSame(@NonNull Investor oldItem, @NonNull Investor newItem) {
-            // Itens são os mesmos se seus IDs forem iguais
             return Objects.equals(oldItem.getId(), newItem.getId());
         }
 
         @SuppressLint("DiffUtilEquals")
         @Override
         public boolean areContentsTheSame(@NonNull Investor oldItem, @NonNull Investor newItem) {
-            // O conteúdo é o mesmo se o objeto for igual.
-            // Para isso funcionar bem, implemente os métodos .equals() e .hashCode() na sua classe Investor.
             return oldItem.equals(newItem);
         }
     };

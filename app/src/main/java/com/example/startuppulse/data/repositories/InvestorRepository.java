@@ -70,12 +70,18 @@ public class InvestorRepository extends BaseRepository implements IInvestorRepos
      * CORRIGIDO: Método de paginação agora está totalmente implementado.
      */
     @Override
-    public void getInvestidoresPaginados(int pageSize, @Nullable DocumentSnapshot lastVisible, ResultCallback<InvestorPagingResult> callback) {
+    public void getInvestidoresPaginados(int pageSize, @Nullable DocumentSnapshot lastVisible, @Nullable List<String> filterAreas, ResultCallback<InvestorPagingResult> callback) {
         // Constrói a query base
         Query query = db.collection(INVESTORS_COLLECTION)
                 .whereEqualTo("status", "ACTIVE") // Garante que apenas investidores ativos sejam listados
                 .orderBy("nome")
                 .limit(pageSize);
+
+        if (filterAreas != null && !filterAreas.isEmpty()) {
+            // "whereArrayContainsAny" encontra investidores que tenham
+            // PELO MENOS UMA das áreas da ideia.
+            query = query.whereArrayContainsAny("areas", filterAreas);
+        }
 
         // Adiciona o cursor "startAfter" se não for a primeira página
         if (lastVisible != null) {
