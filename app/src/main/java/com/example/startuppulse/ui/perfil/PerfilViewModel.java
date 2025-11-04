@@ -381,24 +381,30 @@ public class PerfilViewModel extends ViewModel {
     }
 
     public void logout() {
-        String uid = authRepository.getCurrentUserId();
+        String currentUserId = authRepository.getCurrentUserId();
 
-        // Limpa o token antes de deslogar
-        if (uid != null && !uid.isEmpty()) {
-            // Chama o método com userId, null (para apagar) e um callback
-            userRepository.updateFcmToken(uid, null, result -> {
-                if (result instanceof Result.Success) {
-                    Log.d("PerfilViewModel", "Token FCM removido para o usuário: " + uid);
-                } else {
-                    Log.w("PerfilViewModel", "Falha ao remover token FCM durante o logout.");
-                }
-                // Desloga DEPOIS que a operação do token (sucesso ou falha) terminar
-                authRepository.logout();
-            });
-        } else {
-            // Se não tinha ID, apenas desloga
+        if (currentUserId == null || currentUserId.isEmpty()) {
+            // Se não há usuário, apenas faz o logout local e navega
             authRepository.logout();
+            _navigateToLogin.setValue(true);
+            return;
         }
-        _navigateToLogin.setValue(true);
+
+        // Etapa 1: Remover o token FCM (passando null)
+        userRepository.updateFcmToken(currentUserId, null, result -> {
+            if (result instanceof Result.Success) {
+                Log.i(TAG, "FCM Token removed successfully for user: " + currentUserId);
+            } else {
+                // Loga o erro mas continua o processo de logout mesmo assim.
+                // É melhor deslogar o usuário do que mantê-lo preso por uma falha
+                // na limpeza do token.
+                Log.w(TAG, "Failed to remove FCM Token for user: " + currentUserId,
+                        result instanceof Result.Error ? ((Result.Error<Void>) result).error : null);
+            }
+
+            // Etapa 2: Fazer o logout no Auth e navegar
+            authRepository.logout();
+            _navigateToLogin.setValue(true);
+        });
     }
 }

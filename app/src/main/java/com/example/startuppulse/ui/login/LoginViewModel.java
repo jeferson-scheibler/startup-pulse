@@ -19,7 +19,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel;
 import javax.inject.Inject;
 @HiltViewModel
 public class LoginViewModel extends ViewModel {
-
+    private static final String TAG = "LoginViewModel";
     private final IAuthRepository authRepository;
     private final IUserRepository userRepository;
     private final MutableLiveData<LoginState> _loginState = new MutableLiveData<>(new LoginState(LoginState.AuthState.IDLE));
@@ -50,57 +50,59 @@ public class LoginViewModel extends ViewModel {
 
         _loginState.setValue(new LoginState(LoginState.AuthState.LOADING));
         authRepository.loginWithEmail(email, password, createLoginCallback());
-        updateFcmToken();
     }
 
     public void loginWithGoogle(GoogleSignInAccount googleAccount) {
         _loginState.setValue(new LoginState(LoginState.AuthState.LOADING));
         authRepository.loginWithGoogle(googleAccount, createLoginCallback());
-        updateFcmToken();
-    }
-
-    private void updateFcmToken() {
-        // Pega o ID do usuário que acabou de logar
-        String userId = authRepository.getCurrentUserId();
-        if (userId == null || userId.isEmpty()) {
-            Log.w("LoginViewModel", "User ID nulo após o login, não é possível salvar o token FCM.");
-            return;
-        }
-
-        FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
-            if (!task.isSuccessful()) {
-                Log.w("LoginViewModel", "Fetching FCM registration token failed", task.getException());
-                return;
-            }
-
-            String token = task.getResult();
-
-            // Salva o token no Firestore usando o método correto
-            if (token != null) {
-                // Chama o método com userId, token e um callback
-                userRepository.updateFcmToken(userId, token, result -> {
-                    if (result instanceof Result.Success) {
-                        Log.d("LoginViewModel", "Token FCM salvo para o usuário: " + userId);
-                    } else {
-                        Log.e("LoginViewModel", "Falha ao salvar token FCM: ", ((Result.Error<?>) result).error);
-                    }
-                });
-            }
-        });
     }
 
     private ResultCallback<FirebaseUser> createLoginCallback() {
         return result -> {
-            // Verifica se o resultado da operação foi um Sucesso
             if (result instanceof Result.Success) {
-                _loginState.setValue(new LoginState(LoginState.AuthState.SUCCESS));
+                // MODIFICAÇÃO: Não notificar sucesso ainda, primeiro registrar o token
+                FirebaseUser user = ((Result.Success<FirebaseUser>) result).data;
+                if (user != null) {
+                    registerFcmToken(user);
+                } else {
+                    _loginState.setValue(new LoginState("Falha ao obter usuário após login."));
+                }
             }
-            // Se não foi sucesso, foi um Erro
             else if (result instanceof Result.Error) {
-                // Extrai a exceção do objeto de Erro
                 Exception e = ((Result.Error<FirebaseUser>) result).error;
                 _loginState.setValue(new LoginState("Falha na autenticação: " + e.getMessage()));
             }
         };
+    }
+    private void registerFcmToken(FirebaseUser user) {
+        String userId = user.getUid();
+        FirebaseMessaging.getInstance().getToken()
+                .addOnCompleteListener(task -> {
+                    if (!task.isSuccessful()) {
+                        Log.w(TAG, "Fetching FCM registration token failed", task.getException());
+                        // O login foi bem-sucedido, mas o token falhou.
+                        // Decidimos continuar e notificar o sucesso do login mesmo assim.
+                        _loginState.postValue(new LoginState(LoginState.AuthState.SUCCESS));
+                        return;
+                    }
+
+                    // Obter o token
+                    String token = task.getResult();
+                    Log.d(TAG, "FCM Token obtained: " + token);
+
+                    // Salvar o token no Firestore usando o UserRepository
+                    userRepository.updateFcmToken(userId, token, tokenResult -> {
+                        if (tokenResult instanceof Result.Success) {
+                            Log.i(TAG, "FCM Token updated successfully for user: " + userId);
+                        } else {
+                            Log.w(TAG, "Failed to update FCM Token in Firestore for user: " + userId);
+                        }
+
+                        // Agora sim, notificar a UI que o login foi concluído.
+                        // Fazemos isso independentemente de salvar o token ter falhado,
+                        // pois o login em si funcionou.
+                        _loginState.postValue(new LoginState(LoginState.AuthState.SUCCESS));
+                    });
+                });
     }
 }

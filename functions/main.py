@@ -402,6 +402,14 @@ def notificar_avaliacao_mentor(event: firestore_fn.Event[firestore_fn.Change]) -
     """
     Envia uma notificação ao dono da ideia quando uma avaliação de mentor é adicionada/atualizada.
     """
+    # --- MODIFICAÇÃO (Etapa 3) ---
+    # Defina os IDs dos canais de notificação aqui para referência
+    # (Eles devem ser EXATAMENTE iguais aos definidos no app Android)
+    CHANNEL_ID_AVALIACOES = "STARTUP_PULSE_AVALIACOES_CHANNEL"
+    CHANNEL_ID_INTERACOES = "STARTUP_PULSE_INTERACOES_CHANNEL"
+    CHANNEL_ID_GERAL = "STARTUP_PULSE_GERAL_CHANNEL"
+    # --- FIM DA MODIFICAÇÃO ---
+
     ideia_id = event.params["ideiaId"]
 
     # Dados antes e depois da atualização
@@ -412,27 +420,19 @@ def notificar_avaliacao_mentor(event: firestore_fn.Event[firestore_fn.Change]) -
     avaliacoes_before = before_data.get("avaliacoes", [])
     avaliacoes_after = after_data.get("avaliacoes", [])
 
-    # Condição de gatilho: 'avaliacoes' existe agora E (ou não existia antes OU mudou)
-    # Uma lógica mais robusta poderia verificar se o número de avaliações aumentou
-    # ou se o timestamp da última avaliação mudou.
     if avaliacoes_after and avaliacoes_after != avaliacoes_before:
         print(f"Detetada mudança nas avaliações da ideia: {ideia_id}")
 
         owner_id = after_data.get("ownerId")
-        ideia_nome = after_data.get("nome", "sua ideia") # Nome da ideia para a notificação
-
-        # TODO: Idealmente, buscar o nome do mentor que avaliou para personalizar a msg
-        # mentor_id = after_data.get("mentorId")
-        # (Precisaria buscar o nome do mentor em /mentores/{mentorId})
-        mentor_nome = "Seu mentor"
+        ideia_nome = after_data.get("nome", "sua ideia")
+        mentor_nome = "Seu mentor" # TODO: Buscar nome do mentor
 
         if not owner_id:
             print(f"Erro: Dono (ownerId) não encontrado na ideia {ideia_id}.")
             return
 
         db = firestore.client()
-        # Busca o perfil do dono para obter o token FCM
-        user_ref = db.collection("usuarios").document(owner_id) # Ajuste a coleção se for 'users'
+        user_ref = db.collection("usuarios").document(owner_id)
         user_doc = user_ref.get()
 
         if not user_doc.exists:
@@ -440,7 +440,7 @@ def notificar_avaliacao_mentor(event: firestore_fn.Event[firestore_fn.Change]) -
             return
 
         user_data = user_doc.to_dict()
-        fcm_token = user_data.get("fcmToken") # Nome do campo onde o token está salvo
+        fcm_token = user_data.get("fcmToken")
 
         if not fcm_token:
             print(f"Usuário {owner_id} não possui token FCM registrado.")
@@ -453,21 +453,23 @@ def notificar_avaliacao_mentor(event: firestore_fn.Event[firestore_fn.Change]) -
         print(f"Enviando notificação para {owner_id} (token: ...{fcm_token[-6:]})")
 
         try:
-            # Cria a mensagem
+            # --- MODIFICAÇÃO (Etapas 2 e 3) ---
+            #
+            # Este é o novo payload "data-only"
+            #
             message = messaging.Message(
-                notification=messaging.Notification(
-                    title=notification_title,
-                    body=notification_body,
-                ),
-                # Adiciona dados extras para o clique no app
+                # REMOVIDA a chave "notification"
+
+                # ADICIONADO "title", "body", e "channelId" dentro de "data"
                 data={
+                    "title": notification_title,
+                    "body": notification_body,
                     "ideiaId": ideia_id,
-                    # "click_action": "FLUTTER_NOTIFICATION_CLICK" # Exemplo, se precisar para outras plataformas
+                    "channelId": CHANNEL_ID_AVALIACOES # <-- Canal de Alta Importância
                 },
                 token=fcm_token,
-                # Configuração APNS/Android (opcional)
-                # android=messaging.AndroidConfig(...)
             )
+            # --- FIM DA MODIFICAÇÃO ---
 
             # Envia a mensagem
             response = messaging.send(message)
@@ -475,9 +477,6 @@ def notificar_avaliacao_mentor(event: firestore_fn.Event[firestore_fn.Change]) -
 
         except Exception as e:
             print(f"Erro ao enviar notificação FCM para {owner_id}: {e}")
-
-    # else:
-    # print(f"Atualização na ideia {ideia_id} não envolveu avaliações."
 
 # --- Configuração da Verificação (sem alteração) ---
 VALID_INVESTOR_CNAES = ["6462-0/00", "6463-8/00"]
