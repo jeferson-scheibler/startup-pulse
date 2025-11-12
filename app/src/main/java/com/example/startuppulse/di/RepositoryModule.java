@@ -33,4 +33,8 @@ public abstract class RepositoryModule {
 
     @Binds
     public abstract IUserRepository bindUserRepository(UserRepository impl);
+
+    @Binds
+    @Singleton
+    public abstract IPropulsorRepository bindPropulsorRepository(PropulsorRepository impl);
 }
