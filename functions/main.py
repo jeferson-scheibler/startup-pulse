@@ -678,3 +678,60 @@ def _clean_name(name: str) -> str:
     name = re.sub(r'[^\w\s]', '', name)
     # Remove espaços extras no início/fim
     return name.strip()
+
+@https_fn.on_call(secrets=["GEMINI_API_KEY"])
+def chat_propulsor(req: https_fn.CallableRequest) -> dict:
+    """
+    Acionado pela Aba 3 (Propulsor) para análise de faíscas de ideia.
+    Usa o System Prompt de Analista de Mercado.
+    """
+    # 1. Validação de Autenticação (essencial!)
+    if not req.auth:
+        logging.error("chat_propulsor: Chamada não autenticada.")
+        raise https_fn.HttpsError(
+            code="unauthenticated",
+            message="Autenticação é necessária para usar o Propulsor."
+        )
+
+    # 2. Validação da Entrada
+    spark_text = req.data.get("text")
+    if not spark_text:
+        logging.error(f"chat_propulsor: Chamada inválida sem 'text' por {req.auth.uid}.")
+        raise https_fn.HttpsError(code="invalid-argument", message="O 'text' da faísca é obrigatório.")
+
+    logging.info(f"Iniciando análise do Propulsor para usuário: {req.auth.uid}")
+
+    try:
+        # 3. Configurar a API de IA (Gemini)
+        genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+
+        # 4. A Persona do "Propulsor" (System Prompt)
+        PROPULSOR_SYSTEM_PROMPT = """
+        Você é o 'Propulsor', um analista de mercado de classe mundial especializado em startups early-stage. 
+        O usuário fornecerá uma 'faísca de ideia'. Sua tarefa é responder em 3 partes claras:
+        1. Concorrentes: Identifique 2-3 concorrentes diretos ou indiretos (atuais ou potenciais).
+        2. Diferencial: Aponte o principal diferencial ou 'gancho' único na ideia do usuário.
+        3. Oportunidade de Nicho: Sugira um nicho de mercado ou use-case específico que os concorrentes podem estar ignorando.
+        Seja direto, encorajador e profissional.
+        """
+
+        # 5. Configurar e Chamar o Modelo
+        model = genai.GenerativeModel(
+            'gemini-1.5-pro', # Usando um modelo Pro para chat de alta qualidade
+            safety_settings={
+                HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+                HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+            system_instruction=PROPULSOR_SYSTEM_PROMPT
+        )
+
+        # Para uma única chamada (stateless)
+        response = model.generate_content(spark_text)
+
+        # 6. Retornar a resposta para o App
+        logging.info(f"chat_propulsor: Análise concluída para {req.auth.uid}.")
+        return {"status": "success", "analysis_text": response.text}
+
+    except Exception as e:
+        logging.error(f"Erro no chat_propulsor para {req.auth.uid}: {e}")
+        raise https_fn.HttpsError(code="internal", message=f"Erro interno ao processar sua análise: {e}")

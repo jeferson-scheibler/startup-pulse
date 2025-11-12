@@ -4,7 +4,9 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".IdeiasHostFragment"> <com.google.android.material.button.MaterialButtonToggleGroup
+    tools:context=".IdeiasHostFragment">
+
+    <com.google.android.material.button.MaterialButtonToggleGroup
     android:id="@+id/toggle_button_group"
     android:layout_width="0dp"
     android:layout_height="wrap_content"
@@ -14,19 +16,16 @@
     app:layout_constraintEnd_toEndOf="parent"
     app:singleSelection="true"
     app:selectionRequired="true"
-    app:checkedButton="@id/btn_publicadas">
-
-    <Button
-        android:id="@+id/btn_publicadas"
-        style="@style/App.Button.Outlined.LessRounded"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:text="Feed Global"
-        android:textAppearance="@style/Text.BodySmall.Muted"
-        android:backgroundTint="@color/button_toggle_tint"
-        android:textColor="@color/button_toggle_text_color"
-        android:textAllCaps="false"/>
+    app:checkedButton="@id/btn_vortex">
+        <Button
+            android:id="@+id/btn_vortex" style="@style/App.Button.Outlined.LessRounded"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Vórtex" android:textAppearance="@style/Text.BodySmall.Muted"
+            android:backgroundTint="@color/button_toggle_tint"
+            android:textColor="@color/button_toggle_text_color"
+            android:textAllCaps="false"/>
 
     <Button
         android:id="@+id/btn_rascunhos"
@@ -39,6 +38,17 @@
         android:textColor="@color/button_toggle_text_color"
         android:textAppearance="@style/Text.BodySmall.Muted"
         android:textAllCaps="false"/>
+
+        <Button
+            android:id="@+id/btn_propulsor"
+            style="@style/App.Button.Outlined.LessRounded"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Propulsor" android:backgroundTint="@color/button_toggle_tint"
+            android:textColor="@color/button_toggle_text_color"
+            android:textAppearance="@style/Text.BodySmall.Muted"
+            android:textAllCaps="false"/>
 
 </com.google.android.material.button.MaterialButtonToggleGroup>
 

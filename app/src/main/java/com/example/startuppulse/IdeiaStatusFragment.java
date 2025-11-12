@@ -320,7 +320,7 @@ public class IdeiaStatusFragment extends Fragment {
 
         binding.btnVerFeedback.setEnabled(isAvaliada && ideia.getAvaliacoes() != null && !ideia.getAvaliacoes().isEmpty());
         binding.btnDownloadPdf.setEnabled(isOwner || isMentor);
-        binding.btnPrepararInvestidores.setEnabled(isOwner && isAprovada && !ideia.isProntaParaInvestidores());
+        binding.btnPrepararInvestidores.setEnabled(isOwner && isAprovada && ideia.isProntaParaInvestidores());
     }
 
     private String getEmojiForScore(double score) {
