@@ -30,6 +30,10 @@ lifecycle = "2.9.4"
 runtime = "1.9.4"
 firebaseCrashlyticsBuildtools = "3.0.6"
 inputmask = "6.1.0"
+playServicesMaps = "19.2.0"
+adaptiveLayout = "1.2.0"
+mapsUtils = "3.4.0"
+maplibreSdk = "11.0.0"
 
 [libraries]
 compiler = { module = "com.github.bumptech.glide:compiler", version.ref = "glide" }
@@ -68,6 +72,11 @@ androidx-lifecycle-livedata-ktx = { group = "androidx.lifecycle", name = "lifecy
 androidx-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtime" }
 firebase-crashlytics-buildtools = { group = "com.google.firebase", name = "firebase-crashlytics-buildtools", version.ref = "firebaseCrashlyticsBuildtools" }
 inputmask = { module = "com.github.RedMadRobot:input-mask-android", version.ref = "inputmask" }
+play-services-maps = { group = "com.google.android.gms", name = "play-services-maps", version.ref = "playServicesMaps" }
+androidx-adaptive-layout = { group = "androidx.compose.material3.adaptive", name = "adaptive-layout", version.ref = "adaptiveLayout" }
+maps-utils-ktx = { group = "com.google.maps.android", name = "maps-utils-ktx", version.ref = "mapsUtils" }
+maps-utils = { group = "com.google.maps.android", name = "android-maps-utils", version.ref = "mapsUtils" }
+maplibre-sdk = { group = "org.maplibre.gl", name = "android-sdk", version.ref = "maplibreSdk" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

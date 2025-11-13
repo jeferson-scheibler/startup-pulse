@@ -37,4 +37,8 @@ public abstract class RepositoryModule {
     @Binds
     @Singleton
     public abstract IPropulsorRepository bindPropulsorRepository(PropulsorRepository impl);
+
+    @Binds
+    @Singleton
+    public abstract ISparkRepository bindSparkRepository(SparkRepository impl);
 }

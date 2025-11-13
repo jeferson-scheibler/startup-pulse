@@ -25,6 +25,7 @@ import com.example.startuppulse.databinding.FragmentMeusRascunhosBinding;
 import com.example.startuppulse.ui.ideias.MeusRascunhosViewModel;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.view.WindowManager;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,7 +37,11 @@ public class MeusRascunhosFragment extends Fragment {
     private FragmentMeusRascunhosBinding binding;
     private MeusRascunhosViewModel viewModel;
     private IdeiasAdapter ideiasAdapter;
-    private NavController navController;
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+    }
 
     @Nullable
     @Override
@@ -49,7 +54,6 @@ public class MeusRascunhosFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         viewModel = new ViewModelProvider(this).get(MeusRascunhosViewModel.class);
-        navController = NavHostFragment.findNavController(this);
 
         setupRecyclerView();
         setupObservers();
@@ -58,12 +62,22 @@ public class MeusRascunhosFragment extends Fragment {
         binding.swipeRefreshLayout.setOnRefreshListener(() -> viewModel.refresh());
     }
 
+    public static MeusRascunhosFragment newInstance(NavController navController) {
+        MeusRascunhosFragment fragment = new MeusRascunhosFragment();
+        return new MeusRascunhosFragment();
+    }
+
     private void setupRecyclerView() {
         ideiasAdapter = new IdeiasAdapter(ideia -> {
-            // Rascunhos sempre abrem em modo de edição
             Bundle args = new Bundle();
             args.putString("ideiaId", ideia.getId());
-            navController.navigate(R.id.action_global_to_canvasIdeiaFragment, args);
+            try {
+                NavController navControllerCorreto = NavHostFragment.findNavController(getParentFragment());
+                navControllerCorreto.navigate(R.id.action_global_to_canvasIdeiaFragment, args);
+            } catch (Exception e) {
+                // Se isto falhar, o problema é mais profundo, mas pelo menos não cracha
+                Log.e("MeusRascunhosFragment", "Falha CRÍTICA ao obter NavController do pai", e);
+            }
         });
         binding.recyclerViewIdeias.setLayoutManager(new LinearLayoutManager(requireContext()));
         binding.recyclerViewIdeias.setAdapter(ideiasAdapter);

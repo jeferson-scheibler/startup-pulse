@@ -8,6 +8,8 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
@@ -70,10 +72,26 @@ public class MainHostFragment extends Fragment {
         updateButtonState(binding.navButtonIdeias);
     }
 
+    /**
+     * Metodo público para permitir que fragmentos filhos controlem a
+     * visibilidade do FAB principal.
+     * @param visible True para mostrar, False para esconder.
+     */
+    public void setFabAddIdeaVisibility(boolean visible) {
+        if (binding == null) return; // Evita crash se o fragmento pai for destruído
+
+        if (visible) {
+            binding.fabAddIdea.show();
+        } else {
+            binding.fabAddIdea.hide();
+        }
+    }
+
     private void handleFabVisibility(int destinationId) {
         if (destinationId == R.id.ideiasFragment) {
-            binding.fabAddIdea.show();
+            binding.fabAddIdea.hide();
             binding.fabAddMentor.hide();
+
         } else if (destinationId == R.id.mentoresFragment) {
             binding.fabAddIdea.hide();
             // Mostra o FAB "Seja um Mentor" apenas se o usuário AINDA NÃO for um mentor
@@ -88,16 +106,48 @@ public class MainHostFragment extends Fragment {
             binding.fabAddMentor.hide();
         }
     }
-
-
     private void setupWindowInsets() {
-        ViewCompat.setOnApplyWindowInsetsListener(binding.getRoot(), (v, windowInsets) -> {
+
+        View root = binding.getRoot();
+        View fragmentContainer = binding.fragmentContainer;
+        View bottomNav = binding.bottomNavContainer;
+
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, windowInsets) -> {
+
             Insets systemBars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, 0);
-            ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) binding.bottomNavContainer.getLayoutParams();
-            params.bottomMargin = systemBars.bottom + (int) (16 * getResources().getDisplayMetrics().density);
-            binding.bottomNavContainer.setLayoutParams(params);
-            return WindowInsetsCompat.CONSUMED;
+            Insets imeInsets = windowInsets.getInsets(WindowInsetsCompat.Type.ime());
+
+            int statusBar = systemBars.top;
+            int navBar = systemBars.bottom;
+            int ime = imeInsets.bottom;
+
+            boolean keyboardOpen = ime > navBar;
+
+            // topo sempre respeita status bar
+            v.setPadding(
+                    v.getPaddingLeft(),
+                    statusBar,
+                    v.getPaddingRight(),
+                    v.getPaddingBottom()
+            );
+
+            // conteúdo só sobe o necessário
+            fragmentContainer.setPadding(
+                    fragmentContainer.getPaddingLeft(),
+                    fragmentContainer.getPaddingTop(),
+                    fragmentContainer.getPaddingRight(),
+                    keyboardOpen ? 0 : navBar
+            );
+
+            // bottom nav respeita nav bar mas não empurra conteúdo
+            bottomNav.setPadding(
+                    bottomNav.getPaddingLeft(),
+                    bottomNav.getPaddingTop(),
+                    bottomNav.getPaddingRight(),
+                    navBar
+            );
+
+            return windowInsets;
         });
     }
 
