@@ -8,10 +8,14 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.navigation.NavController;
+import androidx.navigation.fragment.NavHostFragment;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.startuppulse.databinding.FragmentIdeiasHostBinding;
+import com.example.startuppulse.ui.main.MainHostFragment;
+
 import dagger.hilt.android.AndroidEntryPoint;
 
 @AndroidEntryPoint
@@ -30,8 +34,7 @@ public class IdeiasHostFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // 1. Configurar o Adapter
-        adapter = new VortexPagerAdapter(requireActivity());
+        adapter = new VortexPagerAdapter(this);
         binding.viewPager.setAdapter(adapter);
 
         // 2. Conectar o ViewPager aos cliques dos botões
@@ -52,6 +55,8 @@ public class IdeiasHostFragment extends Fragment {
             @Override
             public void onPageSelected(int position) {
                 super.onPageSelected(position);
+
+                // Sincroniza o ToggleGroup
                 switch (position) {
                     case 0:
                         binding.toggleButtonGroup.check(R.id.btn_vortex);
@@ -63,6 +68,10 @@ public class IdeiasHostFragment extends Fragment {
                         binding.toggleButtonGroup.check(R.id.btn_propulsor);
                         break;
                 }
+
+                if (getParentFragment() != null && getParentFragment().getParentFragment() instanceof MainHostFragment) {
+                    ((MainHostFragment) getParentFragment().getParentFragment()).setFabAddIdeaVisibility(position == 1);
+                }
             }
         });
 
@@ -72,7 +81,10 @@ public class IdeiasHostFragment extends Fragment {
 
     @Override
     public void onDestroyView() {
+        if (getParentFragment() != null && getParentFragment().getParentFragment() instanceof MainHostFragment) {
+            ((MainHostFragment) getParentFragment().getParentFragment()).setFabAddIdeaVisibility(false);
+        }
         super.onDestroyView();
-        binding = null; // Evitar memory leaks
+        binding = null;
     }
 }

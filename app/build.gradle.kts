@@ -83,6 +83,7 @@ dependencies {
     implementation(libs.cronet.embedded)
     implementation(libs.androidx.runtime)
     implementation(libs.firebase.crashlytics.buildtools)
+    implementation(libs.androidx.adaptive.layout)
     annotationProcessor(libs.compiler)
     implementation(libs.lottie)
 
@@ -109,7 +110,9 @@ dependencies {
 
     implementation("com.squareup.okhttp3:logging-interceptor:4.10.0")
     implementation("com.squareup.okhttp3:okhttp:4.10.0")
-
+    implementation(libs.play.services.maps)
+    implementation(libs.maplibre.sdk)
+    implementation(libs.maps.utils)
     implementation(libs.inputmask)
 
     // Desugaring

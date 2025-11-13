@@ -717,7 +717,7 @@ def chat_propulsor(req: https_fn.CallableRequest) -> dict:
 
         # 5. Configurar e Chamar o Modelo
         model = genai.GenerativeModel(
-            'gemini-1.5-pro', # Usando um modelo Pro para chat de alta qualidade
+            'gemini-2.5-pro', # Usando um modelo Pro para chat de alta qualidade
             safety_settings={
                 HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
                 HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
@@ -735,3 +735,175 @@ def chat_propulsor(req: https_fn.CallableRequest) -> dict:
     except Exception as e:
         logging.error(f"Erro no chat_propulsor para {req.auth.uid}: {e}")
         raise https_fn.HttpsError(code="internal", message=f"Erro interno ao processar sua análise: {e}")
+
+@https_fn.on_call()
+def get_idea_locations(req: https_fn.CallableRequest) -> dict:
+    """
+    [VÓRTEX] Retorna APENAS LatLng de ideias públicas para o heatmap.
+    Não requer autenticação.
+    """
+    db = firestore.client()
+
+    # Status públicos baseados no Ideia.java
+    status_publicos = [
+        "EM_AVALIACAO",
+        "AVALIADA_APROVADA",
+        "AVALIADA_REPROVADA"
+    ]
+
+    # Query otimizada: seleciona apenas os campos de localização
+    ideias_ref = db.collection("ideias")
+    query = ideias_ref.where("status", "in", status_publicos).select(["latitude", "longitude"])
+
+    locations = []
+    try:
+        for doc in query.stream():
+            data = doc.to_dict()
+            if data.get("latitude") and data.get("longitude"):
+                locations.append({
+                    "lat": data["latitude"],
+                    "lng": data["longitude"]
+                })
+        logging.info(f"Heatmap: Retornando {len(locations)} localizações de ideias.")
+        return {"locations": locations}
+    except Exception as e:
+        logging.error(f"Erro ao buscar localizações de ideias: {e}")
+        return {"locations": []}
+
+
+@https_fn.on_call()
+def get_public_sparks(req: https_fn.CallableRequest) -> dict:
+    """
+    [VÓRTEX] Retorna faíscas públicas (anônimas) para os pinos do mapa.
+    Não requer autenticação.
+    """
+    db = firestore.client()
+    # Limita a 200 faíscas mais recentes para performance
+    sparks_ref = db.collection("sparks").order_by("created_at", direction=firestore.Query.DESCENDING).limit(200)
+
+    sparks = []
+    try:
+        for doc in sparks_ref.stream():
+            data = doc.to_dict()
+            # Ponto CRÍTICO de anonimato: NUNCA retornar data.get("user_id")
+            sparks.append({
+                "id": doc.id,
+                "text": data.get("text"),
+                "lat": data.get("lat"),
+                "lng": data.get("lng"),
+                "votos": data.get("votos_comunidade", 0)
+            })
+        logging.info(f"Vórtex: Retornando {len(sparks)} faíscas públicas.")
+        return {"sparks": sparks}
+    except Exception as e:
+        logging.error(f"Erro ao buscar faíscas públicas: {e}")
+        return {"sparks": []}
+
+
+@https_fn.on_call()
+def criar_spark(req: https_fn.CallableRequest) -> dict:
+    """
+    [PROPULSOR -> VÓRTEX] Publica uma faísca anonimamente no Vórtex.
+    Requer autenticação.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError(code="unauthenticated", message="Autenticação necessária.")
+
+    uid = req.auth.uid
+    data = req.data
+
+    # Validação de entrada
+    if not data.get("text") or data.get("lat") is None or data.get("lng") is None:
+        raise https_fn.HttpsError(code="invalid-argument", message="Faltam 'text', 'lat' ou 'lng'.")
+
+    db = firestore.client()
+    sparks_ref = db.collection("sparks")
+
+    new_spark_data = {
+        "user_id": uid, # Armazenado para integridade, NÃO para exibição
+        "text": data["text"],
+        "lat": data["lat"],
+        "lng": data["lng"],
+        "created_at": firestore.SERVER_TIMESTAMP,
+        "votos_comunidade": 0 # Contador de pulsos
+    }
+
+    try:
+        # Adiciona o novo documento de faísca
+        _, doc_ref = sparks_ref.add(new_spark_data)
+        logging.info(f"Vórtex: Nova faísca {doc_ref.id} criada por {uid}.")
+        return {"status": "success", "id": doc_ref.id}
+    except Exception as e:
+        logging.error(f"Erro ao criar faísca para {uid}: {e}")
+        raise https_fn.HttpsError(code="internal", message=f"Erro ao salvar faísca: {e}")
+
+
+@https_fn.on_call()
+def votar_spark(req: https_fn.CallableRequest) -> dict:
+    """
+    [VÓRTEX] Registra um "pulso" (voto) em uma faísca.
+    Usa uma subcoleção para garantir voto único. Requer autenticação.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError(code="unauthenticated", message="Autenticação necessária.")
+
+    spark_id = req.data.get("sparkId")
+    user_id = req.auth.uid
+
+    if not spark_id:
+        raise https_fn.HttpsError(code="invalid-argument", message="O 'sparkId' é obrigatório.")
+
+    db = firestore.client()
+    # Referência ao documento de voto do usuário específico
+    voto_ref = db.collection("sparks").document(spark_id).collection("votos").document(user_id)
+
+    # Usamos uma transação para verificar se o voto já existe ANTES de registrar
+    @firestore.transactional
+    def registrar_voto(transaction, voto_ref):
+        voto_snapshot = voto_ref.get(transaction=transaction)
+        if voto_snapshot.exists:
+            # Usuário já votou
+            return None # Sinaliza que nada foi feito
+
+        # Registra o voto
+        transaction.set(voto_ref, {"timestamp": firestore.SERVER_TIMESTAMP})
+        return True # Sinaliza sucesso
+
+    transaction = db.transaction()
+    resultado = registrar_voto(transaction, voto_ref)
+
+    if resultado is None:
+        logging.warning(f"Voto em Faísca: Usuário {user_id} já votou em {spark_id}.")
+        # Não é um erro, apenas informa o app
+        return {"status": "already_voted"}
+    else:
+        logging.info(f"Voto em Faísca: Novo voto de {user_id} em {spark_id}.")
+        # O gatilho 'calcular_contagem_votos_spark' fará a contagem
+        return {"status": "success"}
+
+
+# Gatilho: Acionado quando um novo voto é criado na subcoleção de uma faísca
+@firestore_fn.on_document_created(document="sparks/{sparkId}/votos/{userId}")
+def calcular_contagem_votos_spark(event: firestore_fn.Event[firestore_fn.DocumentSnapshot]) -> None:
+    """
+    [VÓRTEX] Um novo gatilho, separado, para ATUALIZAR a contagem de votos
+    no documento principal da faísca.
+    """
+    spark_id = event.params.get("sparkId")
+    if not spark_id:
+        return
+
+    logging.info(f"Novo voto detectado para faísca {spark_id}. Incrementando contador.")
+
+    db = firestore.client()
+    spark_ref = db.collection("sparks").document(spark_id)
+
+    try:
+        # Atualiza o contador atomicamente usando Increment
+        # É a forma mais eficiente e segura para contadores
+        spark_ref.update({
+            "votos_comunidade": firestore.Increment(1)
+        })
+        logging.info(f"Contagem da faísca {spark_id} incrementada.")
+    except Exception as e:
+        logging.error(f"Erro ao incrementar contagem da faísca {spark_id}: {e}")
