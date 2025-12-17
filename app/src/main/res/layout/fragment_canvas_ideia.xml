@@ -8,7 +8,7 @@
     tools:context=".ui.canvas.CanvasIdeiaFragment"> <ProgressBar
     android:id="@+id/loading_indicator"
     android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
+    android:layout_height="match_parent"
     android:visibility="gone"
     app:layout_constraintBottom_toBottomOf="parent"
     app:layout_constraintEnd_toEndOf="parent"
@@ -79,14 +79,16 @@
 
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/view_pager_canvas"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
+        android:layout_width="406dp"
+        android:layout_height="533dp"
         android:layout_marginTop="8dp"
         android:layout_marginBottom="8dp"
         app:layout_constraintBottom_toTopOf="@id/tab_layout"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.4"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/btn_voltar" />
+        app:layout_constraintTop_toBottomOf="@id/btn_voltar"
+        app:layout_constraintVertical_bias="0.074" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_anterior"
@@ -105,10 +107,11 @@
         android:id="@+id/tab_layout"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="88dp"
         android:background="@android:color/transparent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@id/btn_proximo"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toEndOf="@id/btn_anterior"
         app:tabBackground="@drawable/tab_selector"
         app:tabGravity="center"

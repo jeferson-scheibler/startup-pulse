@@ -1,13 +1,19 @@
 package com.example.startuppulse.ui.propulsor;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsAnimationCompat;
@@ -18,6 +24,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.example.startuppulse.databinding.FragmentPropulsorBinding;
 import com.example.startuppulse.util.Event;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +38,10 @@ public class PropulsorFragment extends Fragment {
     private PropulsorViewModel viewModel;
     private FragmentPropulsorBinding binding;
     private ChatAdapter chatAdapter;
+
+    private FusedLocationProviderClient fusedLocationClient;
+    private ActivityResultLauncher<String[]> locationPermissionLauncher;
+    private static final String TAG_PROPULSOR = "PropulsorFragment";
 
     public PropulsorFragment() {
         // Construtor público vazio obrigatório
@@ -49,6 +61,25 @@ public class PropulsorFragment extends Fragment {
 
         // 1. Inicializar o ViewModel
         viewModel = new ViewModelProvider(this).get(PropulsorViewModel.class);
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity());
+
+        locationPermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestMultiplePermissions(),
+                permissions -> {
+                    Boolean fineGranted = permissions.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false);
+                    Boolean coarseGranted = permissions.getOrDefault(Manifest.permission.ACCESS_COARSE_LOCATION, false);
+
+                    if (fineGranted != null && fineGranted) {
+                        // Permissão exata dada, buscar localização
+                        fetchLocationAndLaunch();
+                    } else if (coarseGranted != null && coarseGranted) {
+                        // Permissão aproximada dada, buscar localização
+                        fetchLocationAndLaunch();
+                    } else {
+                        // Permissão negada
+                        Toast.makeText(getContext(), "Permissão de localização negada.", Toast.LENGTH_SHORT).show();
+                    }
+                });
 
         // 2. Configurar o RecyclerView
         setupRecyclerView();
@@ -152,8 +183,63 @@ public class PropulsorFragment extends Fragment {
 
         // Botão Lançar ao Vórtex
         binding.btnLancarVortex.setOnClickListener(v -> {
-            viewModel.launchToVortex();
+            checkPermissionAndLaunchSpark();
         });
+    }
+
+    /**
+     * 1. Ponto de entrada: Verifica se a permissão já foi dada.
+     */
+    private void checkPermissionAndLaunchSpark() {
+        //
+        if (ContextCompat.checkSelfPermission(
+                requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(
+                        requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED)
+        {
+            // Permissão já dada. Buscar localização.
+            fetchLocationAndLaunch();
+        } else {
+            // Permissão não dada. Pedir.
+            requestLocationPermission();
+        }
+    }
+
+    /**
+     * 2. Pede as permissões de localização ao utilizador.
+     */
+    private void requestLocationPermission() {
+        // O AndroidManifest tem FINE e COARSE,
+        // então pedimos ambas.
+        locationPermissionLauncher.launch(new String[] {
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+        });
+    }
+
+    /**
+     * 3. Busca a última localização conhecida e (se encontrada) chama o ViewModel.
+     */
+    @SuppressWarnings("MissingPermission") // Já verificámos a permissão no 'checkPermission...'
+    private void fetchLocationAndLaunch() {
+        fusedLocationClient.getLastLocation()
+                .addOnSuccessListener(requireActivity(), location -> { // 'location' é do tipo android.location.Location
+                    if (location != null) {
+                        // SUCESSO! Temos a localização.
+                        // Agora getLatitude() e getLongitude() serão encontrados.
+                        Log.d(TAG_PROPULSOR, "Localização obtida: " + location.getLatitude() + ", " + location.getLongitude());
+                        viewModel.launchToVortex(location.getLatitude(), location.getLongitude());
+                    } else {
+                        // Erro comum: Localização do telemóvel está desligada.
+                        Log.w(TAG_PROPULSOR, "Falha ao obter localização: getLastLocation retornou nulo.");
+                        Toast.makeText(getContext(), "Não foi possível obter a localização. Ative o GPS.", Toast.LENGTH_LONG).show();
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    // Erro do serviço
+                    Log.e(TAG_PROPULSOR, "Erro do serviço de localização.", e);
+                    Toast.makeText(getContext(), "Erro ao obter localização.", Toast.LENGTH_SHORT).show();
+                });
     }
 
     @Override

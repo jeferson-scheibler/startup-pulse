@@ -34,5 +34,5 @@ public interface ISparkRepository {
      * Registra um "pulso" (voto) em uma faísca.
      * Chama a função 'votar_spark'.
      */
-    void voteSpark(String sparkId, ResultCallback<String> callback);
+    void voteSpark(String sparkId, int weight, ResultCallback<String> callback);
 }

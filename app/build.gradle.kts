@@ -69,6 +69,8 @@ dependencies {
 
     // Firebase (BOM centraliza versões)
     implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.appcheck)
+    implementation(libs.firebase.appcheck.playintegrity)
     implementation(libs.google.firebase.auth)
     implementation(libs.firebase.firestore)
 

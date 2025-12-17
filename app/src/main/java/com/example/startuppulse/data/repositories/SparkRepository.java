@@ -96,19 +96,32 @@ public class SparkRepository implements ISparkRepository {
                 .addOnSuccessListener(result -> {
                     try {
                         Map<String, Object> resultMap = (Map<String, Object>) result.getData();
-                        String sparkId = (String) resultMap.get("id");
-                        callback.onResult(new Result.Success<>(sparkId));
+                        if (resultMap != null && resultMap.containsKey("id")) {
+                            String sparkId = (String) resultMap.get("id");
+                            callback.onResult(new Result.Success<>(sparkId));
+                        } else {
+                            // O backend deu "sucesso" (HTTP 200) mas não
+                            // retornou um ID. Isto é um erro.
+                            Log.w(TAG, "createSpark 'sucesso' mas sem ID. Payload: " + resultMap);
+                            callback.onResult(new Result.Error<>(new Exception("A resposta do servidor estava incompleta.")));
+                        }
                     } catch (Exception e) {
                         callback.onResult(new Result.Error<>(e));
                     }
                 })
-                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+                .addOnFailureListener(e -> {
+                    // O App Check (agora instalado) irá provavelmente
+                    // falhar aqui se houver um problema.
+                    Log.e(TAG, "createSpark falhou (addOnFailureListener)", e);
+                    callback.onResult(new Result.Error<>(e));
+                });
     }
 
     @Override
-    public void voteSpark(String sparkId, ResultCallback<String> callback) {
+    public void voteSpark(String sparkId, int weight, ResultCallback<String> callback) { // <--- MUDANÇA (int weight)
         Map<String, Object> data = new HashMap<>();
         data.put("sparkId", sparkId);
+        data.put("weight", weight);
 
         functions.getHttpsCallable("votar_spark")
                 .call(data)

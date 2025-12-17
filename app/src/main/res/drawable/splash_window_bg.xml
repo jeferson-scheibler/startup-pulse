@@ -1,14 +1,22 @@
 <!-- res/drawable/splash_window_bg.xml -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Fundo -->
-    <item android:drawable="@color/colorOnSurface"/>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:startColor="#1F1F1F"
+                android:centerColor="#424242"
+                android:endColor="#1F1F1F"
+                android:type="linear" />
+        </shape>
+    </item>
 
     <!-- Logo vetorial centralizado -->
     <item
         android:width="200dp"
         android:height="80dp"
         android:gravity="center"
-        android:drawable="@drawable/ic_logo_splash"
-        android:tint="@color/colorSurface"/>
+        android:drawable="@drawable/logo_startup_pulse_branco"
+        android:tint="@color/colorOnSurface"/>
 </layer-list>

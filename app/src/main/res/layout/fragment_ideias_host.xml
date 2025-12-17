@@ -1,63 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@android:color/transparent"
+    android:padding="4dp"
     tools:context=".IdeiasHostFragment">
 
-    <com.google.android.material.button.MaterialButtonToggleGroup
-    android:id="@+id/toggle_button_group"
-    android:layout_width="0dp"
-    android:layout_height="wrap_content"
-    android:layout_margin="16dp"
-    app:layout_constraintTop_toTopOf="parent"
-    app:layout_constraintStart_toStartOf="parent"
-    app:layout_constraintEnd_toEndOf="parent"
-    app:singleSelection="true"
-    app:selectionRequired="true"
-    app:checkedButton="@id/btn_vortex">
-        <Button
-            android:id="@+id/btn_vortex" style="@style/App.Button.Outlined.LessRounded"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Vórtex" android:textAppearance="@style/Text.BodySmall.Muted"
-            android:backgroundTint="@color/button_toggle_tint"
-            android:textColor="@color/button_toggle_text_color"
-            android:textAllCaps="false"/>
-
-    <Button
-        android:id="@+id/btn_rascunhos"
-        style="@style/App.Button.Outlined.LessRounded"
+    <!-- Container flutuante estilo glassmorphism -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/tab_layout_container"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:text="Meus Rascunhos"
-        android:backgroundTint="@color/button_toggle_tint"
-        android:textColor="@color/button_toggle_text_color"
-        android:textAppearance="@style/Text.BodySmall.Muted"
-        android:textAllCaps="false"/>
+        android:layout_marginHorizontal="2dp"
+        android:layout_marginTop="8dp"
+        app:cardElevation="6dp"
+        app:cardCornerRadius="24dp"
+        app:strokeWidth="0dp"
+        app:cardUseCompatPadding="true"
+        android:background="@drawable/bg_glass_container"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
-        <Button
-            android:id="@+id/btn_propulsor"
-            style="@style/App.Button.Outlined.LessRounded"
-            android:layout_width="0dp"
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/tab_layout"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Propulsor" android:backgroundTint="@color/button_toggle_tint"
-            android:textColor="@color/button_toggle_text_color"
-            android:textAppearance="@style/Text.BodySmall.Muted"
-            android:textAllCaps="false"/>
+            android:paddingRight="12dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:background="@drawable/bg_metallic_pattern"
 
-</com.google.android.material.button.MaterialButtonToggleGroup>
+            app:tabMode="fixed"
+            app:tabGravity="fill"
 
+            app:tabIndicator="@drawable/tab_indicator_modern"
+            app:tabIndicatorAnimationDuration="250"
+            app:tabIndicatorFullWidth="false"
+            app:tabTextAppearance="@style/TabTextStyle"
+
+            app:tabRippleColor="@android:color/transparent"
+            app:tabSelectedTextColor="@color/colorPrimary"
+            app:tabTextColor="@color/colorOnSurfaceVariant" />
+
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Conteúdo -->
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/view_pager"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_marginTop="8dp"
-        app:layout_constraintTop_toBottomOf="@id/toggle_button_group"
+        android:clipToPadding="false"
+        android:paddingTop="8dp"
+        app:layout_constraintTop_toBottomOf="@id/tab_layout_container"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />

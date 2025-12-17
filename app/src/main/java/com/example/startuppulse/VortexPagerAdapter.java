@@ -20,19 +20,28 @@ public class VortexPagerAdapter extends FragmentStateAdapter {
     public Fragment createFragment(int position) {
         switch (position) {
             case 0:
+                // Posição 0: Vórtex (Novo)
                 return new VortexFragment();
+
+            // --- INÍCIO DA ADIÇÃO ---
             case 1:
-                return new MeusRascunhosFragment(); //
+                // Posição 1: Feed Global (O seu fragmento antigo)
+                return new IdeiasFragment(); //
+            // --- FIM DA ADIÇÃO ---
+
             case 2:
+                // Posição 2: Rascunhos (Existente)
+                return new MeusRascunhosFragment(); //
+            case 3:
+                // Posição 3: Propulsor (Novo)
                 return new PropulsorFragment();
             default:
-                return new VortexFragment();
+                return new VortexFragment(); // Fallback
         }
     }
 
     @Override
     public int getItemCount() {
-        // Agora temos 3 abas
-        return 3;
+        return 4;
     }
 }

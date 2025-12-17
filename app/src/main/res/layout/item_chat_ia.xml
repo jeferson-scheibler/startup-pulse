@@ -13,10 +13,10 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="start"
-        android:background="@drawable/bg_sunken_container"
-        android:padding="12dp"
+        android:background="@drawable/glass_fume_background"
+        android:padding="14dp"
         android:text="Eu sou o Propulsor. Esta é a minha resposta."
-        android:textAppearance="?attr/textAppearanceBodyMedium"
-        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textAppearance="@style/Text.BodyMedium"
+        android:textColor="@color/colorOnSurface"
         android:textIsSelectable="true"/>
 </FrameLayout>

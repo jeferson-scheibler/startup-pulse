@@ -116,25 +116,21 @@ public class PropulsorViewModel extends ViewModel {
     /**
      * Pega a última faísca analisada e a publica no Vórtex.
      */
-    public void launchToVortex() {
+    public void launchToVortex(double lat, double lng) { // <--- MUDANÇA (agora recebe lat/lng)
         if (lastSparkText.isEmpty()) {
             _toastEvent.setValue(new Event<>("Não há faísca para lançar."));
             return;
         }
 
-        // TODO: Obter a localização REAL do usuário.
-        // Por agora, usaremos uma localização de placeholder.
-        // A implementação de permissão e FusedLocationProvider é complexa
-        // e deve ser feita separadamente.
-        double placeholderLat = -23.5505; // São Paulo
-        double placeholderLng = -46.6333;
 
-        _isLoading.setValue(true); // Reutiliza o loading
-        sparkRepository.createSpark(lastSparkText, placeholderLat, placeholderLng, result -> {
+        _isLoading.setValue(true);
+
+        // Use os parâmetros recebidos
+        sparkRepository.createSpark(lastSparkText, lat, lng, result -> {
             _isLoading.setValue(false);
             if (result instanceof Result.Success) {
                 _toastEvent.setValue(new Event<>("Faísca lançada no Vórtex!"));
-                _showActionButtons.setValue(false); // Esconde os botões após a ação
+                _showActionButtons.setValue(false); // Esconde os botões
             } else {
                 Exception e = ((Result.Error<String>) result).error;
                 _toastEvent.setValue(new Event<>("Erro ao lançar: " + e.getMessage()));

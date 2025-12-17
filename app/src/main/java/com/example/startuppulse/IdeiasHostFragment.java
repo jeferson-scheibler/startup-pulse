@@ -15,6 +15,8 @@ import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.startuppulse.databinding.FragmentIdeiasHostBinding;
 import com.example.startuppulse.ui.main.MainHostFragment;
+import com.google.android.material.tabs.TabLayout;
+import com.google.android.material.tabs.TabLayoutMediator;
 
 import dagger.hilt.android.AndroidEntryPoint;
 
@@ -37,47 +39,95 @@ public class IdeiasHostFragment extends Fragment {
         adapter = new VortexPagerAdapter(this);
         binding.viewPager.setAdapter(adapter);
 
-        // 2. Conectar o ViewPager aos cliques dos botões
-        binding.toggleButtonGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            if (isChecked) {
-                if (checkedId == R.id.btn_vortex) {
-                    binding.viewPager.setCurrentItem(0);
-                } else if (checkedId == R.id.btn_rascunhos) {
-                    binding.viewPager.setCurrentItem(1);
-                } else if (checkedId == R.id.btn_propulsor) {
-                    binding.viewPager.setCurrentItem(2);
+
+        new TabLayoutMediator(binding.tabLayout, binding.viewPager,
+                (tab, position) -> {
+                    // Isto é chamado para CADA aba (4 vezes)
+                    // Aqui definimos os ÍCONES e o texto inicial
+                    switch (position) {
+                        case 0:
+                            tab.setIcon(R.drawable.ic_vortex); // (O seu novo ícone)
+                            tab.setText("Vórtex"); // O primeiro é selecionado, então mostramos o texto
+                            break;
+                        case 1:
+                            tab.setIcon(R.drawable.ic_feed); // (O seu novo ícone)
+                            // tab.setText("Feed"); // (Deixe em branco, por defeito)
+                            break;
+                        case 2:
+                            tab.setIcon(R.drawable.ic_lightbulb_outline); //
+                            // tab.setText("Rascunhos");
+                            break;
+                        case 3:
+                            tab.setIcon(R.drawable.ic_rocket_launch); //
+                            // tab.setText("Propulsor");
+                            break;
+                    }
                 }
-            }
-        });
+        ).attach();
 
         // 3. Conectar os cliques do ViewPager aos botões (swipe)
-        binding.viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+        binding.tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
-            public void onPageSelected(int position) {
-                super.onPageSelected(position);
-
-                // Sincroniza o ToggleGroup
-                switch (position) {
+            public void onTabSelected(TabLayout.Tab tab) {
+                if (tab.getIcon() != null) {
+                    tab.getIcon().setBounds(0, 0, dpToPx(18), dpToPx(18));
+                }
+                // QUANDO UMA ABA É SELECIONADA
+                switch (tab.getPosition()) {
                     case 0:
-                        binding.toggleButtonGroup.check(R.id.btn_vortex);
+                        tab.setText("Vórtex");
                         break;
                     case 1:
-                        binding.toggleButtonGroup.check(R.id.btn_rascunhos);
+                        tab.setText("Feed");
                         break;
                     case 2:
-                        binding.toggleButtonGroup.check(R.id.btn_propulsor);
+                        tab.setText("Rascunhos");
+                        break;
+                    case 3:
+                        tab.setText("Propulsor");
                         break;
                 }
 
+                View tabView = tab.view;
+                tabView.animate().scaleX(1.10f).scaleY(1.10f).setDuration(150).start();
+
+                // Lógica do FAB (que já tínhamos)
+                boolean shouldShowFab = (tab.getPosition() == 1 || tab.getPosition() == 2);
                 if (getParentFragment() != null && getParentFragment().getParentFragment() instanceof MainHostFragment) {
-                    ((MainHostFragment) getParentFragment().getParentFragment()).setFabAddIdeaVisibility(position == 1);
+                    ((MainHostFragment) getParentFragment().getParentFragment()).setFabAddIdeaVisibility(shouldShowFab);
                 }
+            }
+            @Override
+            public void onTabUnselected(TabLayout.Tab tab) {
+
+                // Reduz ícone (18dp)
+                if (tab.getIcon() != null) {
+                    tab.getIcon().setBounds(0, 0, dpToPx(12), dpToPx(12));
+                }
+
+                // Remove texto da aba não selecionada
+                tab.setText(null);
+
+                // Voltar ao tamanho normal
+                View tabView = tab.view;
+                tabView.animate().scaleX(1f).scaleY(1f).setDuration(150).start();
+            }
+
+            @Override
+            public void onTabReselected(TabLayout.Tab tab) {
+                // (Opcional) Pode ser usado para "scroll to top"
             }
         });
 
-        // Garantir que o estado inicial esteja correto
-        binding.toggleButtonGroup.check(R.id.btn_vortex);
+        if (getParentFragment() != null && getParentFragment().getParentFragment() instanceof MainHostFragment) {
+            // A posição 0 (Vórtex) não tem FAB
+            ((MainHostFragment) getParentFragment().getParentFragment()).setFabAddIdeaVisibility(false);
+        }
     }
+    private int dpToPx(int dp) {
+        return Math.round(dp * getResources().getDisplayMetrics().density);
+    }
+
 
     @Override
     public void onDestroyView() {
