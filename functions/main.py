@@ -842,7 +842,7 @@ def criar_spark(req: https_fn.CallableRequest) -> dict:
 def votar_spark(req: https_fn.CallableRequest) -> dict:
     """
     [VÓRTEX] Registra um "pulso" (voto) em uma faísca.
-    Usa uma subcoleção para garantir voto único. Requer autenticação.
+    Requer autenticação.
     """
     if not req.auth:
         raise https_fn.HttpsError(code="unauthenticated", message="Autenticação necessária.")
@@ -850,60 +850,81 @@ def votar_spark(req: https_fn.CallableRequest) -> dict:
     spark_id = req.data.get("sparkId")
     user_id = req.auth.uid
 
+    # --- INÍCIO DA CORREÇÃO ---
+    # Agora recebemos o peso (1, 2, ou 3) do PulseVoteView
+    try:
+        weight = int(req.data.get("weight", 1))
+        if weight not in [1, 2, 3]:
+            weight = 1 # Garante que o peso seja 1, 2 ou 3
+    except ValueError:
+        weight = 1
+    # --- FIM DA CORREÇÃO ---
+
     if not spark_id:
         raise https_fn.HttpsError(code="invalid-argument", message="O 'sparkId' é obrigatório.")
 
     db = firestore.client()
-    # Referência ao documento de voto do usuário específico
     voto_ref = db.collection("sparks").document(spark_id).collection("votos").document(user_id)
 
-    # Usamos uma transação para verificar se o voto já existe ANTES de registrar
     @firestore.transactional
     def registrar_voto(transaction, voto_ref):
         voto_snapshot = voto_ref.get(transaction=transaction)
         if voto_snapshot.exists:
-            # Usuário já votou
-            return None # Sinaliza que nada foi feito
+            return None # Já votou
 
-        # Registra o voto
-        transaction.set(voto_ref, {"timestamp": firestore.SERVER_TIMESTAMP})
-        return True # Sinaliza sucesso
+        # --- INÍCIO DA CORREÇÃO ---
+        # Salva o peso do voto no documento do utilizador
+        voto_data = {
+            "timestamp": firestore.SERVER_TIMESTAMP,
+            "weight": weight
+        }
+        transaction.set(voto_ref, voto_data)
+        # --- FIM DA CORREÇÃO ---
+        return True # Sucesso
 
     transaction = db.transaction()
     resultado = registrar_voto(transaction, voto_ref)
 
     if resultado is None:
-        logging.warning(f"Voto em Faísca: Usuário {user_id} já votou em {spark_id}.")
-        # Não é um erro, apenas informa o app
         return {"status": "already_voted"}
     else:
-        logging.info(f"Voto em Faísca: Novo voto de {user_id} em {spark_id}.")
-        # O gatilho 'calcular_contagem_votos_spark' fará a contagem
+        logging.info(f"Voto em Faísca: Novo voto de {user_id} em {spark_id} com peso {weight}.")
         return {"status": "success"}
 
 
-# Gatilho: Acionado quando um novo voto é criado na subcoleção de uma faísca
+# Gatilho: Acionado quando um novo voto é criado
 @firestore_fn.on_document_created(document="sparks/{sparkId}/votos/{userId}")
 def calcular_contagem_votos_spark(event: firestore_fn.Event[firestore_fn.DocumentSnapshot]) -> None:
     """
-    [VÓRTEX] Um novo gatilho, separado, para ATUALIZAR a contagem de votos
-    no documento principal da faísca.
+    [VÓRTEX] Atualiza a contagem de votos ponderados no documento principal da faísca.
     """
     spark_id = event.params.get("sparkId")
     if not spark_id:
         return
 
-    logging.info(f"Novo voto detectado para faísca {spark_id}. Incrementando contador.")
+    # --- INÍCIO DA CORREÇÃO ---
+    # Lê o peso do voto que acabou de ser criado
+    try:
+        # event.data.to_dict() pode falhar se o documento for nulo
+        peso_do_voto = event.data.to_dict().get("weight", 1)
+        if peso_do_voto not in [1, 2, 3]:
+            peso_do_voto = 1
+    except Exception:
+        peso_do_voto = 1
+    # --- FIM DA CORREÇÃO ---
+
+    logging.info(f"Novo voto detectado para faísca {spark_id}. Incrementando contador em {peso_do_voto}.")
 
     db = firestore.client()
     spark_ref = db.collection("sparks").document(spark_id)
 
     try:
-        # Atualiza o contador atomicamente usando Increment
-        # É a forma mais eficiente e segura para contadores
+        # --- INÍCIO DA CORREÇÃO ---
+        # Incrementa o total pelo peso do voto
         spark_ref.update({
-            "votos_comunidade": firestore.Increment(1)
+            "votos_comunidade": firestore.Increment(peso_do_voto)
         })
+        # --- FIM DA CORREÇÃO ---
         logging.info(f"Contagem da faísca {spark_id} incrementada.")
     except Exception as e:
         logging.error(f"Erro ao incrementar contagem da faísca {spark_id}: {e}")

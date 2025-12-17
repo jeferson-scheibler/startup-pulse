@@ -407,7 +407,7 @@ public class CanvasIdeiaFragment extends Fragment {
         boolean isOwner = viewModel.isCurrentUserOwner();
         boolean isMentorPodeAvaliar = viewModel.isCurrentUserTheMentor() &&
                 ideia.getStatus() == Ideia.Status.EM_AVALIACAO;
-        boolean isReadOnly = ideia.getStatus() != Ideia.Status.RASCUNHO;
+        boolean isReadOnly = ideia.getStatus() != null && ideia.getStatus() != Ideia.Status.RASCUNHO;
         boolean isMentor = viewModel.isCurrentUserTheMentor();
 
         if (!isReadOnly) {

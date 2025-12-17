@@ -6,12 +6,26 @@
     android:layout_height="match_parent"
     tools:context=".ui.vortex.VortexFragment">
 
-    <org.maplibre.android.maps.MapView
-        android:id="@+id/map_view_maplibre"
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/mapContainer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:maplibre_cameraZoom="4"
-        app:maplibre_cameraTargetLat="-14.2350"
-        app:maplibre_cameraTargetLng="-51.9253" />
+        android:layout_marginTop="8dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        app:cardUseCompatPadding="true"
+        app:cardElevation="12dp"
+        app:cardCornerRadius="18dp"
+        android:clipToOutline="true">
+
+        <org.maplibre.android.maps.MapView
+            android:id="@+id/map_view_maplibre"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:maplibre_cameraZoom="10"
+            app:maplibre_cameraTargetLat="-29.459582"
+            app:maplibre_cameraTargetLng="-51.9649421" />
+
+    </com.google.android.material.card.MaterialCardView>
 
 </FrameLayout>

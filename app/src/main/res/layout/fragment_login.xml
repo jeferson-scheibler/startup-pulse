@@ -9,9 +9,9 @@
 
     <ImageView
         android:id="@+id/logoImageView"
-        android:layout_width="120dp"
-        android:layout_height="120dp"
-        android:src="@drawable/logo_startup_pulse"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:src="@drawable/logo_startup_pulse_branco"
         android:contentDescription="@string/app_name"
         app:layout_constraintBottom_toTopOf="@id/formCardView"
         app:layout_constraintStart_toStartOf="parent"
@@ -33,6 +33,7 @@
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="@drawable/bg_metallic_pattern"
             android:padding="24dp">
 
             <TextView
@@ -41,7 +42,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/login_title"
-                android:textAppearance="?attr/textAppearanceHeadlineSmall"
+                android:textAppearance="@style/Text.TitleMedium.Bold"
+                android:textColor="@color/colorOnSurface"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
@@ -130,7 +132,7 @@
         android:id="@+id/signUpLayout"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="24dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:padding="8dp"

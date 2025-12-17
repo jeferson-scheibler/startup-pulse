@@ -34,6 +34,7 @@ playServicesMaps = "19.2.0"
 adaptiveLayout = "1.2.0"
 mapsUtils = "3.4.0"
 maplibreSdk = "11.0.0"
+firebaseAppCheck = "18.0.0"
 
 [libraries]
 compiler = { module = "com.github.bumptech.glide:compiler", version.ref = "glide" }
@@ -77,6 +78,8 @@ androidx-adaptive-layout = { group = "androidx.compose.material3.adaptive", name
 maps-utils-ktx = { group = "com.google.maps.android", name = "maps-utils-ktx", version.ref = "mapsUtils" }
 maps-utils = { group = "com.google.maps.android", name = "android-maps-utils", version.ref = "mapsUtils" }
 maplibre-sdk = { group = "org.maplibre.gl", name = "android-sdk", version.ref = "maplibreSdk" }
+firebase-appcheck = { group = "com.google.firebase", name = "firebase-appcheck" }
+firebase-appcheck-playintegrity = { group = "com.google.firebase", name = "firebase-appcheck-playintegrity", version.ref = "firebaseAppCheck" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
