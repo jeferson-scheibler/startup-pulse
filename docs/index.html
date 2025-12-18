@@ -3,26 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Startup Pulse | A Ciência por trás do Unicórnio</title>
+    <meta name="description" content="Startup Pulse: A plataforma que transforma intuição em métricas auditáveis. Conectamos a Hélice Quádrupla da inovação.">
+    <title>Startup Pulse | O Sistema Operacional da Inovação</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
-            darkMode: 'media', // Usa preferência do sistema
+            darkMode: 'media', // Respeita a preferência do sistema (Claro/Escuro)
             theme: {
                 extend: {
                     colors: {
                         brand: {
-                            light: '#0052FF', // Azul Startup Pulse
-                            dark: '#F59E0B',  // Amarelo/Laranja Centelha (Warning Color)
+                            light: '#0052FF', // Azul Startup Pulse (Primary)
+                            dark: '#F59E0B',  // Amarelo Centelha (Warning/Highlight no Dark)
                         },
                         surface: {
-                            light: '#F4F5F7',
-                            dark: '#0F172A',
+                            light: '#F4F5F7', // Cinza Cloro (Surface)
+                            dark: '#0F172A',  // Azul Profundo (Background Dark)
                         }
                     },
                     fontFamily: {
                         display: ['Exo 2', 'sans-serif'],
                         body: ['Ubuntu', 'sans-serif'],
+                    },
+                    backgroundImage: {
+                        'grid-pattern': "url('https://www.transparenttextures.com/patterns/cubes.png')"
                     }
                 }
             }
@@ -30,140 +34,171 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@600;700;800&family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
-        /* Animações e Efeitos Especiais */
+        /* Vidro Fosco (Glassmorphism) */
         .glass-panel {
-            background: rgba(255, 255, 255, 0.7);
+            background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
         }
         @media (prefers-color-scheme: dark) {
             .glass-panel {
-                background: rgba(15, 23, 42, 0.6);
-                border: 1px solid rgba(255, 255, 255, 0.05);
+                background: rgba(15, 23, 42, 0.8);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             }
         }
 
-        /* Slider Customizado */
+        /* Slider Customizado para o Simulador */
         input[type=range] {
             -webkit-appearance: none;
             background: transparent;
         }
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: currentColor; /* Pega a cor do texto (Azul ou Amarelo) */
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
         }
-        input[type=range]:focus {
-            outline: none;
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: rgba(128, 128, 128, 0.3);
+            border-radius: 2px;
         }
     </style>
 </head>
 <body class="font-body bg-surface-light text-slate-900 dark:bg-surface-dark dark:text-slate-100 transition-colors duration-300">
 
-<nav class="fixed w-full z-50 glass-panel border-b border-gray-200 dark:border-gray-800 transition-all">
+<nav class="fixed w-full z-50 glass-panel transition-all">
     <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
         <div class="flex items-center gap-2">
-            <img src="./assets/logo_azul.png" class="h-10 w-auto dark:hidden" alt="Startup Pulse Logo">
-            <img src="./assets/logo_branco.png" class="h-10 w-auto hidden dark:block" alt="Startup Pulse Logo">
-            <span class="text-xl font-display font-bold tracking-tighter" onerror="this.style.display='inline'">
-                    STARTUP <span class="text-brand-light dark:text-brand-dark">PULSE</span>
-                </span>
+            <img src="./assets/logo_azul.png" class="h-8 md:h-10 w-auto dark:hidden" alt="Startup Pulse Logo">
+            <img src="./assets/logo_branco.png" class="h-8 md:h-10 w-auto hidden dark:block" alt="Startup Pulse Logo">
+            <span class="hidden md:block font-display font-bold text-xl tracking-tighter" onerror="this.style.display='block'">
+                STARTUP<span class="text-brand-light dark:text-brand-dark">PULSE</span>
+            </span>
         </div>
 
-        <div class="hidden md:flex gap-8 text-sm font-bold tracking-wide">
+        <div class="hidden md:flex gap-8 text-sm font-bold tracking-wide uppercase text-slate-600 dark:text-slate-300">
             <a href="#simulator" class="hover:text-brand-light dark:hover:text-brand-dark transition">Simulador</a>
-            <a href="#why-us" class="hover:text-brand-light dark:hover:text-brand-dark transition">Metodologia</a>
-            <a href="#investors" class="hover:text-brand-light dark:hover:text-brand-dark transition">Para Investidores</a>
+            <a href="#solutions" class="hover:text-brand-light dark:hover:text-brand-dark transition">Soluções</a>
+            <a href="#ecosystem" class="hover:text-brand-light dark:hover:text-brand-dark transition">Ecossistema</a>
         </div>
 
-        <a href="#waitlist" class="bg-brand-light dark:bg-brand-dark text-white dark:text-slate-900 px-6 py-2.5 rounded-full text-sm font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all transform">
-            Solicitar Acesso
+        <a href="#waitlist" class="bg-brand-light dark:bg-brand-dark text-white dark:text-slate-900 px-6 py-2.5 rounded-full text-sm font-bold shadow-lg shadow-blue-500/20 dark:shadow-yellow-500/20 hover:scale-105 transition-all transform">
+            Acesso Beta
         </a>
     </div>
 </nav>
 
-<header class="relative pt-32 pb-20 px-6 overflow-hidden">
-    <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-light/10 dark:bg-brand-dark/10 rounded-full blur-3xl -z-10 animate-pulse"></div>
+<header class="relative pt-36 pb-24 px-6 overflow-hidden">
+    <div class="absolute top-0 right-0 w-[600px] h-[600px] bg-brand-light/10 dark:bg-brand-dark/5 rounded-full blur-[100px] -z-10 animate-pulse"></div>
 
-    <div class="max-w-6xl mx-auto text-center">
-        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-100 dark:bg-yellow-900/30 text-brand-light dark:text-brand-dark text-xs font-bold uppercase tracking-widest mb-8 border border-blue-200 dark:border-yellow-700/50">
-            <span class="w-2 h-2 rounded-full bg-current animate-ping"></span>
-            Coming Soon 2025
+    <div class="max-w-5xl mx-auto text-center">
+        <div class="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-blue-50 dark:bg-slate-800 border border-blue-100 dark:border-slate-700 mb-8 shadow-sm">
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-light dark:bg-brand-dark opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-brand-light dark:bg-brand-dark"></span>
+            </span>
+            <span class="text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300">
+                Centelha RS • Fase de Validação
+            </span>
         </div>
 
-        <h1 class="font-display text-5xl md:text-7xl font-extrabold mb-8 leading-tight">
-            Investimento não é sorte.<br>
-            É <span class="text-brand-light dark:text-brand-dark underline decoration-4 decoration-current underline-offset-4">Ciência de Dados.</span>
+        <h1 class="font-display text-5xl md:text-7xl font-extrabold mb-8 leading-tight tracking-tight">
+            O Sistema Operacional do<br>
+            <span class="text-brand-light dark:text-brand-dark">Ecossistema de Inovação.</span>
         </h1>
 
         <p class="text-xl md:text-2xl text-slate-600 dark:text-slate-400 max-w-3xl mx-auto mb-12 leading-relaxed">
-            Pare de pitchar sonhos. Comece a provar tração. O Startup Pulse usa algoritmos comportamentais para transformar o "gut feeling" em métricas de <span class="font-bold text-brand-light dark:text-brand-dark">Readiness</span> auditáveis.
+            Acabamos com a fragmentação. O Startup Pulse conecta a <strong>Hélice Quádrupla</strong> em uma jornada única: validação por IA, mentoria geolocalizada e métricas de prontidão auditáveis.
         </p>
 
-        <div class="flex flex-col md:flex-row gap-4 justify-center items-center">
-            <a href="#simulator" class="w-full md:w-auto bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-8 py-4 rounded-xl font-bold hover:-translate-y-1 transition shadow-2xl">
-                Teste seu Score Agora
+        <div class="flex flex-col md:flex-row gap-5 justify-center items-center">
+            <a href="#simulator" class="w-full md:w-auto bg-slate-900 dark:bg-brand-dark text-white dark:text-slate-900 px-10 py-4 rounded-xl font-bold hover:-translate-y-1 transition shadow-xl">
+                Simular Readiness Score
             </a>
-            <a href="#why-us" class="group flex items-center gap-2 px-8 py-4 font-bold text-slate-600 dark:text-slate-300 hover:text-brand-light dark:hover:text-brand-dark transition">
-                Ver como funciona
-                <svg class="w-5 h-5 group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+            <a href="#solutions" class="group flex items-center gap-2 px-8 py-4 font-bold text-slate-600 dark:text-slate-300 hover:text-brand-light dark:hover:text-brand-dark transition">
+                Conheça os Módulos
+                <svg class="w-5 h-5 group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
             </a>
         </div>
     </div>
 </header>
 
-<section id="simulator" class="py-20 bg-white dark:bg-slate-800/50 border-y border-gray-100 dark:border-gray-800">
-    <div class="max-w-5xl mx-auto px-6">
+<section id="simulator" class="py-24 bg-white dark:bg-slate-800/30 border-y border-slate-100 dark:border-slate-800">
+    <div class="max-w-6xl mx-auto px-6">
         <div class="grid md:grid-cols-2 gap-16 items-center">
 
             <div>
-                <h2 class="font-display text-3xl font-bold mb-6">Seu Canvas é estático.<br>O mercado não.</h2>
-                <p class="text-slate-600 dark:text-slate-400 mb-8 text-lg">
-                    Investidores não querem ver um PDF bonito. Eles querem ver resiliência. Nossa ferramenta simula como sua startup reage a cenários reais, gerando um <strong>Readiness Score</strong> dinâmico.
+                <h2 class="font-display text-3xl md:text-4xl font-bold mb-6">Investidores não compram ideias.<br>Compram <span class="text-brand-light dark:text-brand-dark">Mitigação de Risco.</span></h2>
+                <p class="text-slate-600 dark:text-slate-400 mb-8 text-lg leading-relaxed">
+                    A mortalidade de startups early-stage é alta por falta de validação estruturada. Nosso algoritmo de <strong>Readiness</strong> cruza dados do Canvas, feedback de Mentores e métricas de mercado para gerar um score de confiança real.
                 </p>
-                <div class="p-6 bg-brand-light/5 dark:bg-brand-dark/5 border border-brand-light/10 dark:border-brand-dark/10 rounded-2xl">
-                    <h4 class="font-bold mb-2 flex items-center gap-2">
-                        <svg class="w-5 h-5 text-brand-light dark:text-brand-dark" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                        O Diferencial
-                    </h4>
-                    <p class="text-sm opacity-80">Não avaliamos apenas a ideia. Avaliamos a capacidade de execução do fundador e a validação das hipóteses.</p>
+
+                <div class="space-y-4">
+                    <div class="flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-slate-800 flex items-center justify-center text-brand-light dark:text-brand-dark font-bold text-lg">1</div>
+                        <div>
+                            <h4 class="font-bold text-lg">Validação Híbrida</h4>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">IA Gemini analisando consistência + Mentores validando viabilidade.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-slate-800 flex items-center justify-center text-brand-light dark:text-brand-dark font-bold text-lg">2</div>
+                        <div>
+                            <h4 class="font-bold text-lg">Data Room Automático</h4>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">Transformamos o progresso do app em um relatório de Due Diligence.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="glass-panel p-8 rounded-3xl shadow-2xl relative overflow-hidden">
-                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-brand-light dark:via-brand-dark to-transparent opacity-50"></div>
+            <div class="relative group">
+                <div class="absolute -inset-1 bg-gradient-to-r from-brand-light to-blue-400 dark:from-brand-dark dark:to-orange-600 rounded-3xl blur opacity-25 group-hover:opacity-75 transition duration-1000"></div>
 
-                <h3 class="font-display text-xl font-bold mb-6 text-center">Simulador de Prontidão (Demo)</h3>
+                <div class="relative bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800">
+                    <div class="flex justify-between items-center mb-8">
+                        <h3 class="font-display text-xl font-bold">Simulador de Readiness</h3>
+                        <span class="text-xs font-mono bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-slate-500">v1.0 Demo</span>
+                    </div>
 
-                <div class="space-y-6 mb-8">
-                    <div>
-                        <div class="flex justify-between text-sm font-bold mb-2">
-                            <span>Validação do Problema</span>
-                            <span id="val-problem">0%</span>
+                    <div class="space-y-8 mb-10">
+                        <div class="relative">
+                            <div class="flex justify-between text-sm font-bold mb-2 text-slate-700 dark:text-slate-300">
+                                <span>Preenchimento do Canvas</span>
+                                <span id="val-problem" class="text-brand-light dark:text-brand-dark">0%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="40" class="w-full text-brand-light dark:text-brand-dark accent-current" oninput="updateScore()">
                         </div>
-                        <input type="range" min="0" max="100" value="30" class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-brand-light dark:accent-brand-dark" oninput="updateScore()">
-                    </div>
-                    <div>
-                        <div class="flex justify-between text-sm font-bold mb-2">
-                            <span>Engajamento da Equipe</span>
-                            <span id="val-team">0%</span>
+                        <div>
+                            <div class="flex justify-between text-sm font-bold mb-2 text-slate-700 dark:text-slate-300">
+                                <span>Validação de Mentores</span>
+                                <span id="val-team" class="text-brand-light dark:text-brand-dark">0%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="20" class="w-full text-brand-light dark:text-brand-dark accent-current" oninput="updateScore()">
                         </div>
-                        <input type="range" min="0" max="100" value="50" class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-brand-light dark:accent-brand-dark" oninput="updateScore()">
-                    </div>
-                    <div>
-                        <div class="flex justify-between text-sm font-bold mb-2">
-                            <span>Métricas de Mercado</span>
-                            <span id="val-market">0%</span>
+                        <div>
+                            <div class="flex justify-between text-sm font-bold mb-2 text-slate-700 dark:text-slate-300">
+                                <span>Métricas de Tração</span>
+                                <span id="val-market" class="text-brand-light dark:text-brand-dark">0%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="10" class="w-full text-brand-light dark:text-brand-dark accent-current" oninput="updateScore()">
                         </div>
-                        <input type="range" min="0" max="100" value="20" class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-brand-light dark:accent-brand-dark" oninput="updateScore()">
                     </div>
-                </div>
 
-                <div class="text-center">
-                    <p class="text-xs uppercase tracking-widest font-bold text-slate-500 mb-2">Readiness Score Estimado</p>
-                    <div class="relative inline-block">
-                        <span id="final-score" class="text-6xl font-display font-extrabold text-brand-light dark:text-brand-dark transition-all">0</span>
-                        <span class="text-2xl font-bold text-slate-400">/100</span>
+                    <div class="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-6 text-center border border-slate-100 dark:border-slate-700 transition-colors">
+                        <p class="text-xs uppercase tracking-widest font-bold text-slate-400 mb-1">Score Projetado</p>
+                        <div class="flex justify-center items-baseline gap-1">
+                            <span id="final-score" class="text-6xl font-display font-extrabold text-brand-light dark:text-brand-dark transition-all">0</span>
+                            <span class="text-xl font-bold text-slate-400">/100</span>
+                        </div>
+                        <p id="feedback-text" class="text-sm font-medium mt-3 text-slate-500">Ajuste os indicadores acima.</p>
                     </div>
-                    <p id="feedback-text" class="text-sm font-medium mt-2 text-slate-500">Mova os controles para simular.</p>
                 </div>
             </div>
 
@@ -171,113 +206,135 @@
     </div>
 </section>
 
-<section id="why-us" class="py-24 px-6">
+<section id="solutions" class="py-24 px-6">
     <div class="max-w-7xl mx-auto">
         <div class="text-center mb-16">
-            <h2 class="font-display text-3xl md:text-5xl font-bold mb-6">Por que somos a próxima grande aposta?</h2>
-            <p class="max-w-2xl mx-auto text-slate-600 dark:text-slate-400">O ecossistema atual é fragmentado. Nós unificamos a jornada do fundador em um pipeline de dados coerente.</p>
+            <h2 class="font-display text-3xl md:text-5xl font-bold mb-6">3 Pilares de Tecnologia</h2>
+            <p class="max-w-2xl mx-auto text-slate-600 dark:text-slate-400">Uma arquitetura robusta (MVVM, Serverless e IA) desenhada para escalar do MVP ao IPO.</p>
         </div>
 
         <div class="grid md:grid-cols-3 gap-8">
-            <div class="p-8 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-gray-700 shadow-lg hover:-translate-y-2 transition duration-300">
-                <div class="w-12 h-12 bg-blue-100 dark:bg-yellow-900/40 rounded-lg flex items-center justify-center text-2xl mb-6">🧩</div>
-                <h3 class="font-display text-xl font-bold mb-3">Canvas Vivo</h3>
-                <p class="text-sm text-slate-500 leading-relaxed">Esqueça post-its que caem da parede. Nosso Canvas é conectado a bancos de dados de mentores que validam cada bloco em tempo real.</p>
+            <div class="p-8 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-lg hover:-translate-y-2 transition duration-300 group">
+                <div class="w-14 h-14 bg-blue-50 dark:bg-slate-700 rounded-xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition">⚡</div>
+                <h3 class="font-display text-xl font-bold mb-3">Módulo Spark</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                    <strong>Ideação Assistida.</strong> Integração direta com Google Gemini para analisar o Lean Canvas em tempo real. A IA atua como um consultor sênior, apontando riscos e pivôs antes de você gastar dinheiro.
+                </p>
             </div>
-            <div class="p-8 rounded-2xl bg-white dark:bg-slate-800 border-2 border-brand-light dark:border-brand-dark shadow-xl transform scale-105 relative z-10">
-                <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-brand-light dark:bg-brand-dark text-white dark:text-slate-900 text-xs font-bold px-3 py-1 rounded-full uppercase">Core Feature</div>
-                <div class="w-12 h-12 bg-blue-100 dark:bg-yellow-900/40 rounded-lg flex items-center justify-center text-2xl mb-6">📊</div>
-                <h3 class="font-display text-xl font-bold mb-3">Algoritmo de Prontidão</h3>
-                <p class="text-sm text-slate-500 leading-relaxed">Calculamos a probabilidade de sucesso baseada na consistência das interações da equipe e feedback de mercado. Matemática, não mágica.</p>
+
+            <div class="p-8 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-lg hover:-translate-y-2 transition duration-300 group">
+                <div class="w-14 h-14 bg-blue-50 dark:bg-slate-700 rounded-xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition">📍</div>
+                <h3 class="font-display text-xl font-bold mb-3">Geolocalização</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                    <strong>Matchmaking Real.</strong> Usamos OpenStreetMap para conectar fundadores a mentores próximos. Fomentamos ecossistemas locais (como o interior do RS), não apenas grandes capitais.
+                </p>
             </div>
-            <div class="p-8 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-gray-700 shadow-lg hover:-translate-y-2 transition duration-300">
-                <div class="w-12 h-12 bg-blue-100 dark:bg-yellow-900/40 rounded-lg flex items-center justify-center text-2xl mb-6">🤝</div>
-                <h3 class="font-display text-xl font-bold mb-3">Smart Match</h3>
-                <p class="text-sm text-slate-500 leading-relaxed">Conectamos startups a mentores e investidores que possuem a tese exata para aquele estágio. Zero perda de tempo.</p>
+
+            <div class="p-8 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-lg hover:-translate-y-2 transition duration-300 group">
+                <div class="w-14 h-14 bg-blue-50 dark:bg-slate-700 rounded-xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition">📈</div>
+                <h3 class="font-display text-xl font-bold mb-3">Módulo Pulse</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                    <strong>Inteligência de Dados.</strong> Agregação de dados anonimizados para gerar Mapas de Calor da Inovação. Governos e Universidades visualizam onde as ideias nascem.
+                </p>
             </div>
         </div>
     </div>
 </section>
 
 <section id="waitlist" class="py-24 bg-slate-900 relative overflow-hidden">
-    <div class="absolute top-0 left-0 w-full h-full opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+    <div class="absolute top-0 left-0 w-full h-full opacity-10 bg-grid-pattern"></div>
 
     <div class="relative max-w-4xl mx-auto text-center px-6">
-        <h2 class="font-display text-4xl md:text-5xl font-bold text-white mb-8">
-            Esteja na vanguarda.<br>
-            <span class="text-brand-dark">O acesso antecipado é limitado.</span>
+        <h2 class="font-display text-4xl md:text-5xl font-bold text-white mb-6">
+            A oportunidade de entrar no<br>
+            <span class="text-brand-dark">Beta Fechado é agora.</span>
         </h2>
-        <p class="text-slate-400 mb-10 text-lg">
-            O aplicativo ainda não está na loja pública. Estamos selecionando 50 startups e 10 fundos para o beta fechado. Garanta seu lugar na fila.
+        <p class="text-slate-400 mb-10 text-lg max-w-2xl mx-auto">
+            Estamos selecionando <strong>50 Startups</strong> e <strong>10 Fundos de Investimento</strong> para o lançamento oficial. Garanta prioridade na fila de análise.
         </p>
 
-        <form class="flex flex-col md:flex-row gap-4 max-w-lg mx-auto" onsubmit="event.preventDefault(); alert('Obrigado! Você foi adicionado à lista de prioridade.');">
-            <input type="email" placeholder="Seu melhor e-mail corporativo" class="flex-1 px-6 py-4 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-brand-dark focus:ring-1 focus:ring-brand-dark transition placeholder-slate-500">
-            <button type="submit" class="px-8 py-4 bg-brand-dark text-slate-900 font-bold rounded-xl hover:bg-yellow-400 transition shadow-lg shadow-yellow-500/20">
-                Entrar na Waitlist
+        <form class="flex flex-col md:flex-row gap-4 max-w-lg mx-auto" onsubmit="event.preventDefault(); alert('Solicitação enviada! Entraremos em contato em breve.');">
+            <input type="email" placeholder="E-mail corporativo" required class="flex-1 px-6 py-4 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-brand-dark focus:ring-1 focus:ring-brand-dark transition placeholder-slate-500">
+            <button type="submit" class="px-8 py-4 bg-brand-dark text-slate-900 font-bold rounded-xl hover:bg-yellow-400 transition shadow-lg shadow-yellow-500/20 whitespace-nowrap">
+                Solicitar Convite
             </button>
         </form>
-        <p class="text-xs text-slate-600 mt-6">Zero spam. Apenas atualizações sobre o lançamento.</p>
+        <div class="mt-8 flex justify-center gap-6 text-xs text-slate-500 font-bold uppercase tracking-widest">
+            <span>🔒 Dados Criptografados</span>
+            <span>✨ Acesso Gratuito no Beta</span>
+        </div>
     </div>
 </section>
 
-<footer class="bg-surface-light dark:bg-surface-dark py-12 px-6 border-t border-gray-200 dark:border-gray-800">
+<footer class="bg-surface-light dark:bg-surface-dark py-12 px-6 border-t border-slate-200 dark:border-slate-800">
     <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
         <div class="flex items-center gap-2 opacity-80">
-            <img src="./assets/logo_azul.png" class="h-6 w-auto dark:hidden">
-            <img src="./assets/logo_branco.png" class="h-6 w-auto hidden dark:block">
             <span class="font-display font-bold text-sm">STARTUP PULSE © 2025</span>
         </div>
+        <p class="text-sm text-slate-500 hidden md:block">Desenvolvido para o Edital Centelha RS</p>
         <div class="flex gap-6 text-sm font-medium text-slate-500">
-            <a href="#" class="hover:text-brand-light dark:hover:text-brand-dark">Termos de Uso</a>
-            <a href="#" class="hover:text-brand-light dark:hover:text-brand-dark">Privacidade</a>
-            <a href="mailto:contato@startuppulse.com" class="hover:text-brand-light dark:hover:text-brand-dark">Fale Conosco</a>
+            <a href="#" class="hover:text-brand-light dark:hover:text-brand-dark transition">Termos</a>
+            <a href="#" class="hover:text-brand-light dark:hover:text-brand-dark transition">Privacidade</a>
+            <a href="mailto:contato@startuppulse.com" class="hover:text-brand-light dark:hover:text-brand-dark transition">Contato</a>
         </div>
     </div>
 </footer>
 
 <script>
+    // Função para detectar o modo escuro corretamente (via Media Query)
+    function isDarkMode() {
+        return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
     function updateScore() {
-        // Pega valores
-        const p = document.querySelector('input[type=range]:nth-of-type(1)').value; // Problema (input index is subtle in HTML structure above, let's fix selector)
-        // Melhor selecionar por ordem no DOM relative ao container
+        // Seleção segura dos inputs
         const inputs = document.querySelectorAll('input[type=range]');
-        const valProblem = parseInt(inputs[0].value);
-        const valTeam = parseInt(inputs[1].value);
-        const valMarket = parseInt(inputs[2].value);
+        if(inputs.length < 3) return; // Segurança
+
+        const valCanvas = parseInt(inputs[0].value);
+        const valMentores = parseInt(inputs[1].value);
+        const valTraction = parseInt(inputs[2].value);
 
         // Atualiza textos das porcentagens
-        document.getElementById('val-problem').innerText = valProblem + '%';
-        document.getElementById('val-team').innerText = valTeam + '%';
-        document.getElementById('val-market').innerText = valMarket + '%';
+        document.getElementById('val-problem').innerText = valCanvas + '%';
+        document.getElementById('val-team').innerText = valMentores + '%';
+        document.getElementById('val-market').innerText = valTraction + '%';
 
-        // Algoritmo Fake de "Readiness"
-        // Peso maior para Equipe (investidores amam equipe)
-        let score = (valProblem * 0.3) + (valTeam * 0.5) + (valMarket * 0.2);
+        // Lógica do Algoritmo de Readiness (Baseado no Peso do PDF)
+        // Canvas (Ideação) = Peso 0.3
+        // Mentoria (Validação Humana) = Peso 0.4
+        // Tração (Métricas) = Peso 0.3
+        let score = (valCanvas * 0.3) + (valMentores * 0.4) + (valTraction * 0.3);
         score = Math.floor(score);
 
-        // Animação simples do número
+        // Atualiza o Score
         const display = document.getElementById('final-score');
         display.innerText = score;
 
-        // Feedback dinâmico
+        // Feedback condicional
         const feedback = document.getElementById('feedback-text');
-        const colorClass = document.documentElement.classList.contains('dark') ? 'text-brand-dark' : 'text-brand-light';
+
+        // Define a cor de destaque baseada no modo (Azul no Light, Amarelo no Dark)
+        const highlightColor = isDarkMode() ? 'text-brand-dark' : 'text-brand-light';
+        const warningColor = 'text-slate-500';
 
         if(score < 40) {
-            feedback.innerText = "Sua startup ainda está na fase de ideação. Precisa de validação.";
-            feedback.className = "text-sm font-medium mt-2 text-slate-500";
+            feedback.innerText = "Fase de Ideação. Requer validação de problema.";
+            feedback.className = "text-sm font-medium mt-3 " + warningColor;
         } else if (score < 75) {
-            feedback.innerText = "Bom progresso! Mas ainda faltam métricas para Série A.";
-            feedback.className = "text-sm font-medium mt-2 text-slate-500";
+            feedback.innerText = "Em Validação. Busque mais mentores no app.";
+            feedback.className = "text-sm font-medium mt-3 " + warningColor;
         } else {
-            feedback.innerText = "🚀 Pronta para Investimento! Agende uma reunião.";
-            feedback.className = "text-sm font-bold mt-2 " + colorClass;
+            feedback.innerText = "🚀 Pronta para Investimento (Data Room Liberado).";
+            feedback.className = "text-sm font-bold mt-3 " + highlightColor;
         }
     }
 
+    // Ouvinte para mudança de tema do sistema em tempo real
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateScore);
+
     // Inicializa
-    updateScore();
+    document.addEventListener("DOMContentLoaded", updateScore);
 </script>
 </body>
 </html>
